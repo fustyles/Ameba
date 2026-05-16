@@ -244,7 +244,7 @@ Version
 
 Persistent Memory + Tool Routing Edition
 Refactored Documentation Version
-Date: 2026-05-16 23:30
+Date: 2026-05-17 03:00
 ------------------------------------------------------------
 */
 
@@ -284,7 +284,7 @@ If the system determines that the user expects assistance in turning on turning 
   "method": "/on",
   "params": {
     "pin": "<Device pin number. If the user explicitly specifies a pin number, use that number. If the user does not specify which device pin to control, first ask the user in normal conversational reply and wait for the user's answer before filling this value. If multiple pins are mentioned, choose only the first one in order of appearance.>",
-	"pinmode": "digitalwrite",
+  "pinmode": "digitalwrite",
     "value": 1
   }
 }
@@ -296,7 +296,7 @@ If the system determines that the user expects assistance in turning off a digit
   "method":"/off",
   "params": {
     "pin": "<Device pin number. If the user explicitly specifies a pin number, use that number. If the user does not specify which device pin to control, first ask the user in normal conversational reply and wait for the user's answer before filling this value. If multiple pins are mentioned, choose only the first one in order of appearance.>",
-	"pinmode": "digitalwrite",	
+  "pinmode": "digitalwrite",  
     "value": 0
   }
 }
@@ -468,7 +468,7 @@ String env_filename = "env.md";
   "wifi_pass": "",
   "telegramBot_token": "",
   "telegramBot_chatID": "",
-  "gemini_apikey": ""	
+  "gemini_apikey": "" 
 }
 */
 
@@ -787,7 +787,7 @@ String Gemini_chat_request(String message, bool tools) {
           "{\"role\": \"model\", \"parts\":[{ \"text\": \""+ getResponse+"\" }]}";
 
         historical_messages += ", "+assistant_content;
-		storeHistoricalMessagesToFile();
+    storeHistoricalMessagesToFile();
 
         return getResponse;
       }
@@ -796,7 +796,8 @@ String Gemini_chat_request(String message, bool tools) {
     client.stop();
     Serial.println(Feedback);
 
-    return "Please try again with more detailed information or check if the API key is valid.";
+    // return "Please try again with more detailed information or check if the API key is valid.";
+    return "";
   }
   else
     return "Connection failed";
@@ -907,7 +908,7 @@ String Gemini_chat_search_request(String message, bool tools) {
         String assistant_content = "{\"role\": \"model\", \"parts\":[{ \"text\": \""+ getResponse+"\" }]}";
     
         historical_messages += ", "+assistant_content;
-		storeHistoricalMessagesToFile();
+        storeHistoricalMessagesToFile();
 
         return getResponse;
       }
@@ -918,7 +919,8 @@ String Gemini_chat_search_request(String message, bool tools) {
 
     Serial.println(Feedback);
 
-    return "Please try again with more detailed information or check if the API key is valid.";
+    // return "Please try again with more detailed information or check if the API key is valid.";
+    return "";
   }
   else
     return "Connection failed";
@@ -1020,19 +1022,19 @@ String getMemoryInfo() {
 // Control device output using digital or PWM (analog) mode.
 // This function supports general-purpose actuators such as LED, relay, and other GPIO-controlled devices.
 String tool_pinOutput(int pin, String mode, int value) {
-	pinMode(pin, OUTPUT);
-	mode.toLowerCase();
-	
-	if (mode=="digitalwrite") {
+  pinMode(pin, OUTPUT);
+  mode.toLowerCase();
+  
+  if (mode=="digitalwrite") {
         if (value != 0 && value != 1)
             return "[tool_pinOutput] Error: Invalid digital value";
-		
-		    digitalWrite(pin, value);
+    
+        digitalWrite(pin, value);
         if (value == 1)
             return "Device(pin="+String(pin)+") turned on";
 
         return "Device(pin="+String(pin)+") turned off";
-	}	
+  } 
     else if (mode == "analogwrite") {
 
         value = constrain(value, 0, 255);
@@ -1052,21 +1054,21 @@ void useTools(String command, JsonObject params) {
       int pin = params["pin"].as<int>();
       String pinmode = params["pinmode"].as<String>();
       int value = params["value"].as<int>();
-      String status = tool_pinOutput(pin, pinmode, value);
-	  
+      String response = tool_pinOutput(pin, pinmode, value);
+    
       historical_messages += buildHistoricalData("user", command);
-      historical_messages += buildHistoricalData("model", status);
-	    storeHistoricalMessagesToFile();	  
+      historical_messages += buildHistoricalData("model", response);
+      storeHistoricalMessagesToFile();    
 
-      status = Gemini_chat_request("Respond only with a natural language description of the device's current operating state in the user's language. Never output tool_call, JSON, or any structured format. If there are any unfinished or pending tasks, clearly inform the user and ask whether to continue processing them.", 0);
-      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, status,"");                
-	  
+      response = Gemini_chat_request("Respond only with a natural language description of the device's current operating state in the user's language. Never output tool_call, JSON, or any structured format. If there are any unfinished or pending tasks, clearly inform the user and ask whether to continue processing them.", 0);
+      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");                
+    
     } else if (command == "/still") {
       sendCapturedImageToTelegram(telegramBot_token, telegramBot_chatID, 1);
 
       historical_messages += buildHistoricalData("user", command);
       historical_messages += buildHistoricalData("model", "Get still to Telegram Bot");
-	    storeHistoricalMessagesToFile();      
+      storeHistoricalMessagesToFile();      
       
     } else if (command == "/reset") {
       Gemini_chat_reset();
@@ -1074,7 +1076,7 @@ void useTools(String command, JsonObject params) {
 
       historical_messages += buildHistoricalData("user", command);
       historical_messages += buildHistoricalData("model", "Start a new chat");
-	    storeHistoricalMessagesToFile();      
+      storeHistoricalMessagesToFile();      
 
     } else if (command == "/memory") {
       String msg = getMemoryInfo();
@@ -1082,26 +1084,32 @@ void useTools(String command, JsonObject params) {
 
       historical_messages += buildHistoricalData("user", command);
       historical_messages += buildHistoricalData("model", msg);
-	    storeHistoricalMessagesToFile();      
+      storeHistoricalMessagesToFile();      
 
     } else if (command == "/chat") {
       String reply = params["reply"].as<String>();
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, reply, "");
-	  
+
     } else if (command == "/search") {
       String query = params["query"].as<String>();
       String response = Gemini_chat_search_request(query, 0);
-      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");     
+      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
+      
+      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, simply reply with a blank message.", 1);
+      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
 
     } else if (command == "/vision") {
       String prompt = params["query"].as<String>();
       String response = SendStillToGeminiVision(prompt);
-      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
-
+      
       historical_messages += buildHistoricalData("user", prompt);
       historical_messages += buildHistoricalData("model", response);
-	  storeHistoricalMessagesToFile();      
-            
+      storeHistoricalMessagesToFile(); 
+
+      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
+      
+      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, simply reply with a blank message.", 1);
+      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
     }
 }
 
@@ -1124,15 +1132,15 @@ void getTelegramMessage() {
 
     if (messageLastId == 0) {
       Serial.println("Connection successful");
-	  
+    
       for (int i = 0; i < 3; i++) {
         digitalWrite(pinLed, HIGH);
         delay(500);
         digitalWrite(pinLed, LOW);
         delay(500);
       }
-	  
-	}
+    
+  }
 
     while (botClient.connected()) {
 
@@ -1220,7 +1228,7 @@ void getTelegramMessage() {
 
             historical_messages += buildHistoricalData("user", "Command list");
             historical_messages += buildHistoricalData("model", command);
-			      storeHistoricalMessagesToFile();			
+            storeHistoricalMessagesToFile();      
         
           } else if (message=="null") {
         
@@ -1229,13 +1237,13 @@ void getTelegramMessage() {
         
           } else {
         
-      			if (message.startsWith("/")) {
-      				useTools(message, JsonObject());
+            if (message.startsWith("/")) {
+              useTools(message, JsonObject());
               
-      			} else {
+            } else {
               
               message = Gemini_chat_request(message, 1);
-
+              
               message.replace("\\\"", "\"");            
               message.replace("\\n", "");
               message.replace("\n", "");
@@ -1264,9 +1272,8 @@ void getTelegramMessage() {
               obj = doc.as<JsonObject>();
               String method =  obj["method"].as<String>();
               JsonObject params = obj["params"];
-      				useTools(method, params);
-              
-            }	
+              useTools(method, params);
+            } 
           }
         }
       }
@@ -1329,13 +1336,13 @@ void initWiFi() {
 }
 
 void setEnvironmentSettings(String jsonString) {
-	
+  
   DynamicJsonDocument doc(1024);
   DeserializationError error = deserializeJson(doc, jsonString);
   if (error) {
-	  Serial.println("JSON parse failed\n\n");
-	  Serial.println(jsonString);
-	  return;
+    Serial.println("JSON parse failed\n\n");
+    Serial.println(jsonString);
+    return;
   }
 
   JsonObject obj = doc.as<JsonObject>();
@@ -1357,7 +1364,7 @@ void setup() {
   String env = getStringFromFile(env_filename);
   Serial.println("env.md len: " + String(env.length())); 
   if (env != "")
-	  setEnvironmentSettings(env);
+    setEnvironmentSettings(env);
 
   initWiFi();
 
@@ -1381,17 +1388,17 @@ void setup() {
   String soul = getStringFromFile(soul_filename);
   Serial.println("Soul.md len: " + String(soul.length()));
   if (soul != "")
-	  gemini_role = soul;
+    gemini_role = soul;
   
   gemini_role.replace("\"", "\\\"");
   tools_definition.replace("\"", "\\\"");
   system_content = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + tools_definition + "\"}]}" + buildHistoricalData("model", "OK");
   system_content_notools = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + "\"}]}" + buildHistoricalData("model", "OK");  
-	  
+    
   String memory = getStringFromFile(memory_filename);
   Serial.println("memory.md len: " + String(memory.length()));
   if (memory != "")
-	  historical_messages = memory;
+    historical_messages = memory;
 
 }
 
