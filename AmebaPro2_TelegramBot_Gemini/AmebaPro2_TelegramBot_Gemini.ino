@@ -1085,10 +1085,10 @@ void getTelegramMessage() {
         
           } else {
         
-      			if (message.startsWith("/")) {
-      				useTools(message, JsonObject());
+            if (message.startsWith("/")) {
+              useTools(message, JsonObject());
               
-      			} else {
+            } else {
               
               message = Gemini_chat_request(message, 1);
 
@@ -1120,7 +1120,7 @@ void getTelegramMessage() {
               obj = doc.as<JsonObject>();
               String method =  obj["method"].as<String>();
               JsonObject params = obj["params"];
-      				useTools(method, params);
+              useTools(method, params);
               
             }	
           }
@@ -1178,7 +1178,7 @@ void setup() {
         NULL
       )!= pdPASS) {
 
-    Serial.println("Create getTelegramMessage task failed");
+      Serial.println("Create getTelegramMessage task failed");
   } 
 
   gemini_role.replace("\"", "\\\"");
