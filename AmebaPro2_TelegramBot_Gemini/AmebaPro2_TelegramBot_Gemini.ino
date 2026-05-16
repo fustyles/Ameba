@@ -70,7 +70,7 @@ tool instructions when an action is required.
 Tool Format Definition
 ------------------------------------------------------------
 
-1) Digital Output Control
+1. Digital Output Control
 {
   "type": "tool_call",
   "method": "/on" | "/off",
@@ -81,7 +81,7 @@ Tool Format Definition
   }
 }
 
-2) PWM Output Control
+2. PWM Output Control
 {
   "type": "tool_call",
   "method": "/pwm",
@@ -92,14 +92,14 @@ Tool Format Definition
   }
 }
 
-3) Image Capture
+3. Image Capture
 {
   "type": "tool_call",
   "method": "/still",
   "params": {}
 }
 
-4) Vision Analysis (camera + Gemini)
+4. Vision Analysis (camera + Gemini)
 {
   "type": "tool_call",
   "method": "/vision",
@@ -108,7 +108,7 @@ Tool Format Definition
   }
 }
 
-5) Web Search (Gemini grounding tool)
+5. Web Search (Gemini grounding tool)
 {
   "type": "tool_call",
   "method": "/search",
@@ -117,14 +117,14 @@ Tool Format Definition
   }
 }
 
-6) System Utilities
+6.) System Utilities
 {
   "type": "tool_call",
   "method": "/memory" | "/reset",
   "params": {}
 }
 
-7) Default Chat Response
+7. Default Chat Response
 If no tool is required:
 
 {
@@ -200,7 +200,7 @@ Version
 ------------------------------------------------------------
 
 Persistent Memory Edition (Refactored Documentation)
-2026-05-16 19:30
+2026-05-16 23:30
 ------------------------------------------------------------
 */
 
