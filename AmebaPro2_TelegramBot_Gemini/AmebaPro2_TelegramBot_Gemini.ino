@@ -349,7 +349,7 @@ String system_content_notools = "";
 String historical_messages = "";
 
 // Indicator LED output pin
-int pinLed = 25;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
+int pinLed = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
 
 // Last Telegram message ID
 long messageLastId = 0;
