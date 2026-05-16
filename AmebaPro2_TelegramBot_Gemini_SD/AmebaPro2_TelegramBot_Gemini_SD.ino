@@ -1,6 +1,6 @@
 /*
 ------------------------------------------------------------
-AMB82-mini Persistent AI Telegram Assistant
+fuClaw Persistent AI Telegram Assistant
 with Gemini + Camera Vision + SD Card Memory
 ------------------------------------------------------------
 
@@ -10,7 +10,7 @@ Author:
 
 Description:
   This project implements an AI-powered Telegram assistant
-  running on the AMB82-mini development board with persistent
+  running on the AMB82-mini (HUB 8735 Ultra) development board with persistent
   conversation memory stored on SD card.
 
   The device connects to WiFi, receives Telegram messages,
