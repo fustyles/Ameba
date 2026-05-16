@@ -218,13 +218,13 @@ Version
 ------------------------------------------------------------
 
 Persistent Memory Edition (Refactored Documentation)
-2026-05-16 19:30
+2026-05-16 21:30
 ------------------------------------------------------------
 */
 
 // WiFi credentials
-char wifi_ssid[] = "xxxxxxxxxx";
-char wifi_pass[] = "xxxxxxxxxx";
+String wifi_ssid = "xxxxxxxxxx";
+String wifi_pass = "xxxxxxxxxx";
 
 // Telegram bot configuration
 String telegramBot_token = "xxxxxxxxxx";
@@ -394,7 +394,7 @@ AmebaFatFS fs;
 File file;
 
 // define file name
-String settings_filename = "settings.md";
+String env_filename = "env.md";
 String soul_filename    = "soul.md";
 String memory_filename    = "memory.md";
 
@@ -947,7 +947,7 @@ String tool_pinOutput(int pin, String mode, int value) {
         if (value != 0 && value != 1)
             return "[tool_pinOutput] Error: Invalid digital value";
 		
-		digitalWrite(pin, value);
+		    digitalWrite(pin, value);
         if (value == 1)
             return "Device(pin="+String(pin)+") turned on";
 
@@ -1023,31 +1023,6 @@ void useTools(String command, JsonObject params) {
 	  storeHistoricalMessagesToFile();      
             
     }
-}
-
-// Initialize WiFi
-void initWiFi() {
-  for (int i=0;i<2;i++) {
-
-    if (String(wifi_ssid)=="")
-      break;
-
-    WiFi.begin(wifi_ssid, wifi_pass);
-    delay(1000);
-
-    Serial.println();
-    Serial.print("Connecting to ");
-    Serial.println(wifi_ssid);
-
-    long int StartTime=millis();
-
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-
-      if ((StartTime+5000) < millis())
-        break;
-    }
-  }
 }
 
 // Poll Telegram Bot API for latest user message
@@ -1222,7 +1197,7 @@ void getTelegramMessage() {
   while (WiFi.status() != WL_CONNECTED) {
 
     WiFi.disconnect();
-    WiFi.begin(wifi_ssid, wifi_pass);
+    WiFi.begin((char*)wifi_ssid.c_str(), (char*)wifi_pass.c_str());
 
     unsigned long start = millis();
 
@@ -1244,12 +1219,75 @@ void getTelegramMessage_task(void *param) {
   }
 }
 
+// Initialize WiFi
+void initWiFi() {
+  Serial.println(wifi_ssid);  
+  Serial.println(wifi_pass); 
+
+    
+  for (int i=0;i<2;i++) {
+
+    if (wifi_ssid=="")
+      break;
+
+    WiFi.begin((char*)wifi_ssid.c_str(), (char*)wifi_pass.c_str());
+    delay(1000);
+
+    Serial.println();
+    Serial.print("Connecting to ");
+    Serial.println(wifi_ssid);
+
+    long int StartTime=millis();
+
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+
+      if ((StartTime+5000) < millis())
+        break;
+    }
+  }
+}
+
+void setEnvironmentSettings(String jsonString) {
+	
+  DynamicJsonDocument doc(1024);
+  DeserializationError error = deserializeJson(doc, jsonString);
+  if (error) {
+	  Serial.println("JSON parse failed\n\n");
+	  Serial.println(jsonString);
+	  return;
+  }
+  
+  /*
+  {
+    "wifi_ssid": "",
+    "wifi_pass": "",
+    "telegramBot_token": "",
+    "telegramBot_chatID": "",
+    "gemini_apikey": ""	
+  }
+  */
+
+  JsonObject obj = doc.as<JsonObject>();
+  wifi_ssid =  obj["wifi_ssid"].as<String>();
+  wifi_pass =  obj["wifi_pass"].as<String>();
+  telegramBot_token =  obj["telegramBot_token"].as<String>();
+  telegramBot_chatID =  obj["telegramBot_chatID"].as<String>();
+  gemini_apikey =  obj["gemini_apikey"].as<String>();
+ 
+}
+
 // Arduino setup
 void setup() {
   Serial.begin(115200);
-  
+
   // Indicator LED  
   pinMode(pinLed, OUTPUT);
+  
+  String env = getStringFromFile(env_filename);
+  Serial.println("env.md len: " + String(env.length())); 
+  if (env != "")
+	  setEnvironmentSettings(env);
 
   initWiFi();
 
@@ -1269,25 +1307,22 @@ void setup() {
 
     Serial.println("Create getTelegramMessage task failed");
   } 
-
-
   
-  String soul = getStringFromFile(soul_filename); 
-  if (soul != "") {
+  String soul = getStringFromFile(soul_filename);
+  Serial.println("Soul.md len: " + String(soul.length()));
+  if (soul != "")
 	  gemini_role = soul;
-	  Serial.println("Soul.md len: " + soul.length());
-  }
   
   gemini_role.replace("\"", "\\\"");
   tools_definition.replace("\"", "\\\"");
   system_content = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + tools_definition + "\"}]}" + buildHistoricalData("model", "OK");
   system_content_notools = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + "\"}]}" + buildHistoricalData("model", "OK");  
 	  
-  String memory = getStringFromFile(memory_filename); 
-  if (memory != "") {
+  String memory = getStringFromFile(memory_filename);
+  Serial.println("memory.md len: " + String(memory.length()));
+  if (memory != "")
 	  historical_messages = memory;
-	  Serial.println("memory.md len: " + memory.length());
-  }  
+
 }
 
 // Main loop
