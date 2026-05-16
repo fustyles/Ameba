@@ -69,15 +69,15 @@ Main Capabilities
 Supported Telegram Commands
 ------------------------------------------------------------
 
-/help     Show available commands
-/on       Turn ON GPIO device
-/off      Turn OFF GPIO device
-/pwm      Set PWM brightness (0–255)
-/still    Capture and send image to Telegram
-/vision   Analyze image using Gemini Vision
-/search   Web-grounded AI search
-/memory   Show system memory status
-/reset    Reset conversation memory
+/help     Show available commands<br>
+/on       Turn ON GPIO device<br>
+/off      Turn OFF GPIO device<br>
+/pwm      Set PWM brightness (0–255)<br>
+/still    Capture and send image to Telegram<br>
+/vision   Analyze image using Gemini Vision<br>
+/search   Web-grounded AI search<br>
+/memory   Show system memory status<br>
+/reset    Reset conversation memory<br>
 
 ------------------------------------------------------------
 Tool Calling Mechanism
