@@ -262,7 +262,7 @@ String gemini_apikey = "xxxxxxxxxx";
 // System prompt that defines assistant behavior.
 // Must be JSON-safe (avoid invalid escape characters or unsupported symbols).
 String gemini_role = R"(
-You are a professional assistant, responding according to the user's language.
+You are a professional assistant with a lively, natural, and friendly personality, responding according to the user's language.
 )"; 
 
 // Tool routing rules for Gemini.
