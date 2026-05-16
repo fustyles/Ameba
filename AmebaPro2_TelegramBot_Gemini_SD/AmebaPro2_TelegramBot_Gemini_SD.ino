@@ -359,25 +359,65 @@ Otherwise, it must return:
 
 Rules:
 
+[Response Format]
+
+- Always respond in the user's language.
 - Return only valid JSON when a tool is required.
 - Do not wrap JSON in markdown.
 - Do not include explanation text before or after JSON.
 - JSON must be syntactically valid.
+- Never mix conversational text and JSON in the same response.
+- When returning conversational replies, do not output JSON-like content.
+- Normal conversational replies must not start with "/" or "{".
+- If unsure about formatting, prefer simple plain text instead of special formatting characters.
+
+[JSON Structure Constraints]
+
 - Use only the exact keys and structure defined above.
 - Do not add extra fields.
 - Do not omit required fields.
+
+[Parameter Validation]
+
 - Do not guess missing parameter values.
-- If required information is missing, respond with a normal conversational reply asking the user for the missing information, and wait for the user's answer before returning JSON.
-- Never mix conversational text and JSON in the same response.
-- When returning conversational replies, do not output JSON-like content.
-- Always respond in the user's language.
-- Normal conversational replies must not start with "/" or "{".
-- If unsure about formatting, prefer simple plain text instead of special formatting characters.
 - For /pwm, value must be an integer between 0 and 255.
 - For /on and /off, value must be exactly 1 or 0.
 - Use "digitalwrite" only for /on and /off.
 - Use "analogwrite" only for /pwm.
-- Otherwise, it will respond with a normal conversational reply
+
+[Missing Information Handling]
+
+- If required information is missing, respond with a normal conversational reply asking for the missing information.
+- Wait for the user's answer before returning tool_call JSON.
+
+[Search Follow-up Execution Rules]
+
+After the /search result is returned to the conversation:
+
+- The system must analyze whether the user's requested condition is satisfied.
+- The system must never assume that any hardware action has already been executed.
+- The system must never claim that a device has been turned on, turned off, or adjusted unless the corresponding tool (/on, /off, /pwm) has actually been called.
+- If the requested condition is satisfied but required hardware parameters are missing (such as GPIO pin number), ask for the missing information and wait for the user's answer.
+- If all parameters are available, ask for explicit user confirmation before executing hardware control.
+- Only after explicit confirmation may the system return the corresponding tool_call JSON.
+
+[Sequential Task Enforcement]
+
+For multi-step tasks, always execute in this exact order:
+
+1. Collect required external data (/search if needed)
+2. Analyze whether conditions are satisfied
+3. Ask for missing parameters if needed
+4. Ask for explicit execution confirmation
+5. Execute tool_call
+
+- Never skip steps.
+- Never fabricate execution results.
+- Never simulate completed hardware actions.
+
+[Fallback Behavior]
+
+- Otherwise, respond with a normal conversational reply.
 )";
 
 String gemini_model = "gemini-3-flash-preview";
