@@ -29,18 +29,18 @@ The system behaves as a hybrid AI agent:
 Core Architecture
 ------------------------------------------------------------
 
-Telegram User
-      ↓
-getUpdates Polling Task (FreeRTOS)
-      ↓
-Message Router (Telegram / Direct Command / Gemini)
-      ↓
-Gemini API (generateContent / search / vision)
-      ↓
-JSON tool_call Response Parsing (ArduinoJson)
-      ↓
-Tool Dispatcher (useTools)
-      ↓
+Telegram User<br>
+      ↓<br>
+getUpdates Polling Task (FreeRTOS)<br>
+      ↓<br>
+Message Router (Telegram / Direct Command / Gemini)<br>
+      ↓<br>
+Gemini API (generateContent / search / vision)<br>
+      ↓<br>
+JSON tool_call Response Parsing (ArduinoJson)<br>
+      ↓<br>
+Tool Dispatcher (useTools)<br>
+      ↓<br>
 Hardware / Camera / Memory / Telegram Output
 
 NOTE:
