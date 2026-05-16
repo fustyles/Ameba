@@ -421,6 +421,16 @@ File file;
 
 // Environment configuration file (WiFi / Telegram / Gemini API settings)
 String env_filename = "env.md";
+  
+/*
+{
+  "wifi_ssid": "",
+  "wifi_pass": "",
+  "telegramBot_token": "",
+  "telegramBot_chatID": "",
+  "gemini_apikey": ""	
+}
+*/
 
 // System personality prompt file (defines Gemini assistant behavior)
 String soul_filename = "soul.md";
@@ -1287,16 +1297,6 @@ void setEnvironmentSettings(String jsonString) {
 	  Serial.println(jsonString);
 	  return;
   }
-  
-  /*
-  {
-    "wifi_ssid": "",
-    "wifi_pass": "",
-    "telegramBot_token": "",
-    "telegramBot_chatID": "",
-    "gemini_apikey": ""	
-  }
-  */
 
   JsonObject obj = doc.as<JsonObject>();
   wifi_ssid =  obj["wifi_ssid"].as<String>();
