@@ -419,10 +419,14 @@ AmebaFatFS fs;
 // File object for SD card access
 File file;
 
-// define file name
+// Environment configuration file (WiFi / Telegram / Gemini API settings)
 String env_filename = "env.md";
-String soul_filename    = "soul.md";
-String memory_filename    = "memory.md";
+
+// System personality prompt file (defines Gemini assistant behavior)
+String soul_filename = "soul.md";
+
+// Persistent conversation memory file (stores historical chat context)
+String memory_filename = "memory.md";
 
 #include "VideoStream.h"
 
