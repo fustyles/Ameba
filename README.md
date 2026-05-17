@@ -6,6 +6,9 @@ Author:
   ChungYi Fu (Kaohsiung, Taiwan)
   https://www.facebook.com/francefu
 
+
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/AmebaPro2_TelegramBot_Gemini_SD/AmebaPro2_TelegramBot_Gemini_SD_EN.png)  
+
 ------------------------------------------------------------
 System Overview
 ------------------------------------------------------------
@@ -426,5 +429,3 @@ Prompt-Orchestrated Embedded Agent Edition
 
 Date: 2026-05-17 14:00
 ------------------------------------------------------------
-
-![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/AmebaPro2_TelegramBot_Gemini_SD/AmebaPro2_TelegramBot_Gemini_SD_EN.png)
