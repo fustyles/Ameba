@@ -377,7 +377,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 (without persistent storage layer)
 
-Date: 2026-05-17 20:00
+Date: 2026-05-17 22:30
 ------------------------------------------------------------
 */
 
@@ -1504,21 +1504,25 @@ void getTelegramMessage() {
         
           if (message=="help"||message=="/help"||message=="/start") {
         
-			String command =
-			  "Built-in commands:\n"
-			  "/help command list\n"
-			  "/still capture and send a camera image\n"
-			  "/memory show system memory usage\n"
-			  "/reset start a new conversation\n\n"
-			  "Hardware control supported:\n"
-			  "- Digital output (0 or 1)\n"
-			  "- Analog output (0–255)\n"
-			  "- Digital input reading\n"
-			  "- Analog input reading\n\n"
-			  "You can chat with Gemini using natural language.\n"
-			  "The system supports real-time search and vision-based analysis.\n\n"
-			  "Documentation:\n"
-			  "https://github.com/fustyles/fuClaw\n";
+            String mem = getMemoryInfo();
+            
+            String command =
+              "Built-in commands:\n"
+              "/help command list\n"
+              "/still capture and send a camera image\n"
+              "/memory show system memory usage\n"
+              "/reset start a new conversation\n\n"
+              "Hardware control supported:\n"
+              "- Digital output (0 or 1)\n"
+              "- Analog output (0–255)\n"
+              "- Digital input reading\n"
+              "- Analog input reading\n\n"
+              "System Status:\n"
+              + mem +
+              "\n\nYou can chat with Gemini using natural language.\n"
+              "The system supports real-time search and vision-based analysis.\n\n"
+              "Documentation:\n"
+              "https://github.com/fustyles/fuClaw";
           
             String keyboard =
               "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";

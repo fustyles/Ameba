@@ -268,7 +268,7 @@ Version
 
 Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-17 20:00
+Date: 2026-05-17 22:30
 ------------------------------------------------------------
 */
 
@@ -1311,6 +1311,8 @@ void getTelegramMessage() {
         
           if (message=="help"||message=="/help"||message=="/start") {
         
+			String mem = getMemoryInfo();
+
 			String command =
 			  "Built-in commands:\n"
 			  "/help command list\n"
@@ -1322,10 +1324,12 @@ void getTelegramMessage() {
 			  "- Analog output (0–255)\n"
 			  "- Digital input reading\n"
 			  "- Analog input reading\n\n"
-			  "You can chat with Gemini using natural language.\n"
+			  "System Status:\n"
+			  + mem +
+			  "\n\nYou can chat with Gemini using natural language.\n"
 			  "The system supports real-time search and vision-based analysis.\n\n"
 			  "Documentation:\n"
-			  "https://github.com/fustyles/fuClaw\n";
+			  "https://github.com/fustyles/fuClaw";
 
           
             String keyboard =
