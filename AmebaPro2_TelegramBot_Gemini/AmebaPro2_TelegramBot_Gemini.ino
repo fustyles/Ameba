@@ -9,7 +9,7 @@ Author:
 
 Description:
   This project implements an AI-powered Telegram assistant
-  running on the AMB82-mini (HUB 8735 Ultra / Realtek Ameba Pro2)
+  running on the AMB82-mini (HUB 8735 Ultra)
   development board.
 
   The system connects to WiFi, receives Telegram messages via
@@ -20,7 +20,7 @@ Description:
 Core Architecture:
   Telegram User
       ↓
-  ESP32 / AMB82-mini (FreeRTOS task)
+  AMB82-mini or HUB 8735 Ultra (FreeRTOS task)
       ↓
   Gemini API (generateContent + optional Google Search tool)
       ↓
@@ -38,8 +38,10 @@ Main Features
 - Google Search grounding via Gemini tool
 - Camera capture and Telegram image upload (sendPhoto)
 - Gemini Vision multimodal image analysis (image + text input)
-- Digital output control (GPIO ON/OFF)
-- PWM output control (0–255 brightness)
+- Digital output control (0 | 1)
+- Analog output control (0–255)
+- Digital input reading
+- Analog sensor reading
 - System memory monitoring (heap + conversation size)
 - Conversation memory stored in RAM (historical_messages)
 - FreeRTOS background task for continuous Telegram polling
@@ -49,15 +51,35 @@ Main Features
 Supported Telegram Commands
 ------------------------------------------------------------
 
-/help     Show command list
-/on       Turn ON digital output device
-/off      Turn OFF digital output device
-/pwm      Set PWM brightness (0–255)
-/still    Capture and send image to Telegram
-/vision   Analyze image using Gemini Vision
-/search   Web-grounded search using Gemini
-/memory   Show system memory usage
-/reset    Reset conversation memory
+/help
+Show available commands
+
+/digitalwrite
+Set digital output (0 | 1)
+
+/analogwrite
+Set analog output (0–255)
+
+/digitalread
+Read digital input pin
+
+/analogread
+Read analog input pin
+
+/still
+Capture image and send to Telegram
+
+/vision
+Capture and analyze image
+
+/search
+Grounded web search
+
+/memory
+Show runtime memory status
+
+/reset
+Reset conversation memory
 
 ------------------------------------------------------------
 Tool Routing Mechanism (Gemini Prompt-Based)
@@ -67,48 +89,89 @@ Gemini is instructed via system prompt rules to return ONLY JSON
 tool instructions when an action is required.
 
 ------------------------------------------------------------
-Tool Format Definition
+Tool Format Specification
 ------------------------------------------------------------
 
-1) Digital Output Control
+1. Digital Output
+
 {
   "type": "tool_call",
-  "method": "/on" | "/off",
+  "method": "/digitalwrite",
   "params": {
-    "pin": "<GPIO pin>",
+    "pin": "<GPIO>",
     "pinmode": "digitalwrite",
     "value": 1 | 0
   }
 }
 
-2) PWM Output Control
+------------------------------------------------------------
+
+2. Analog Output
+
 {
   "type": "tool_call",
-  "method": "/pwm",
+  "method": "/analogwrite",
   "params": {
-    "pin": "<GPIO pin>",
+    "pin": "<GPIO>",
     "pinmode": "analogwrite",
     "value": 0-255
   }
 }
 
-3) Image Capture
+------------------------------------------------------------
+
+3. Digital Input
+
+{
+  "type": "tool_call",
+  "method": "/digitalread",
+  "params": {
+    "pin": "<GPIO>",
+    "pinmode": "digitalread"
+  }
+}
+
+------------------------------------------------------------
+
+4. Analog Input
+
+{
+  "type": "tool_call",
+  "method": "/analogread",
+  "params": {
+    "pin": "<GPIO>",
+    "pinmode": "analogread"
+  }
+}
+
+------------------------------------------------------------
+
+5. Camera Capture
+
 {
   "type": "tool_call",
   "method": "/still",
   "params": {}
 }
 
-4) Vision Analysis (camera + Gemini)
+------------------------------------------------------------
+
+6. Vision Analysis
+
 {
   "type": "tool_call",
   "method": "/vision",
   "params": {
-    "query": "<user request>"
+    "query": "<analysis request>"
   }
 }
 
-5) Web Search (Gemini grounding tool)
+Capture occurs before multimodal reasoning.
+
+------------------------------------------------------------
+
+7. Grounded Search
+
 {
   "type": "tool_call",
   "method": "/search",
@@ -117,21 +180,25 @@ Tool Format Definition
   }
 }
 
-6) System Utilities
+------------------------------------------------------------
+
+8. Memory Control
+
 {
   "type": "tool_call",
   "method": "/memory" | "/reset",
   "params": {}
 }
 
-7) Default Chat Response
-If no tool is required:
+------------------------------------------------------------
+
+9. Conversational Reply
 
 {
   "type": "tool_call",
   "method": "/chat",
   "params": {
-    "reply": "<natural language response>"
+    "reply": "<natural language reply>"
   }
 }
 
@@ -144,7 +211,7 @@ Execution Flow (Actual Implementation Behavior)
 3. Gemini returns either:
      - tool_call JSON
      - or natural chat reply wrapped in /chat tool
-4. ESP32 parses JSON using ArduinoJson
+4. Parses JSON using ArduinoJson
 5. useTools() dispatches execution:
      - GPIO control
      - Camera capture
@@ -159,9 +226,9 @@ Hardware Support
 ------------------------------------------------------------
 
 - AMB82-mini (HUB 8735 Ultra platform)
-- Built-in WiFi (ESP32-like architecture)
+- Built-in WiFi
 - Camera module (VideoStream API)
-- GPIO output (digital + PWM)
+- GPIO output (digital + Analog)
 
 ------------------------------------------------------------
 Software Dependencies
@@ -201,7 +268,7 @@ Version
 
 Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-17 16:00
+Date: 2026-05-17 19:30
 ------------------------------------------------------------
 */
 
@@ -234,12 +301,12 @@ AMB82-mini:
 HUB 8735 Ultra:
 - Green indicator LED: pin 25
 - Blue indicator LED: pin 26
-- Fill light LED: pin 13 (PWM range: 0–255, default safe startup brightness: 5 to avoid eye discomfort)
+- Fill light LED: pin 13 (analog range: 0–255, default safe startup brightness: 5 to avoid eye discomfort)
 - Function button: pin 12 (digital input, active-low: pressed = 0, released = 1)
 
 Notes:
-- Indicator LEDs are general-purpose output devices and may be controlled using /on, /off, or /pwm when supported.
-- The fill light should use PWM brightness control. If no brightness value is specified, use the safe default value of 5.
+- Indicator LEDs are general-purpose output devices and may be controlled using /digitalwrite or /analogwrite when supported.
+- The fill light should use analog control. If no brightness value is specified, use the safe default value of 5.
 - The function button is input-only and must never be used as an output control pin.
 )";
 
@@ -255,27 +322,15 @@ If the system determines that the user intends to query recent data, it must ret
   }
 }
 
-If the system determines that the user expects assistance in turning on turning on a digital output device, it must return only this valid JSON object:
+If the system determines that the user expects assistance in turning on or turning off a digital output device, it must return only this valid JSON object:
 
 {
   "type": "tool_call",
-  "method": "/on",
+  "method": "/digitalwrite",
   "params": {
     "pin": "<Device pin number. If the user explicitly specifies a pin number, use that number. If the user does not specify which device pin to control, first ask the user in normal conversational reply and wait for the user's answer before filling this value. If multiple pins are mentioned, choose only the first one in order of appearance.>",
   "pinmode": "digitalwrite",
-    "value": 1
-  }
-}
-
-If the system determines that the user expects assistance in turning off a digital output device, it must return only this valid JSON object:
-
-{
-  "type": "tool_call",
-  "method":"/off",
-  "params": {
-    "pin": "<Device pin number. If the user explicitly specifies a pin number, use that number. If the user does not specify which device pin to control, first ask the user in normal conversational reply and wait for the user's answer before filling this value. If multiple pins are mentioned, choose only the first one in order of appearance.>",
-  "pinmode": "digitalwrite",  
-    "value": 0
+    "value": "<Digital output value. Must be exactly 1 or 0. Use 1 to turn the device on (HIGH state). Use 0 to turn the device off (LOW state). Determine the correct value strictly based on the user's intent. If the user requests turning on, use 1. If the user requests turning off, use 0. Never use any other value.>"
   }
 }
 
@@ -283,7 +338,7 @@ If the system determines that the user expects assistance in setting a analog ou
 
 {
   "type": "tool_call",
-  "method": "/pwm",
+  "method": "/analogwrite",
   "params": {
     "pin": "<Device pin number. If the user explicitly specifies a pin number, use that number. If the user does not specify which device pin to control, first ask the user in normal conversational reply and wait for the user's answer before filling this value. If multiple pins are mentioned, choose only the first one in order of appearance.>",
     "pinmode": "analogwrite",
@@ -380,10 +435,10 @@ Rules:
 [Parameter Validation]
 
 - Do not guess missing parameter values.
-- For /pwm, value must be an integer between 0 and 255.
-- For /on and /off, value must be exactly 1 or 0.
-- Use "digitalwrite" only for /on and /off.
-- Use "analogwrite" only for /pwm.
+- For /digitalwrite, value must be exactly 1 or 0.
+- For /analogwrite, value must be an integer between 0 and 255.
+- Use "digitalwrite" only for /digitalwrite.
+- Use "analogwrite" only for /analogwrite.
 - Use "digitalread" only for /digitalread.
 - Use "analogread" only for /analogread.
 - Digital input reading is a passive read-only operation and does not require confirmation before execution.
@@ -400,7 +455,7 @@ After the /search result is returned to the conversation:
 
 - The system must analyze whether the user's requested condition is satisfied.
 - The system must never assume that any hardware action has already been executed.
-- The system must never claim that a device has been turned on, turned off, or adjusted unless the corresponding tool (/on, /off, /pwm) has actually been called.
+- The system must never claim that a device has been turned on, turned off, or adjusted unless the corresponding tool (/digitalwrite, /analogwrite) has actually been called.
 - If the requested condition is satisfied but required hardware parameters are missing (such as GPIO pin number), ask for the missing information and wait for the user's answer.
 - If all parameters are available, ask for explicit user confirmation before executing hardware control.
 - Only after explicit confirmation may the system return the corresponding tool_call JSON.
@@ -538,7 +593,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
     String head =
       "--Taiwan\r\nContent-Disposition: form-data; name=\"chat_id\"; \r\n\r\n"
       + chat_id +
-      "\r\n--Taiwan\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"esp32-cam.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
+      "\r\n--Taiwan\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"capture.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
 
     String tail = "\r\n--Taiwan--\r\n";
 
@@ -940,7 +995,7 @@ String getMemoryInfo() {
   return msg;
 }
 
-// Control device output using digital or PWM (analog) mode.
+// Control device output using digital or analog mode.
 // This function supports general-purpose actuators such as LED, relay, and other GPIO-controlled devices.
 String tool_pinOutput(int pin, String mode, int value) {
   
@@ -991,7 +1046,7 @@ String tool_pinInput(int pin, String mode) {
 // Execute tool commands returned by Gemini
 void useTools(String command, JsonObject params) {
 
-    if (command == "/on"||command == "/off"||command == "/pwm") {
+    if (command == "/digitalwrite"||command == "/analogwrite") {
       int pin = params["pin"].as<int>();
       String pinmode = params["pinmode"].as<String>();;
       int value = params["value"].as<int>();
@@ -1049,7 +1104,7 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("model", response);
 
       response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, simply reply with a blank message.", 1);
-      if (response != "")
+      if (response != "NONE")
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
 
     } else if (command == "/vision") {
@@ -1060,8 +1115,8 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("user", prompt);
       historical_messages += buildHistoricalData("model", response); 
 
-      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, simply reply with a blank message.", 1);
-      if (response != "")
+      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, reply with exactly the single word 'NONE' and absolutely nothing else.", 1);
+      if (response != "NONE")
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");	  
             
     }
@@ -1170,8 +1225,8 @@ void getTelegramMessage() {
 			  "/memory show system memory usage\n"
 			  "/reset start a new conversation\n\n"
 			  "Hardware control supported:\n"
-			  "- Digital output (on/off)\n"
-			  "- PWM output (0–255 brightness control)\n"
+			  "- Digital output (0 | 1)\n"
+			  "- Analog output (0–255)\n"
 			  "- Digital input reading\n"
 			  "- Analog input reading\n\n"
 			  "You can chat with Gemini using natural language.\n"
@@ -1209,6 +1264,11 @@ void getTelegramMessage() {
               message.replace("\t", "");
               message.replace(String((char)9), "");
               message.replace("\0", "");
+              message.replace("\0", "");
+              message.replace("\\-", "-");
+              message.replace("\\*", "*");
+              message.replace("\\_", "_");
+              message.replace("\\#", "#"); 			  
                             
               int start = message.indexOf('{');
               int end = message.lastIndexOf('}');

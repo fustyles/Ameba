@@ -1295,9 +1295,9 @@ void useTools(String command, JsonObject params) {
       String response = Gemini_chat_search_request(query, 0);
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
       
-      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, simply reply with a blank message.", 1);
-      if (response != "")
-        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
+      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, reply with exactly the single word 'NONE' and absolutely nothing else.", 1);
+      if (response != "NONE")
+        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");	
 
     } else if (command == "/vision") {
       String prompt = params["query"].as<String>();
