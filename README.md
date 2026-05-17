@@ -6,8 +6,8 @@ fuClaw AI Telegram Assistant with Gemini Integration
 ------------------------------------------------------------
 
 Author:
-  ChungYi Fu (Kaohsiung, Taiwan)<br>
-  https://www.facebook.com/francefu<br><br>
+  ChungYi Fu (Kaohsiung, Taiwan)
+  https://www.facebook.com/francefu
 
 ------------------------------------------------------------
 System Overview
@@ -28,9 +28,9 @@ It integrates:
 - Gemini grounded web search
 - Prompt-driven JSON tool routing
 - Camera capture + image transmission
-- GPIO digital / PWM output control
+- GPIO digital / analog output control
 - Digital / analog input sensing
-- Persistent SD card memory storage
+- In-memory conversation state management
 - FreeRTOS background task scheduling
 
 The system behaves as a hybrid autonomous AI agent:
@@ -41,25 +41,25 @@ The system behaves as a hybrid autonomous AI agent:
 Core Runtime Architecture
 ------------------------------------------------------------
 
-Telegram User<br>
-      ↓<br>
-Telegram Polling Task (FreeRTOS)<br>
-      ↓<br>
-Message Router<br>
-(Command / Chat / Gemini Dispatch)<br>
-      ↓<br>
-Gemini Reasoning Engine<br>
-(Chat / Search / Vision / Workflow Planning)<br>
-      ↓<br>
-Structured JSON tool_call Output<br>
-      ↓<br>
-ArduinoJson Validation<br>
-      ↓<br>
-Tool Dispatcher (useTools)<br>
-      ↓<br>
-Hardware / Vision / Search / Memory Execution<br>
-      ↓<br>
-Natural Language Feedback to User<br>
+Telegram User
+      ↓
+Telegram Polling Task (FreeRTOS)
+      ↓
+Message Router
+(Command / Chat / Gemini Dispatch)
+      ↓
+Gemini Reasoning Engine
+(Chat / Search / Vision / Workflow Planning)
+      ↓
+Structured JSON tool_call Output
+      ↓
+ArduinoJson Validation
+      ↓
+Tool Dispatcher (useTools)
+      ↓
+Hardware / Vision / Search / Memory Execution
+      ↓
+Natural Language Feedback to User
 
 NOTE:
 
@@ -80,12 +80,12 @@ Main Capabilities
 - Real-time grounded web search
 - Camera still capture + Telegram upload
 - Multimodal image understanding
-- GPIO digital output control
-- PWM analog brightness control
+- Digital output control (0 | 1)
+- Analog output control (0–255)
 - Digital input reading
 - Analog sensor reading
 - Runtime memory diagnostics
-- Persistent conversation memory
+- In-memory conversation persistence
 - Automatic workflow continuation
 - WiFi auto-reconnection recovery
 - FreeRTOS concurrent polling
@@ -97,14 +97,11 @@ Supported Telegram Commands
 /help
 Show available commands
 
-/on
-Turn ON digital output
+/digitalwrite
+Set digital output (0 | 1)
 
-/off
-Turn OFF digital output
-
-/pwm
-Set PWM brightness (0–255)
+/analogwrite
+Set analog output (0–255)
 
 /digitalread
 Read digital input pin
@@ -151,7 +148,7 @@ Tool Format Specification
 
 {
   "type": "tool_call",
-  "method": "/on" | "/off",
+  "method": "/digitalwrite",
   "params": {
     "pin": "<GPIO>",
     "pinmode": "digitalwrite",
@@ -161,11 +158,11 @@ Tool Format Specification
 
 ------------------------------------------------------------
 
-2. PWM Output
+2. Analog Output
 
 {
   "type": "tool_call",
-  "method": "/pwm",
+  "method": "/analogwrite",
   "params": {
     "pin": "<GPIO>",
     "pinmode": "analogwrite",
@@ -280,7 +277,7 @@ Execution Flow
    - Memory operation
    - Telegram output
 
-7. Execution result is injected back into memory
+7. Execution result is injected into runtime memory
 8. Gemini generates natural-language follow-up
 9. Final response is sent to user
 
@@ -314,8 +311,7 @@ Features:
 - WiFi 802.11
 - Integrated camera
 - GPIO digital I/O
-- PWM analog output
-- SD card filesystem
+- GPIO analog I/O
 - Hardware button input
 - Indicator LEDs
 
@@ -328,7 +324,6 @@ Software Stack
 - ArduinoJson
 - FreeRTOS
 - VideoStream
-- AmebaFatFS
 - Base64 encoder
 
 ------------------------------------------------------------
@@ -337,11 +332,7 @@ Memory Architecture
 
 historical_messages
 
-Runtime conversation context buffer
-
-memory.md
-
-Persistent SD backup
+Runtime conversation context buffer (RAM-based only)
 
 system_content
 
@@ -350,6 +341,11 @@ Tool-enabled system prompt
 system_content_notools
 
 Reasoning-only prompt
+
+NOTE:
+
+All conversation memory is ephemeral and stored only in RAM.
+No SD card or persistent filesystem storage is used.
 
 All tool execution results are appended into
 conversation history for state continuity.
@@ -361,7 +357,7 @@ Implementation Characteristics
 - Fully event-driven
 - Polling-based transport
 - Prompt-routed execution
-- Persistent contextual memory
+- In-memory contextual memory
 - Embedded multimodal reasoning
 - Strict tool schema validation
 - Hybrid AI + hardware orchestration
@@ -427,5 +423,5 @@ Version
 Persistent Memory + Vision + Search
 Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-17 14:00
+Date: 2026-05-17 19:30
 ------------------------------------------------------------
