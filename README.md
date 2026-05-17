@@ -6,8 +6,8 @@ fuClaw AI Telegram Assistant with Gemini Integration
 ------------------------------------------------------------
 
 Author:
-  ChungYi Fu (Kaohsiung, Taiwan)
-  https://www.facebook.com/francefu
+  ChungYi Fu (Kaohsiung, Taiwan)<br>
+  https://www.facebook.com/francefu<br><br>
 
 ------------------------------------------------------------
 System Overview
@@ -41,25 +41,25 @@ The system behaves as a hybrid autonomous AI agent:
 Core Runtime Architecture
 ------------------------------------------------------------
 
-Telegram User
+Telegram User<br>
       ↓
-Telegram Polling Task (FreeRTOS)
+Telegram Polling Task (FreeRTOS)<br>
       ↓
-Message Router
-(Command / Chat / Gemini Dispatch)
+Message Router<br>
+(Command / Chat / Gemini Dispatch)<br>
       ↓
-Gemini Reasoning Engine
-(Chat / Search / Vision / Workflow Planning)
+Gemini Reasoning Engine<br>
+(Chat / Search / Vision / Workflow Planning)<br>
       ↓
-Structured JSON tool_call Output
+Structured JSON tool_call Output<br>
       ↓
-ArduinoJson Validation
+ArduinoJson Validation<br>
       ↓
-Tool Dispatcher (useTools)
+Tool Dispatcher (useTools)<br>
       ↓
-Hardware / Vision / Search / Memory Execution
+Hardware / Vision / Search / Memory Execution<br>
       ↓
-Natural Language Feedback to User
+Natural Language Feedback to User<br>
 
 NOTE:
 
