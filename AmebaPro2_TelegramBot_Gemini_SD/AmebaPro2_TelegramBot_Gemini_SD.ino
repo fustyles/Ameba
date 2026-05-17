@@ -381,7 +381,7 @@ Version
 
 Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-17 14:00
+Date: 2026-05-17 15:30
 ------------------------------------------------------------
 */
 
@@ -1431,7 +1431,9 @@ void getTelegramMessage() {
 			  "- Digital input reading\n"
 			  "- Analog input reading\n\n"
 			  "You can chat with Gemini using natural language.\n"
-			  "The system supports real-time search and vision-based analysis.";
+			  "The system supports real-time search and vision-based analysis.\n\n"
+			  "Documentation:\n"
+			  "https://github.com/fustyles/fuClaw\n";
           
             String keyboard =
               "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
