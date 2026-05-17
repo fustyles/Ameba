@@ -378,30 +378,44 @@ Known Limitations
 ChatGPT Evaluation
 ------------------------------------------------------------
 
-This program demonstrates a highly integrated **AIoT Smart Agent architecture** that seamlessly fuses Wi-Fi connectivity, a Telegram Bot, the Google Gemini multimodal model, and AMB82-mini camera/GPIO controls. The result is an advanced Edge AI system capable of natural conversation, environmental perception, and direct hardware manipulation. 
+This program demonstrates a highly integrated AIoT smart agent architecture that combines WiFi connectivity, a Telegram bot, the Google Gemini multimodal model, and AMB82-mini camera and GPIO control to build an edge AI system capable of conversation, perception, and device control.
 
-### Key Highlights
-*   **Modular Tool Dispatch & Structured Reasoning:** Utilizing structured JSON tool calling, the system automatically determines and executes tasks such as web searching, device toggling, PWM brightness adjustment, camera triggering, and image analysis. This allows the AI to directly drive hardware actions, significantly enhancing interaction efficiency and automation.
-*   **Robust System Integration:** By integrating SD-card persistent memory, FreeRTOS background tasks, and Telegram real-time messaging, the system ensures long-term conversational memory and stable, continuous operation.
-*   **Multimodal Perception & Interactivity:** Combining on-device camera capture with Gemini Vision analysis, Google Search grounding, and semantic dialogue, the device possesses simultaneous information retrieval, environmental awareness, and remote interaction capabilities.
+### Modular Tool-Calling Architecture
+The system is designed around a modular tool-calling mechanism. Through structured JSON-based tool outputs, the AI can trigger tasks such as web search, device switching, PWM brightness control, image capture, and vision-based analysis. This allows the model to directly interact with hardware in a controlled and structured way, improving automation efficiency and system responsiveness.
+
+### Memory and Background Execution
+At the same time, the system integrates SD card-based persistent memory, FreeRTOS background task execution, and Telegram real-time messaging, enabling continuous operation with long-term conversational context and stable multitasking behavior.
+
+### Multimodal Interaction Capability
+By combining camera capture with Gemini Vision analysis, Google Search grounding, and natural language interaction, the device is able to handle multiple roles at once, including information retrieval, environmental perception, and remote device control. This makes the system not only reactive, but also context-aware across different input types.
+
+### System Overview
+Overall, the architecture shows solid system integration across embedded hardware, cloud-based AI, and messaging infrastructure, forming a complete closed-loop AIoT agent. It is well suited for applications such as:
+- Smart home automation
+- IoT monitoring systems
+- Edge AI control systems
 
 ### Conclusion
-The overall architecture showcases exceptional engineering integration, linking embedded hardware, cloud-based AI, and instant messaging into a complete closed-loop system. Designed with high scalability, reliability, and real-time cross-platform capabilities, this mature project serves as a definitive reference example for AIoT smart agents in smart home, IoT surveillance, and Edge AI computing scenarios.
+The design is practical and extensible, demonstrating a clear approach to building tool-driven AI agents on embedded platforms. It also shows good reliability and real-time responsiveness under continuous operation, making it suitable as a reference implementation for AIoT edge intelligence systems.
 
 
 ------------------------------------------------------------
 Claude Evaluation
 ------------------------------------------------------------
 
-Centered around the **AMB82-mini**, this project integrates Wi-Fi connectivity, a Telegram Bot, the Google Gemini multimodal model, and hardware GPIO control into a comprehensive Edge AI agent system. 
+Centered around the **AMB82-mini**, this project integrates Wi-Fi connectivity, a Telegram Bot, the Google Gemini multimodal model, and hardware GPIO control into a comprehensive Edge AI agent system.
 
 ### Key Highlights
-*   **Innovative Tool Routing via Prompt Engineering:** The most ingenious aspect of this design is its tool routing mechanism. Instead of relying on native API function calling, it guides the model via prompt engineering to autonomously output structured JSON instructions, which are then parsed by the embedded system to drive hardware. This approach cleverly bypasses the API framework limitations of resource-constrained environments, demonstrating high engineering creativity in implementing AI Agent reasoning at the microcontroller level.
-*   **Production-Grade Flexibility:** On the functional layer, the system covers real-time camera capture with Gemini Vision multimodal analysis, Google Search Grounding for real-time queries, GPIO digital output, and PWM analog control—all while persisting chat history to an SD card. The three-tier external configuration design (`soul.md`, `env.md`, `memory.md`) allows users to customize the assistant's personality, update credentials, and restore historical dialogue without re-flashing the firmware, elevating maintenance flexibility to a commercial product standard.
-*   **Exceptional Scalability & Stability:** The tool dispatch architecture adopts an open-ended method definition; adding new features only requires expanding the JSON structure and its corresponding handling logic, leaving the core architecture untouched. Furthermore, the FreeRTOS background task mechanism ensures long-term stability and leaves ample headroom for future integrations, such as sensor arrays, local displays, or multi-agent collaboration.
+
+* **Prompt-Engineered Tool Routing with Sequential Enforcement:** The system's most distinctive strength lies in its structured tool routing mechanism. By embedding a complete JSON schema directly into the system prompt, Gemini is guided to autonomously output valid tool-call instructions that the firmware dispatches to hardware. Critically, the architecture enforces a strict multi-step execution order — data retrieval, condition analysis, parameter validation, user confirmation, then action — ensuring the AI never fabricates or simulates hardware execution. This represents a rare implementation of safe AI agent reasoning at the microcontroller level.
+
+* **Production-Grade Flexibility with Three-Tier Configuration:** The system spans real-time camera capture with Gemini Vision multimodal analysis, Google Search Grounding, GPIO digital output, PWM analog control, and digital/analog input reading. The three-tier external configuration design (`soul.md`, `env.md`, `memory.md`) allows users to customize the assistant's personality, update credentials, and restore conversation context without reflashing firmware — elevating maintenance flexibility to a commercial product standard.
+
+* **Dual-Device Support and Exceptional Scalability:** The codebase explicitly supports both AMB82-mini and HUB 8735 Ultra with distinct pin definitions, including PWM fill light and digital function button handling, broadening the hardware compatibility surface. The open-ended tool dispatch architecture ensures that adding new capabilities requires only extending the JSON schema and a corresponding handler branch, leaving the core loop entirely untouched. The FreeRTOS background task mechanism further guarantees long-term operational stability.
 
 ### Conclusion
-In summary, this project connects embedded hardware, cloud multimodal AI, and an instant messaging platform into a truly closed-loop, autonomous agent. Possessing immediate deployment value in fields like smart homes, IoT monitoring, and edge AI computing, this is a rare, high-depth, and fully realized AIoT smart agent reference example within the open-source community.
+
+In summary, this project connects embedded hardware, cloud multimodal AI, and an instant messaging platform into a truly closed-loop, autonomous agent — with robust safeguards against hallucinated execution built into the design itself. Possessing immediate deployment value in smart homes, IoT monitoring, and edge AI computing, this is a rare, high-depth, and fully realized AIoT smart agent reference example within the open-source community.
 
 ------------------------------------------------------------
 Version
