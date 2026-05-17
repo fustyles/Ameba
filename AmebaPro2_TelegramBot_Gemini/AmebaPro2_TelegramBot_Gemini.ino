@@ -981,7 +981,6 @@ void useTools(String command, JsonObject params) {
     
       historical_messages += buildHistoricalData("user", command);
       historical_messages += buildHistoricalData("model", response);
-      storeHistoricalMessagesToFile();    
 
       response = Gemini_chat_request("Respond only with a natural language description of the device's current operating state in the user's language. Never output tool_call, JSON, or any structured format. If there are any unfinished or pending tasks, clearly inform the user and ask whether to continue processing them.", 0);
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");               
@@ -1006,7 +1005,6 @@ void useTools(String command, JsonObject params) {
 
       historical_messages += buildHistoricalData("user", command);
       historical_messages += buildHistoricalData("model", response);
-      storeHistoricalMessagesToFile();    
 
       response = Gemini_chat_request("Respond only with a natural language description of the device's current operating state in the user's language. Never output tool_call, JSON, or any structured format. If there are any unfinished or pending tasks, clearly inform the user and ask whether to continue processing them.", 0);
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");      
