@@ -377,7 +377,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 (without persistent storage layer)
 
-Date: 2026-05-17 19:30
+Date: 2026-05-17 20:00
 ------------------------------------------------------------
 */
 
@@ -964,7 +964,8 @@ String Gemini_chat_request(String message, bool tools) {
     client.stop();
     Serial.println(Feedback);
 
-    return "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.";
+    //return "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.";
+    return "NONE";
   }
   else
     return "Connection failed";
@@ -1086,7 +1087,8 @@ String Gemini_chat_search_request(String message, bool tools) {
 
     Serial.println(Feedback);
 
-    return "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.";
+    //return "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.";
+    return "NONE";
   }
   else
     return "Connection failed";
