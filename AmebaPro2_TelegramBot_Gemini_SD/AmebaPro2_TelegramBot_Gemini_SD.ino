@@ -1341,7 +1341,7 @@ void useTools(String command, JsonObject params) {
       String response = Gemini_chat_search_request(query, 0);
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
       
-      response = Gemini_chat_request("Analyze the search result and continue unfinished workflow. If hardware action is required, return only valid tool_call JSON. Otherwise reply naturally.", 1);
+      response = Gemini_chat_request("Analyze the result and continue unfinished workflow. If hardware action is required, return only valid tool_call JSON. Otherwise reply naturally.", 1);
       if (response != "NONE")
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, ""); 
 
@@ -1355,7 +1355,7 @@ void useTools(String command, JsonObject params) {
 
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
       
-      response = Gemini_chat_request("Analyze the search result and continue unfinished workflow. If hardware action is required, return only valid tool_call JSON. Otherwise reply naturally.", 1);
+      response = Gemini_chat_request("Analyze the result and continue unfinished workflow. If hardware action is required, return only valid tool_call JSON. Otherwise reply naturally.", 1);
       if (response != "NONE")
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, ""); 
     }
