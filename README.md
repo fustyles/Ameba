@@ -80,7 +80,7 @@ Main Capabilities
 - Real-time grounded web search
 - Camera still capture + Telegram upload
 - Multimodal image understanding
-- Digital output control (0 | 1)
+- Digital output control (0 or 1)
 - Analog output control (0–255)
 - Digital input reading
 - Analog sensor reading
@@ -98,7 +98,7 @@ Supported Telegram Commands
 Show available commands
 
 /digitalwrite
-Set digital output (0 | 1)
+Set digital output (0 or 1)
 
 /analogwrite
 Set analog output (0–255)
@@ -152,7 +152,7 @@ Tool Format Specification
   "params": {
     "pin": "<GPIO>",
     "pinmode": "digitalwrite",
-    "value": 1 | 0
+    "value": 1 or 0
   }
 }
 
