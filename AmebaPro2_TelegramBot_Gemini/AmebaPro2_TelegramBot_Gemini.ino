@@ -201,7 +201,7 @@ Version
 
 Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-17 15:30
+Date: 2026-05-17 16:00
 ------------------------------------------------------------
 */
 
@@ -943,9 +943,10 @@ String getMemoryInfo() {
 // Control device output using digital or PWM (analog) mode.
 // This function supports general-purpose actuators such as LED, relay, and other GPIO-controlled devices.
 String tool_pinOutput(int pin, String mode, int value) {
+  
 	pinMode(pin, OUTPUT);
+ 
 	mode.toLowerCase();
-	
 	if (mode=="digitalwrite") {
         if (value != 0 && value != 1)
             return "[tool_pinOutput] Error: Invalid digital value";
@@ -968,13 +969,31 @@ String tool_pinOutput(int pin, String mode, int value) {
     return "[tool_pinOutput] Error: Invalid output mode";
 }
 
+// Read device input using digital or analog mode.
+// This function supports general-purpose sensors such as buttons and analog sensors connected to GPIO pins.
+String tool_pinInput(int pin, String mode) {
+  
+    pinMode(pin, INPUT);
+    
+    mode.toLowerCase();
+    if (mode == "digitalread") {
+        int value = digitalRead(pin);
+        return "Device(pin=" + String(pin) + ") digital input value: " + String(value);
+
+    } else if (mode == "analogread") {
+        int value = analogRead(pin);
+        return "Device(pin=" + String(pin) + ") analog input value: " + String(value);  
+    }
+
+    return "[tool_pinOutput] Error: Invalid output mode";
+}
+
 // Execute tool commands returned by Gemini
 void useTools(String command, JsonObject params) {
 
     if (command == "/on"||command == "/off"||command == "/pwm") {
       int pin = params["pin"].as<int>();
-      String pinmode = params["pinmode"].as<String>();
-      pinmode.toLowerCase();
+      String pinmode = params["pinmode"].as<String>();;
       int value = params["value"].as<int>();
       
       String response = tool_pinOutput(pin, pinmode, value);
@@ -988,20 +1007,8 @@ void useTools(String command, JsonObject params) {
     } else if (command == "/digitalread" || command == "/analogread") {
       int pin = params["pin"].as<int>();
       String pinmode = params["pinmode"].as<String>();
-      pinmode.toLowerCase();
-      
-      String response = "";
-      pinMode(pin, INPUT);
-      
-      if (pinmode == "digitalread") {
-          int value = digitalRead(pin);
-          response = "Device(pin=" + String(pin) + ") digital input value: " + String(value);
-  
-      } else if (pinmode == "analogread") {
-          int value = analogRead(pin);
-          response = "Device(pin=" + String(pin) + ") analog input value: " + String(value);
-          
-      }
+
+      String response = tool_pinInput(pin, pinmode);
 
       historical_messages += buildHistoricalData("user", command);
       historical_messages += buildHistoricalData("model", response);
