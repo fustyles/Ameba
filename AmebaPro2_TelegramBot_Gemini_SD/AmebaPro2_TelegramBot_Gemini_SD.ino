@@ -1297,7 +1297,7 @@ void useTools(String command, JsonObject params) {
       String response = Gemini_chat_search_request(query, 0);
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
       
-      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, reply with exactly the single word 'NONE' and absolutely nothing else.", 1);
+      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, reply with exactly the single word 'NONE' and absolutely nothing else.", 0);
       if (response != "NONE")
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");	
 
@@ -1311,9 +1311,9 @@ void useTools(String command, JsonObject params) {
 
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
       
-      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, simply reply with a blank message.", 1);
-      if (response != "")
-        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
+      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, reply with exactly the single word 'NONE' and absolutely nothing else.", 0);
+      if (response != "NONE")
+        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");	
     }
 }
 
@@ -1468,7 +1468,10 @@ void getTelegramMessage() {
               int end = message.lastIndexOf('}');
               
               if (start == -1 || end == -1 || end <= start) {
-                  sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
+                  if (message != "NONE")
+                    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
+                  else
+                    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.", "");
                   return;
               }
               
