@@ -6,7 +6,7 @@ fuClaw AI Telegram Assistant with Gemini Integration
 ------------------------------------------------------------
 
 Author:
-  ChungYi Fu (Kaohsiung, Taiwan)
+  ChungYi Fu (Kaohsiung, Taiwan)<br>
   https://www.facebook.com/francefu
 
 ------------------------------------------------------------
@@ -422,7 +422,7 @@ Version
 
 Persistent Memory + Vision + Search Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-17
-Time Zone: Asia/Taipei (Taiwan Standard Time, UTC+8)
-Local Time (Taiwan): 2026-05-17 19:30
+Date: 2026-05-17<br>
+Time Zone: Asia/Taipei (Taiwan Standard Time, UTC+8)<br>
+Local Time (Taiwan): 2026-05-17 19:30<br>
 ------------------------------------------------------------
