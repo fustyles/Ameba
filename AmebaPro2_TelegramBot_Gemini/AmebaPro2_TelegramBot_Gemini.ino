@@ -70,7 +70,7 @@ tool instructions when an action is required.
 Tool Format Definition
 ------------------------------------------------------------
 
-1. Digital Output Control
+1) Digital Output Control
 {
   "type": "tool_call",
   "method": "/on" | "/off",
@@ -81,7 +81,7 @@ Tool Format Definition
   }
 }
 
-2. PWM Output Control
+2) PWM Output Control
 {
   "type": "tool_call",
   "method": "/pwm",
@@ -92,14 +92,14 @@ Tool Format Definition
   }
 }
 
-3. Image Capture
+3) Image Capture
 {
   "type": "tool_call",
   "method": "/still",
   "params": {}
 }
 
-4. Vision Analysis (camera + Gemini)
+4) Vision Analysis (camera + Gemini)
 {
   "type": "tool_call",
   "method": "/vision",
@@ -108,7 +108,7 @@ Tool Format Definition
   }
 }
 
-5. Web Search (Gemini grounding tool)
+5) Web Search (Gemini grounding tool)
 {
   "type": "tool_call",
   "method": "/search",
@@ -117,14 +117,14 @@ Tool Format Definition
   }
 }
 
-6.) System Utilities
+6) System Utilities
 {
   "type": "tool_call",
   "method": "/memory" | "/reset",
   "params": {}
 }
 
-7. Default Chat Response
+7) Default Chat Response
 If no tool is required:
 
 {
@@ -199,8 +199,9 @@ Limitations
 Version
 ------------------------------------------------------------
 
-Persistent Memory Edition (Refactored Documentation)
-2026-05-16 23:30
+Prompt-Orchestrated Embedded Agent Edition
+
+Date: 2026-05-17 14:00
 ------------------------------------------------------------
 */
 
@@ -221,10 +222,30 @@ String gemini_role = R"(
 You are a professional assistant with a lively, natural, and friendly personality, responding according to the user's language.
 )"; 
 
+// Hardware device definitions and GPIO capability rules
+// Used by Gemini for accurate tool routing and safe hardware control
+String devices_definition = R"(
+Device pin definitions:
+
+AMB82-mini:
+- Green indicator LED: pin 24
+- Blue indicator LED: pin 23
+
+HUB 8735 Ultra:
+- Green indicator LED: pin 25
+- Blue indicator LED: pin 26
+- Fill light LED: pin 13 (PWM range: 0–255, default safe startup brightness: 5 to avoid eye discomfort)
+- Function button: pin 12 (digital input, active-low: pressed = 0, released = 1)
+
+Notes:
+- Indicator LEDs are general-purpose output devices and may be controlled using /on, /off, or /pwm when supported.
+- The fill light should use PWM brightness control. If no brightness value is specified, use the safe default value of 5.
+- The function button is input-only and must never be used as an output control pin.
+)";
+
 // Tool routing rules for Gemini.
 String tools_definition = R"(
 tools definition:
-
 If the system determines that the user intends to query recent data, it must return only this valid JSON object:
 
 {"type": "tool_call",  
@@ -267,6 +288,28 @@ If the system determines that the user expects assistance in setting a analog ou
     "pin": "<Device pin number. If the user explicitly specifies a pin number, use that number. If the user does not specify which device pin to control, first ask the user in normal conversational reply and wait for the user's answer before filling this value. If multiple pins are mentioned, choose only the first one in order of appearance.>",
     "pinmode": "analogwrite",
     "value": "<brightness value from 0 to 255>"
+  }
+}
+
+If the system determines that the user expects assistance in reading a digital input device, it must return only this valid JSON object:
+
+{
+  "type": "tool_call",
+  "method": "/digitalread",
+  "params": {
+    "pin": "<Device pin number. If the user explicitly specifies a pin number, use that number. If the user does not specify which device pin to read, first ask the user in normal conversational reply and wait for the user's answer before filling this value. If multiple pins are mentioned, choose only the first one in order of appearance.>",
+    "pinmode": "digitalread"
+  }
+}
+
+If the system determines that the user expects assistance in reading an analog input device, it must return only this valid JSON object:
+
+{
+  "type": "tool_call",
+  "method": "/analogread",
+  "params": {
+    "pin": "<Device pin number. If the user explicitly specifies a pin number, use that number. If the user does not specify which device pin to read, first ask the user in normal conversational reply and wait for the user's answer before filling this value. If multiple pins are mentioned, choose only the first one in order of appearance.>",
+    "pinmode": "analogread"
   }
 }
 
@@ -341,6 +384,10 @@ Rules:
 - For /on and /off, value must be exactly 1 or 0.
 - Use "digitalwrite" only for /on and /off.
 - Use "analogwrite" only for /pwm.
+- Use "digitalread" only for /digitalread.
+- Use "analogread" only for /analogread.
+- Digital input reading is a passive read-only operation and does not require confirmation before execution.
+- Analog input reading is a passive read-only operation and does not require confirmation before execution.
 
 [Missing Information Handling]
 
@@ -573,8 +620,8 @@ String buildHistoricalData(String role, String content) {
 // Reset conversation memory to initial system prompt state
 void Gemini_chat_reset() {
   historical_messages = "";
-  system_content = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + tools_definition + "\"}]}" + buildHistoricalData("model", "OK");
-  system_content_notools = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + "\"}]}" + buildHistoricalData("model", "OK");
+  system_content = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + devices_definition + tools_definition + "\"}]}" + buildHistoricalData("model", "OK");
+  system_content_notools = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + devices_definition + "\"}]}" + buildHistoricalData("model", "OK");
   
 }
 
@@ -675,7 +722,7 @@ String Gemini_chat_request(String message, bool tools) {
     client.stop();
     Serial.println(Feedback);
 
-    return "Please try again with more detailed information or check if the API key is valid.";
+    return "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.";
   }
   else
     return "Connection failed";
@@ -795,7 +842,7 @@ String Gemini_chat_search_request(String message, bool tools) {
 
     Serial.println(Feedback);
 
-    return "Please try again with more detailed information or check if the API key is valid.";
+    return "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.";
   }
   else
     return "Connection failed";
@@ -927,15 +974,43 @@ void useTools(String command, JsonObject params) {
     if (command == "/on"||command == "/off"||command == "/pwm") {
       int pin = params["pin"].as<int>();
       String pinmode = params["pinmode"].as<String>();
+      pinmode.toLowerCase();
       int value = params["value"].as<int>();
-      String status = tool_pinOutput(pin, pinmode, value);
-	  
+      
+      String response = tool_pinOutput(pin, pinmode, value);
+    
       historical_messages += buildHistoricalData("user", command);
-      historical_messages += buildHistoricalData("model", status); 
+      historical_messages += buildHistoricalData("model", response);
+      storeHistoricalMessagesToFile();    
 
-      status = Gemini_chat_request("Respond only with a natural language description of the device's current operating state in the user's language. Never output tool_call, JSON, or any structured format. If there are any unfinished or pending tasks, clearly inform the user and ask whether to continue processing them.", 0);
-      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, status,"");                
-	  
+      response = Gemini_chat_request("Respond only with a natural language description of the device's current operating state in the user's language. Never output tool_call, JSON, or any structured format. If there are any unfinished or pending tasks, clearly inform the user and ask whether to continue processing them.", 0);
+      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");               
+    
+    } else if (command == "/digitalread" || command == "/analogread") {
+      int pin = params["pin"].as<int>();
+      String pinmode = params["pinmode"].as<String>();
+      pinmode.toLowerCase();
+      
+      String response = "";
+      pinMode(pin, INPUT);
+      
+      if (pinmode == "digitalread") {
+          int value = digitalRead(pin);
+          response = "Device(pin=" + String(pin) + ") digital input value: " + String(value);
+  
+      } else if (pinmode == "analogread") {
+          int value = analogRead(pin);
+          response = "Device(pin=" + String(pin) + ") analog input value: " + String(value);
+          
+      }
+
+      historical_messages += buildHistoricalData("user", command);
+      historical_messages += buildHistoricalData("model", response);
+      storeHistoricalMessagesToFile();    
+
+      response = Gemini_chat_request("Respond only with a natural language description of the device's current operating state in the user's language. Never output tool_call, JSON, or any structured format. If there are any unfinished or pending tasks, clearly inform the user and ask whether to continue processing them.", 0);
+      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");      
+      
     } else if (command == "/still") {
       sendCapturedImageToTelegram(telegramBot_token, telegramBot_chatID, 1);
 
@@ -956,13 +1031,21 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("user", command);
       historical_messages += buildHistoricalData("model", msg);      
 
+    } else if (command == "/chat") {
+      String reply = params["reply"].as<String>();
+      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, reply, "");
+	  
     } else if (command == "/search") {
       String query = params["query"].as<String>();
       String response = Gemini_chat_search_request(query, 0);
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
 
       historical_messages += buildHistoricalData("user", query);
-      historical_messages += buildHistoricalData("model", response);      
+      historical_messages += buildHistoricalData("model", response);
+
+      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, simply reply with a blank message.", 1);
+      if (response != "")
+        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
 
     } else if (command == "/vision") {
       String prompt = params["query"].as<String>();
@@ -970,37 +1053,13 @@ void useTools(String command, JsonObject params) {
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
 
       historical_messages += buildHistoricalData("user", prompt);
-      historical_messages += buildHistoricalData("model", response);      
+      historical_messages += buildHistoricalData("model", response); 
+
+      response = Gemini_chat_request("Please check the conversation for any incomplete workflows that weren't addressed in the final message. If any are, continue the conversation in the user's language. Do not use JSON structures in your replies. If all work is complete, simply reply with a blank message.", 1);
+      if (response != "")
+        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");	  
             
-    } else if (command == "/chat") {
-      String reply = params["reply"].as<String>();
-      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, reply, "");
     }
-}
-
-// Initialize WiFi
-void initWiFi() {
-  for (int i=0;i<2;i++) {
-
-    if (String(wifi_ssid)=="")
-      break;
-
-    WiFi.begin(wifi_ssid, wifi_pass);
-    delay(1000);
-
-    Serial.println();
-    Serial.print("Connecting to ");
-    Serial.println(wifi_ssid);
-
-    long int StartTime=millis();
-
-    while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-
-      if ((StartTime+5000) < millis())
-        break;
-    }
-  }
 }
 
 // Poll Telegram Bot API for latest user message
@@ -1099,17 +1158,19 @@ void getTelegramMessage() {
         
           if (message=="help"||message=="/help"||message=="/start") {
         
-            String command =
-              "/help command list\n"
-              "/still get still\n"
-              "/memory remaining memory\n"
-              "/reset new chat\n\n"
-              "You can chat with Gemini using natural language.\n"
-              "You can also use Google Search for real-time information.\n\n"
-              "Hardware control supported:\n"
-              "- Digital output (on/off)\n"
-              "- PWM output (0–255 brightness)\n\n"
-              "The system will automatically choose the correct tool based on your request.";
+			String command =
+			  "Built-in commands:\n"
+			  "/help command list\n"
+			  "/still capture and send a camera image\n"
+			  "/memory show system memory usage\n"
+			  "/reset start a new conversation\n\n"
+			  "Hardware control supported:\n"
+			  "- Digital output (on/off)\n"
+			  "- PWM output (0–255 brightness control)\n"
+			  "- Digital input reading\n"
+			  "- Analog input reading\n\n"
+			  "You can chat with Gemini using natural language.\n"
+			  "The system supports real-time search and vision-based analysis.";
           
             String keyboard =
               "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
@@ -1126,10 +1187,10 @@ void getTelegramMessage() {
         
           } else {
         
-            if (message.startsWith("/")) {
-              useTools(message, JsonObject());
+      			if (message.startsWith("/")) {
+      				useTools(message, JsonObject());
               
-            } else {
+      			} else {
               
               message = Gemini_chat_request(message, 1);
 
@@ -1161,7 +1222,7 @@ void getTelegramMessage() {
               obj = doc.as<JsonObject>();
               String method =  obj["method"].as<String>();
               JsonObject params = obj["params"];
-              useTools(method, params);
+      		  useTools(method, params);
               
             }	
           }
@@ -1196,6 +1257,31 @@ void getTelegramMessage_task(void *param) {
   }
 }
 
+// Initialize WiFi
+void initWiFi() {
+  for (int i=0;i<2;i++) {
+
+    if (String(wifi_ssid)=="")
+      break;
+
+    WiFi.begin(wifi_ssid, wifi_pass);
+    delay(1000);
+
+    Serial.println();
+    Serial.print("Connecting to ");
+    Serial.println(wifi_ssid);
+
+    long int StartTime=millis();
+
+    while (WiFi.status() != WL_CONNECTED) {
+      delay(500);
+
+      if ((StartTime+5000) < millis())
+        break;
+    }
+  }
+}
+
 // Arduino setup
 void setup() {
   Serial.begin(115200);
@@ -1219,13 +1305,14 @@ void setup() {
         NULL
       )!= pdPASS) {
 
-      Serial.println("Create getTelegramMessage task failed");
+    Serial.println("Create getTelegramMessage task failed");
   } 
 
   gemini_role.replace("\"", "\\\"");
+  devices_definition.replace("\"", "\\\"");
   tools_definition.replace("\"", "\\\"");
-  system_content = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + tools_definition + "\"}]}" + buildHistoricalData("model", "OK");
-  system_content_notools = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + "\"}]}" + buildHistoricalData("model", "OK");
+  system_content = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + devices_definition + tools_definition + "\"}]}" + buildHistoricalData("model", "OK");
+  system_content_notools = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + devices_definition + "\"}]}" + buildHistoricalData("model", "OK");
 }
 
 // Main loop

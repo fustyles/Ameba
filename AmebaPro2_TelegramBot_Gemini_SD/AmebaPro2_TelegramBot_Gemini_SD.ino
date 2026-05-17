@@ -379,7 +379,6 @@ Known Limitations
 Version
 ------------------------------------------------------------
 
-Persistent Memory + Vision + Search
 Prompt-Orchestrated Embedded Agent Edition
 
 Date: 2026-05-17 14:00
@@ -1420,17 +1419,19 @@ void getTelegramMessage() {
         
           if (message=="help"||message=="/help"||message=="/start") {
         
-            String command =
-              "/help command list\n"
-              "/still get still\n"
-              "/memory remaining memory\n"
-              "/reset new chat\n\n"
-              "You can chat with Gemini using natural language.\n"
-              "You can also use Google Search for real-time information.\n\n"
-              "Hardware control supported:\n"
-              "- Digital output (on/off)\n"
-              "- PWM output (0–255 brightness)\n\n"
-              "The system will automatically choose the correct tool based on your request.";
+			String command =
+			  "Built-in commands:\n"
+			  "/help command list\n"
+			  "/still capture and send a camera image\n"
+			  "/memory show system memory usage\n"
+			  "/reset start a new conversation\n\n"
+			  "Hardware control supported:\n"
+			  "- Digital output (on/off)\n"
+			  "- PWM output (0–255 brightness control)\n"
+			  "- Digital input reading\n"
+			  "- Analog input reading\n\n"
+			  "You can chat with Gemini using natural language.\n"
+			  "The system supports real-time search and vision-based analysis.";
           
             String keyboard =
               "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
