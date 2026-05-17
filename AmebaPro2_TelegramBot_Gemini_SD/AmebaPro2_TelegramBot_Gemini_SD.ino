@@ -78,7 +78,7 @@ Main Capabilities
 - Real-time grounded web search
 - Camera still capture + Telegram upload
 - Multimodal image understanding
-- Digital output control (0 | 1)
+- Digital output control (0 or 1)
 - Analog output control (0–255)
 - Digital input reading
 - Analog sensor reading
@@ -96,7 +96,7 @@ Supported Telegram Commands
 Show available commands
 
 /digitalwrite
-Set digital output (0 | 1)
+Set digital output (0 or 1)
 
 /analogwrite
 Set analog output (0–255)
@@ -401,7 +401,7 @@ You are a professional assistant with a lively, natural, and friendly personalit
 // Hardware device definitions and GPIO capability rules
 // Used by Gemini for accurate tool routing and safe hardware control
 String devices_definition = R"(
-Device pin definitions:
+Device pin definitions (known devices only):
 
 AMB82-mini:
 - Green indicator LED: pin 24
@@ -413,10 +413,32 @@ HUB 8735 Ultra:
 - Fill light LED: pin 13 (analog range: 0–255, default safe startup brightness: 5 to avoid eye discomfort)
 - Function button: pin 12 (digital input, active-low: pressed = 0, released = 1)
 
-Notes:
-- Indicator LEDs are general-purpose output devices and may be controlled using /digitalwrite or /analogwrite when supported.
-- The fill light should use analog control. If no brightness value is specified, use the safe default value of 5.
-- The function button is input-only and must never be used as an output control pin.
+IMPORTANT RULES:
+
+1. These are the ONLY confirmed hardware devices and pin mappings.
+
+2. If the user requests control of a device that is NOT explicitly listed above:
+   - You MUST NOT guess or assume any pin number
+   - You MUST ask the user for clarification
+   - You MUST confirm:
+     - device type
+     - pin number OR hardware mapping
+     - control mode (digitalwrite / analogwrite / etc.)
+
+3. You may NOT infer hidden or undocumented hardware connections.
+
+4. If user describes a generic device (e.g. "room light", "fan", "relay"):
+   - Treat it as UNKNOWN DEVICE
+   - Ask user to map it to a GPIO pin before issuing any tool_call
+
+5. Only use listed pins when user explicitly references known devices.
+
+6. Function button is input-only and must never be used as output.
+
+7. If uncertain about hardware mapping:
+   - STOP and ask user for confirmation
+   - Do not generate tool_call
+
 )";
 
 String tools_definition = R"(
@@ -1341,7 +1363,7 @@ void useTools(String command, JsonObject params) {
       String response = Gemini_chat_search_request(query, 0);
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
       
-      response = Gemini_chat_request("Analyze the result and continue unfinished workflow. If hardware action is required, return only valid tool_call JSON. Otherwise reply naturally.", 1);
+      response = Gemini_chat_request("Analyze the search result and continue unfinished workflow. If hardware action is required, return only valid tool_call JSON. Otherwise reply naturally.", 1);
       if (response != "NONE")
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, ""); 
 
@@ -1464,7 +1486,7 @@ void getTelegramMessage() {
 			  "/memory show system memory usage\n"
 			  "/reset start a new conversation\n\n"
 			  "Hardware control supported:\n"
-			  "- Digital output (0 | 1)\n"
+			  "- Digital output (0 or 1)\n"
 			  "- Analog output (0–255)\n"
 			  "- Digital input reading\n"
 			  "- Analog input reading\n\n"
