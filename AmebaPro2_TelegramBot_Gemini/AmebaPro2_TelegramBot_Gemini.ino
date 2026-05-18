@@ -1273,7 +1273,7 @@ void gemini_router(String message) {
 		message = botmessage;
 		message.replace("&", "&amp;");
 		message.replace("<", "&lt;");
-		message.replace text(">", "&gt;");
+		message.replace(">", "&gt;");
 		message.replace("\\n", "\n");
 		message.replace("\\\"", "\"");			  
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
