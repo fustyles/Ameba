@@ -1149,8 +1149,15 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("user", command);
       historical_messages += buildHistoricalData("model", response);
 
-      response = Gemini_chat_request("Respond only with a natural language description of the device's current operating state in the user's language. Never output tool_call, JSON, or any structured format. If there are any unfinished or pending tasks, clearly inform the user and ask whether to continue processing them.", 0);
-      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");               
+      response = Gemini_chat_request(
+			"Analyze the execution result and determine whether the workflow is complete. "
+			"If additional hardware action is strictly required to complete the user's request, "
+			"return only valid tool_call JSON. "
+			"Otherwise, reply naturally in the user's language.",
+			1
+			);
+      if (response != "NONE")		
+		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");               
     
     } else if (command == "/digitalread" || command == "/analogread") {
       int pin = params["pin"].as<int>();
@@ -1161,8 +1168,15 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("user", command);
       historical_messages += buildHistoricalData("model", response);
 
-      response = Gemini_chat_request("Respond only with a natural language description of the device's current operating state in the user's language. Never output tool_call, JSON, or any structured format. If there are any unfinished or pending tasks, clearly inform the user and ask whether to continue processing them.", 0);
-      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");      
+      response = Gemini_chat_request(
+			"Analyze the execution result and determine whether the workflow is complete. "
+			"If additional hardware action is strictly required to complete the user's request, "
+			"return only valid tool_call JSON. "
+			"Otherwise, reply naturally in the user's language.",
+			1
+			);
+      if (response != "NONE")		
+		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");       
       
     } else if (command == "/still") {
       sendCapturedImageToTelegram(telegramBot_token, telegramBot_chatID, 1);
@@ -1196,9 +1210,15 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("user", query);
       historical_messages += buildHistoricalData("model", response);
 
-      response = Gemini_chat_request("Analyze the result and continue unfinished workflow. If hardware action is required, return only valid tool_call JSON. Otherwise reply naturally.", 1);
-      if (response != "NONE")
-        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");   
+      response = Gemini_chat_request(
+			"Analyze the execution result and determine whether the workflow is complete. "
+			"If additional hardware action is strictly required to complete the user's request, "
+			"return only valid tool_call JSON. "
+			"Otherwise, reply naturally in the user's language.",
+			1
+			);
+      if (response != "NONE")		
+		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");    
 
     } else if (command == "/vision") {
       String prompt = params["query"].as<String>();
@@ -1208,9 +1228,15 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("user", prompt);
       historical_messages += buildHistoricalData("model", response); 
 
-      response = Gemini_chat_request("Analyze the result and continue unfinished workflow. If hardware action is required, return only valid tool_call JSON. Otherwise reply naturally.", 1);
-      if (response != "NONE")
-        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");      
+      response = Gemini_chat_request(
+			"Analyze the execution result and determine whether the workflow is complete. "
+			"If additional hardware action is strictly required to complete the user's request, "
+			"return only valid tool_call JSON. "
+			"Otherwise, reply naturally in the user's language.",
+			1
+			);
+      if (response != "NONE")		
+		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");       
             
     }
 }
