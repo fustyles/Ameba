@@ -376,7 +376,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 (without persistent storage layer)
 
-Date: 2026-05-18 12:00
+Date: 2026-05-18 13:30
 ------------------------------------------------------------
 */
 
@@ -1439,7 +1439,8 @@ void useTools(String command, JsonObject params) {
 // Invalid JSON is rejected and logged to Serial.
 // No tool execution occurs on malformed payloads.
 void gemini_router(String message) {
-  
+
+  String botmessage = message;
   message.trim();
   message.replace("\\\"", "\""); 
   message.replace("\\\\", "\\");             
@@ -1462,7 +1463,7 @@ void gemini_router(String message) {
   
   if (start == -1 || end == -1 || end <= start) {
       if (message != "NONE")
-        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
+        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, botmessage, "");
       else
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.", "");
       return;
