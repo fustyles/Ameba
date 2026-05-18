@@ -1469,6 +1469,7 @@ void gemini_router(String message) {
         message.replace(">", "&gt;");
         message.replace("\\n", "\n");
         message.replace("\\\"", "\"");
+		message.replace("\\\\", "\\");		
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
 	  }
       else
