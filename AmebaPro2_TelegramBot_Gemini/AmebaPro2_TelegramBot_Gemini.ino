@@ -1268,7 +1268,7 @@ void gemini_router(String message) {
   int start = message.indexOf('{');
   int end = message.lastIndexOf('}');
   
-  if (start == -1 || end == -1 || end <= start) {
+  if (!message.startsWith("{") || !message.endsWith("}")) {
       if (message != "NONE") {
 		message = botmessage;
 		message.replace("\\\"", "\""); 
