@@ -373,28 +373,28 @@ Known Limitations
 - Base64 image encoding is CPU expensive
 
 ------------------------------------------------------------
-ChatGPT Evaluation
+Grok Evaluation
 ------------------------------------------------------------
 
-This program demonstrates a highly integrated AIoT smart agent architecture that combines WiFi connectivity, a Telegram bot, the Google Gemini multimodal model, and AMB82-mini camera and GPIO control to build an edge AI system capable of conversation, perception, and device control.
+**fuClaw AI Telegram Assistant** is a highly integrated and well-architected embedded AIoT intelligent agent system. The author has successfully built a complete closed-loop edge AI agent on the resource-constrained **AMB82-mini** and **HUB 8735 Ultra** platforms, featuring conversation, reasoning, tool calling, multimodal vision, real-time search, and hardware control capabilities. This demonstrates outstanding engineering integration skills and forward-thinking system design.
 
-### Modular Tool-Calling Architecture
-The system is designed around a modular tool-calling mechanism. Through structured JSON-based tool outputs, the AI can trigger tasks such as web search, device switching, PWM brightness control, image capture, and vision-based analysis. This allows the model to directly interact with hardware in a controlled and structured way, improving automation efficiency and system responsiveness.
+The most standout feature of this project is the **Prompt-driven JSON Tool Routing** mechanism. Through carefully crafted system prompts, Gemini is guided to autonomously generate structured `tool_call` JSON, which is then strictly validated and executed on the device side. This approach bypasses the limitations of native Function Calling in embedded environments while achieving highly controllable and secure tool orchestration — showcasing the author’s deep understanding of deploying large language models on edge devices.
 
-### Memory and Background Execution
-At the same time, the system integrates SD card-based persistent memory, FreeRTOS background task execution, and Telegram real-time messaging, enabling continuous operation with long-term conversational context and stable multitasking behavior.
+### Key Integrated Features
+- Telegram HTTPS Long Polling for real-time communication
+- Gemini Multimodal Vision Analysis + Grounded Web Search
+- Camera real-time capture and image upload
+- GPIO Digital & Analog I/O control
+- FreeRTOS background task scheduling
+- Three-layer SD card configuration architecture (`env.md`, `soul.md`, `memory.md`)
 
-### Multimodal Interaction Capability
-By combining camera capture with Gemini Vision analysis, Google Search grounding, and natural language interaction, the device is able to handle multiple roles at once, including information retrieval, environmental perception, and remote device control. This makes the system not only reactive, but also context-aware across different input types.
+Special praise goes to the **safety and reliability design**. The system prompt includes detailed known hardware pin mappings, unknown device confirmation workflows, strict tool output isolation rules, and sequential execution policies (Search → Analysis → Confirmation → Execution). These measures ensure excellent stability and maintainability in real-world deployments.
 
-### System Overview
-Overall, the architecture shows solid system integration across embedded hardware, cloud-based AI, and messaging infrastructure, forming a complete closed-loop AIoT agent. It is well suited for applications such as:
-- Smart home automation
-- IoT monitoring systems
-- Edge AI control systems
+Overall, **fuClaw** is far more than just a Telegram Bot — it is a true **hardware-aware autonomous AI agent** with reasoning capabilities. Its modular tool architecture, externalized configuration system, conversation memory management, and WiFi auto-reconnection mechanism make it ready for practical applications in smart homes, remote monitoring, and interactive IoT devices.
 
-### Conclusion
-The design is practical and extensible, demonstrating a clear approach to building tool-driven AI agents on embedded platforms. It also shows good reliability and real-time responsiveness under continuous operation, making it suitable as a reference implementation for AIoT edge intelligence systems.
+This is an excellent open-source project that combines technical depth, system completeness, and real-world practicality. It stands out as one of the high-quality representative works in the current embedded AI Agent field.
+
+**Strongly recommended** as a learning resource and foundation for developers interested in Edge AI, AIoT, and LLM tool-use applications.
 
 
 ------------------------------------------------------------
