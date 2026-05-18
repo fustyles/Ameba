@@ -376,7 +376,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 (without persistent storage layer)
 
-Date: 2026-05-18 11:00
+Date: 2026-05-18 11:30
 ------------------------------------------------------------
 */
 
@@ -1401,6 +1401,8 @@ void useTools(String command, JsonObject params) {
       String query = params["query"].as<String>();
       String response = Gemini_chat_search_request(query, 0);
       
+      gemini_router(response);
+      
       response = Gemini_chat_request(
       "Analyze the execution result and determine whether the workflow is complete. "
       "If additional hardware action is strictly required to complete the user's request, "
@@ -1417,6 +1419,8 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("user", prompt);
       historical_messages += buildHistoricalData("model", response);
       storeHistoricalMessagesToFile(); 
+
+      gemini_router(response);
       
       response = Gemini_chat_request(
 			"Analyze the execution result and determine whether the workflow is complete. "
@@ -1443,13 +1447,14 @@ void gemini_router(String message) {
   message.replace("\r", "");
   message.replace("\\t", "");
   message.replace("\t", "");
+  message.replace(String(char(0)), "");  
   message.replace(String((char)9), "");
   message.replace("\0", "");
   message.replace("\\-", "-");
   message.replace("\\*", "*");
   message.replace("\\_", "_");
   message.replace("\\#", "#");              
-         
+        
   int start = message.indexOf('{');
   int end = message.lastIndexOf('}');
   

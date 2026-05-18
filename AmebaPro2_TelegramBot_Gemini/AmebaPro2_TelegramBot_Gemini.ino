@@ -268,7 +268,7 @@ Version
 
 Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-18 11:00
+Date: 2026-05-18 11:30
 ------------------------------------------------------------
 */
 
@@ -1209,6 +1209,8 @@ void useTools(String command, JsonObject params) {
 
       historical_messages += buildHistoricalData("user", query);
       historical_messages += buildHistoricalData("model", response);
+	  
+	  gemini_router(response);
 
       response = Gemini_chat_request(
 			"Analyze the execution result and determine whether the workflow is complete. "
@@ -1224,7 +1226,9 @@ void useTools(String command, JsonObject params) {
       String response = SendStillToGeminiVision(prompt);
 
       historical_messages += buildHistoricalData("user", prompt);
-      historical_messages += buildHistoricalData("model", response); 
+      historical_messages += buildHistoricalData("model", response);
+
+	  gemini_router(response);	  
 
       response = Gemini_chat_request(
 			"Analyze the execution result and determine whether the workflow is complete. "
