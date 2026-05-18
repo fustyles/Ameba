@@ -737,7 +737,7 @@ String soul_filename = "soul.md";
 String memory_filename = "memory.md";
 
 // Forward declarations
-void gemini_response_handler(String message);
+void agent_dispatcher(String message);
 
 #include "VideoStream.h"
 
@@ -1349,7 +1349,7 @@ void useTools(String command, JsonObject params) {
 		"Otherwise, respond naturally in the user's language.",
 		1
       );
-      gemini_response_handler(response);
+      agent_dispatcher(response);
     
     } else if (command == "/digitalread" || command == "/analogread") {
       int pin = params["pin"].as<int>();
@@ -1368,7 +1368,7 @@ void useTools(String command, JsonObject params) {
 		"Otherwise, respond naturally in the user's language.",
 		1
       );
-      gemini_response_handler(response);  
+      agent_dispatcher(response);  
       
     } else if (command == "/still") {
       sendCapturedImageToTelegram(telegramBot_token, telegramBot_chatID, 1);
@@ -1401,7 +1401,7 @@ void useTools(String command, JsonObject params) {
       String query = params["query"].as<String>();
       String response = Gemini_chat_search_request(query, 0);
       
-      gemini_response_handler(response);
+      agent_dispatcher(response);
       
       response = Gemini_chat_request(
 		"Analyze the execution result and determine whether the workflow is complete.\n"
@@ -1411,7 +1411,7 @@ void useTools(String command, JsonObject params) {
 		"Otherwise, respond naturally in the user's language.",
 		1
       );
-      gemini_response_handler(response);  
+      agent_dispatcher(response);  
 
     } else if (command == "/vision") {
       String prompt = params["query"].as<String>();
@@ -1421,7 +1421,7 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("model", response);
       storeHistoricalMessagesToFile(); 
 
-      gemini_response_handler(response);
+      agent_dispatcher(response);
       
       response = Gemini_chat_request(
 		"Analyze the execution result and determine whether the workflow is complete.\n"
@@ -1431,14 +1431,14 @@ void useTools(String command, JsonObject params) {
 		"Otherwise, respond naturally in the user's language.",
 		1
       );
-      gemini_response_handler(response);  
+      agent_dispatcher(response);  
     }
 }
 
 
 // Invalid JSON is rejected and logged to Serial.
 // No tool execution occurs on malformed payloads.
-void gemini_response_handler(String message) {
+void agent_dispatcher(String message) {
 
   String botmessage = message;
   message.trim();
@@ -1651,7 +1651,7 @@ void getTelegramMessage() {
             } else {
               
               message = Gemini_chat_request(message, 1);
-              gemini_response_handler(message);
+              agent_dispatcher(message);
               
             } 
           }
