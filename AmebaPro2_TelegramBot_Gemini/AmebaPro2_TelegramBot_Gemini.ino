@@ -1154,7 +1154,7 @@ void useTools(String command, JsonObject params) {
 			"If additional hardware action is strictly required to complete the user's request, "
 			"return only valid tool_call JSON. "
 			"Otherwise, reply naturally in the user's language.",
-			1
+			0
 			);
       if (response != "NONE")		
 		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");               
@@ -1173,7 +1173,7 @@ void useTools(String command, JsonObject params) {
 			"If additional hardware action is strictly required to complete the user's request, "
 			"return only valid tool_call JSON. "
 			"Otherwise, reply naturally in the user's language.",
-			1
+			0
 			);
       if (response != "NONE")		
 		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");       
@@ -1215,7 +1215,7 @@ void useTools(String command, JsonObject params) {
 			"If additional hardware action is strictly required to complete the user's request, "
 			"return only valid tool_call JSON. "
 			"Otherwise, reply naturally in the user's language.",
-			1
+			0
 			);
       if (response != "NONE")		
 		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");    
@@ -1233,7 +1233,7 @@ void useTools(String command, JsonObject params) {
 			"If additional hardware action is strictly required to complete the user's request, "
 			"return only valid tool_call JSON. "
 			"Otherwise, reply naturally in the user's language.",
-			1
+			0
 			);
       if (response != "NONE")		
 		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");       
