@@ -268,7 +268,7 @@ Version
 
 Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-18 13:30
+Date: 2026-05-18 15:00
 ------------------------------------------------------------
 */
 
@@ -1271,13 +1271,32 @@ void gemini_router(String message) {
   if (!message.startsWith("{") || !message.endsWith("}")) {
       if (message != "NONE") {
 		message = botmessage;
-		message.replace("\\\"", "\"");
-		message.replace("\\\\", "\\");
-		message.replace("\\n", "\n");
-		message.replace("&", "&amp;");
-		message.replace("<", "&lt;");
-		message.replace(">", "&gt;");
-		message.replace("\"", "&quot;");		
+		
+        message.replace("\\\"", "\"");
+        message.replace("\\\\", "\\");
+        message.replace("\\n", "\n");
+        message.replace("&", "&amp;");
+        message.replace("<", "&lt;");
+        message.replace(">", "&gt;");
+        message.replace("\"", "&quot;");
+        message.replace("## ", "");
+        message.replace("# ", "");
+        message.replace("__", "");
+        message.replace("* ", "• ");
+        message.replace("```json", "");
+        message.replace("```cpp", "");
+        message.replace("```c++", "");
+        message.replace("```c", "");
+        message.replace("```", "");
+        message.replace("`", "");
+        message.replace("> ", "");
+        message.replace("---", "");
+        message.replace("***", "");
+        message.replace("**", "");        
+        message.replace("___", ""); 
+        message.replace("*• ", "");
+        message.replace("•   ** ", "      ");
+		
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
 	  }
       else
