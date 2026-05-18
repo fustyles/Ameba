@@ -12,11 +12,10 @@ System Overview
 ------------------------------------------------------------
 
 This project implements an embedded AI-powered IoT agent
-running on:
+running on Realtek Ameba Pro2 platform:
 
 - AMB82-mini
 - HUB 8735 Ultra
-(Realtek Ameba Pro2 platform)
 
 It integrates:
 
