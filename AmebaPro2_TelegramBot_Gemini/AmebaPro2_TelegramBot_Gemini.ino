@@ -268,7 +268,7 @@ Version
 
 Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-18 11:30
+Date: 2026-05-18 12:00
 ------------------------------------------------------------
 */
 
@@ -1158,7 +1158,7 @@ void useTools(String command, JsonObject params) {
 			"return only valid tool_call JSON. "
 			"Otherwise, reply naturally in the user's language.",
 			1
-			);
+	  );
       gemini_router(response);                 
     
     } else if (command == "/digitalread" || command == "/analogread") {
@@ -1176,7 +1176,7 @@ void useTools(String command, JsonObject params) {
 			"return only valid tool_call JSON. "
 			"Otherwise, reply naturally in the user's language.",
 			1
-			);
+	  );
       gemini_router(response);        
       
     } else if (command == "/still") {
@@ -1213,13 +1213,14 @@ void useTools(String command, JsonObject params) {
 	  gemini_router(response);
 
       response = Gemini_chat_request(
-			"Analyze the execution result and determine whether the workflow is complete. "
-			"If additional hardware action is strictly required to complete the user's request, "
-			"return only valid tool_call JSON. "
-			"Otherwise, reply naturally in the user's language.",
-			1
-			);
-      gemini_router(response);     
+		  "Analyze the execution result and determine whether the workflow is complete.\n"
+		  "User original request: " + query + "\n\n"
+		  "If additional hardware actions are strictly required to complete the request, "
+		  "return ONLY a valid tool_call JSON.\n"
+		  "Otherwise, respond naturally in the user's language.",
+		  1
+      );
+      gemini_router(response);    
 
     } else if (command == "/vision") {
       String prompt = params["query"].as<String>();
@@ -1231,12 +1232,13 @@ void useTools(String command, JsonObject params) {
 	  gemini_router(response);	  
 
       response = Gemini_chat_request(
-			"Analyze the execution result and determine whether the workflow is complete. "
-			"If additional hardware action is strictly required to complete the user's request, "
-			"return only valid tool_call JSON. "
-			"Otherwise, reply naturally in the user's language.",
+			"Analyze the execution result and determine whether the workflow is complete.\n"
+		    "User original request: " + prompt + "\n\n"
+		    "If additional hardware actions are strictly required to complete the request, "
+		    "return ONLY a valid tool_call JSON.\n"
+		    "Otherwise, respond naturally in the user's language.",
 			1
-			);
+	  );
       gemini_router(response);        
             
     }
