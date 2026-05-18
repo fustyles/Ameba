@@ -1278,7 +1278,7 @@ void gemini_router(String message) {
         message.replace("&", "&amp;");
         message.replace("<", "&lt;");
         message.replace(">", "&gt;");
-        message.replace("\"", "&quot;");
+		message.replace("### ", "");
         message.replace("## ", "");
         message.replace("# ", "");
         message.replace("__", "");
