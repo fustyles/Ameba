@@ -1188,7 +1188,7 @@ String Gemini_chat_search_request(String message, bool tools) {
 }
 
 // Capture camera frame and send it to Gemini Vision for multimodal analysis
-String SendStillToGeminiVision(String message) {
+String Gemini_vision_request(String message) {
   message.replace("\"", "\\\"");
   const char* myDomain = "generativelanguage.googleapis.com";
   String getResponse="",Feedback="";
@@ -1415,7 +1415,7 @@ void useTools(String command, JsonObject params) {
 
     } else if (command == "/vision") {
       String prompt = params["query"].as<String>();
-      String response = SendStillToGeminiVision(prompt);
+      String response = Gemini_vision_request(prompt);
       
       historical_messages += buildHistoricalData("user", prompt);
       historical_messages += buildHistoricalData("model", response);
