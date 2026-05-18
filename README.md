@@ -421,7 +421,5 @@ Version
 
 Persistent Memory + Vision + Search Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-17<br>
-Time Zone: Asia/Taipei (Taiwan Standard Time, UTC+8)<br>
-Local Time (Taiwan): 2026-05-17 19:30<br>
+2026-05-17
 ------------------------------------------------------------
