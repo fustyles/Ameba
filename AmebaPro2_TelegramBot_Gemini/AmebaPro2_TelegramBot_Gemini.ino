@@ -268,7 +268,7 @@ Version
 
 Prompt-Orchestrated Embedded Agent Edition
 
-Date: 2026-05-17 22:30
+Date: 2026-05-18 10:30
 ------------------------------------------------------------
 */
 
@@ -600,6 +600,9 @@ WiFiSSLClient botClient;
 #include <ArduinoJson.h>
 #include "FreeRTOS.h"
 #include "task.h"
+
+// Forward declarations
+void gemini_router(String message);
 
 #include "VideoStream.h"
 
@@ -1154,10 +1157,9 @@ void useTools(String command, JsonObject params) {
 			"If additional hardware action is strictly required to complete the user's request, "
 			"return only valid tool_call JSON. "
 			"Otherwise, reply naturally in the user's language.",
-			0
+			1
 			);
-      if (response != "NONE")		
-		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");               
+      gemini_router(response);                 
     
     } else if (command == "/digitalread" || command == "/analogread") {
       int pin = params["pin"].as<int>();
@@ -1173,10 +1175,9 @@ void useTools(String command, JsonObject params) {
 			"If additional hardware action is strictly required to complete the user's request, "
 			"return only valid tool_call JSON. "
 			"Otherwise, reply naturally in the user's language.",
-			0
+			1
 			);
-      if (response != "NONE")		
-		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");       
+      gemini_router(response);        
       
     } else if (command == "/still") {
       sendCapturedImageToTelegram(telegramBot_token, telegramBot_chatID, 1);
@@ -1215,10 +1216,9 @@ void useTools(String command, JsonObject params) {
 			"If additional hardware action is strictly required to complete the user's request, "
 			"return only valid tool_call JSON. "
 			"Otherwise, reply naturally in the user's language.",
-			0
+			1
 			);
-      if (response != "NONE")		
-		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");    
+      gemini_router(response);     
 
     } else if (command == "/vision") {
       String prompt = params["query"].as<String>();
@@ -1233,12 +1233,55 @@ void useTools(String command, JsonObject params) {
 			"If additional hardware action is strictly required to complete the user's request, "
 			"return only valid tool_call JSON. "
 			"Otherwise, reply naturally in the user's language.",
-			0
+			1
 			);
-      if (response != "NONE")		
-		sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response,"");       
+      gemini_router(response);        
             
     }
+}
+
+// Invalid JSON is rejected and logged to Serial.
+// No tool execution occurs on malformed payloads.
+void gemini_router(String message) {
+  message.trim();
+  message.replace("\\\"", "\"");
+  message.replace("\\\\", "\\");   
+  message.replace("\\n", "");
+  message.replace("\n", "");
+  message.replace("\r", "");
+  message.replace("\t", "");
+  message.replace(String((char)9), "");
+  message.replace("\0", "");
+  message.replace("\\-", "-");
+  message.replace("\\*", "*");
+  message.replace("\\_", "_");
+  message.replace("\\#", "#");              
+                
+  int start = message.indexOf('{');
+  int end = message.lastIndexOf('}');
+  
+  if (start == -1 || end == -1 || end <= start) {
+      if (message != "NONE")
+        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
+      else
+        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.", "");
+      return;
+  }
+
+  JsonObject obj;
+  DynamicJsonDocument doc(2048);
+  DeserializationError error = deserializeJson(doc, message);
+  if (error) {
+      Serial.println("JSON parse failed\n\n");
+      Serial.println(message);
+      return;
+  }
+
+  obj = doc.as<JsonObject>();
+  String method =  obj["method"].as<String>();
+  JsonObject params = obj["params"];
+  useTools(method, params); 
+  
 }
 
 // Poll Telegram Bot API for latest user message
@@ -1379,44 +1422,7 @@ void getTelegramMessage() {
       			} else {
               
               message = Gemini_chat_request(message, 1);
-
-              message.replace("\\\"", "\"");            
-              message.replace("\\n", "");
-              message.replace("\n", "");
-              message.replace("\r", "");
-              message.replace("\t", "");
-              message.replace(String((char)9), "");
-              message.replace("\0", "");
-              message.replace("\0", "");
-              message.replace("\\-", "-");
-              message.replace("\\*", "*");
-              message.replace("\\_", "_");
-              message.replace("\\#", "#"); 			  
-                            
-              int start = message.indexOf('{');
-              int end = message.lastIndexOf('}');
-              
-              if (start == -1 || end == -1 || end <= start) {
-                  if (message != "NONE")
-                    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
-                  else
-                    sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.", "");
-                  return;
-              }
-              
-              JsonObject obj;
-              DynamicJsonDocument doc(2048);
-              DeserializationError error = deserializeJson(doc, message);
-              if (error) {
-                  Serial.println("JSON parse failed\n\n");
-                  Serial.println(message);
-                  return;
-              }
-                  
-              obj = doc.as<JsonObject>();
-              String method =  obj["method"].as<String>();
-              JsonObject params = obj["params"];
-      		  useTools(method, params);
+              gemini_router(message);
               
             }	
           }
