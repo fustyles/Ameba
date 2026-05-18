@@ -1271,19 +1271,9 @@ void gemini_router(String message) {
   if (!message.startsWith("{") || !message.endsWith("}")) {
       if (message != "NONE") {
 		message = botmessage;
-		message.replace("\\\"", "\""); 
-		message.replace("\\\\", "\\");             
-		message.replace("\\n", "\n");
-		message.replace("\\r", "");
-		message.replace("\r", "");
-		message.replace("\\t", "");
-		message.replace("\t", "");
-		message.replace(String((char)9), "");
-		message.replace("\0", "");
-		message.replace("\\-", "-");
-		message.replace("\\*", "*");
-		message.replace("\\_", "_");
-		message.replace("\\#", "#"); 		  
+        message.replace("\\\"", "\"");
+        message.replace("\\\\", "\\");
+        message.replace("\\n", "\n");			  
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
 	  }
       else
