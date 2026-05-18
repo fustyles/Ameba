@@ -40,25 +40,25 @@ The system behaves as a hybrid autonomous AI agent:
 Core Runtime Architecture
 ------------------------------------------------------------
 
-Telegram User
-      ↓
-Telegram Polling Task (FreeRTOS)
-      ↓
-Message Router
-(Command / Chat / Gemini Dispatch)
-      ↓
-Gemini Reasoning Engine
-(Chat / Search / Vision / Workflow Planning)
-      ↓
-Structured JSON tool_call Output
-      ↓
-ArduinoJson Validation
-      ↓
-Tool Dispatcher (useTools)
-      ↓
-Hardware / Vision / Search / Memory Execution
-      ↓
-Natural Language Feedback to User
+Telegram User<br>
+      ↓<br>
+Telegram Polling Task (FreeRTOS)<br>
+      ↓<br>
+Message Router<br>
+(Command / Chat / Gemini Dispatch)<br>
+      ↓<br>
+Gemini Reasoning Engine<br>
+(Chat / Search / Vision / Workflow Planning)<br>
+      ↓<br>
+Structured JSON tool_call Output<br>
+      ↓<br>
+ArduinoJson Validation<br>
+      ↓<br>
+Tool Dispatcher (useTools)<br>
+      ↓<br>
+Hardware / Vision / Search / Memory Execution<br>
+      ↓<br>
+Natural Language Feedback to User<br>
 
 NOTE:
 
