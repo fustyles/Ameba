@@ -376,7 +376,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 (without persistent storage layer)
 
-Date: 2026-05-18 10:30
+Date: 2026-05-18 11:00
 ------------------------------------------------------------
 */
 
@@ -1400,7 +1400,6 @@ void useTools(String command, JsonObject params) {
     } else if (command == "/search") {
       String query = params["query"].as<String>();
       String response = Gemini_chat_search_request(query, 0);
-      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
       
       response = Gemini_chat_request(
       "Analyze the execution result and determine whether the workflow is complete. "
@@ -1418,8 +1417,6 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("user", prompt);
       historical_messages += buildHistoricalData("model", response);
       storeHistoricalMessagesToFile(); 
-
-      sendMessageToTelegram(telegramBot_token, telegramBot_chatID, response, "");
       
       response = Gemini_chat_request(
 			"Analyze the execution result and determine whether the workflow is complete. "
@@ -1436,12 +1433,15 @@ void useTools(String command, JsonObject params) {
 // Invalid JSON is rejected and logged to Serial.
 // No tool execution occurs on malformed payloads.
 void gemini_router(String message) {
+  
   message.trim();
   message.replace("\\\"", "\""); 
   message.replace("\\\\", "\\");             
   message.replace("\\n", "");
   message.replace("\n", "");
+  message.replace("\\r", "");
   message.replace("\r", "");
+  message.replace("\\t", "");
   message.replace("\t", "");
   message.replace(String((char)9), "");
   message.replace("\0", "");
@@ -1449,7 +1449,7 @@ void gemini_router(String message) {
   message.replace("\\*", "*");
   message.replace("\\_", "_");
   message.replace("\\#", "#");              
-                
+         
   int start = message.indexOf('{');
   int end = message.lastIndexOf('}');
   
