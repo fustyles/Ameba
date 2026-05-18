@@ -1153,13 +1153,13 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("model", response);
 
       response = Gemini_chat_request(
-			"Analyze the execution result and determine whether the workflow is complete. "
-			"If additional hardware action is strictly required to complete the user's request, "
-			"return only valid tool_call JSON. "
-			"Otherwise, reply naturally in the user's language.",
-			1
-	  );
-      gemini_router(response);                 
+  		"Analyze the execution result and determine whether the workflow is complete.\n\n"
+        "If additional hardware actions are strictly required to complete the request, "
+        "return ONLY a valid tool_call JSON.\n"
+        "Otherwise, respond naturally in the user's language.",
+        1
+      );
+      gemini_router(response);               
     
     } else if (command == "/digitalread" || command == "/analogread") {
       int pin = params["pin"].as<int>();
@@ -1171,13 +1171,13 @@ void useTools(String command, JsonObject params) {
       historical_messages += buildHistoricalData("model", response);
 
       response = Gemini_chat_request(
-			"Analyze the execution result and determine whether the workflow is complete. "
-			"If additional hardware action is strictly required to complete the user's request, "
-			"return only valid tool_call JSON. "
-			"Otherwise, reply naturally in the user's language.",
-			1
-	  );
-      gemini_router(response);        
+		"Analyze the execution result and determine whether the workflow is complete.\n\n"
+		"If additional hardware actions are strictly required to complete the request, "
+		"return ONLY a valid tool_call JSON.\n"
+		"Otherwise, respond naturally in the user's language.",
+		1
+      );
+      gemini_router(response);       
       
     } else if (command == "/still") {
       sendCapturedImageToTelegram(telegramBot_token, telegramBot_chatID, 1);
@@ -1213,12 +1213,12 @@ void useTools(String command, JsonObject params) {
 	  gemini_router(response);
 
       response = Gemini_chat_request(
-		  "Analyze the execution result and determine whether the workflow is complete.\n"
-		  "User original request: " + query + "\n\n"
-		  "If additional hardware actions are strictly required to complete the request, "
-		  "return ONLY a valid tool_call JSON.\n"
-		  "Otherwise, respond naturally in the user's language.",
-		  1
+		"Analyze the execution result and determine whether the workflow is complete.\n"
+		"User original request: " + query + "\n\n"
+		"If additional hardware actions are strictly required to complete the request, "
+		"return ONLY a valid tool_call JSON.\n"
+		"Otherwise, respond naturally in the user's language.",
+		1
       );
       gemini_router(response);    
 
@@ -1232,12 +1232,12 @@ void useTools(String command, JsonObject params) {
 	  gemini_router(response);	  
 
       response = Gemini_chat_request(
-			"Analyze the execution result and determine whether the workflow is complete.\n"
-		    "User original request: " + prompt + "\n\n"
-		    "If additional hardware actions are strictly required to complete the request, "
-		    "return ONLY a valid tool_call JSON.\n"
-		    "Otherwise, respond naturally in the user's language.",
-			1
+		"Analyze the execution result and determine whether the workflow is complete.\n"
+		"User original request: " + prompt + "\n\n"
+		"If additional hardware actions are strictly required to complete the request, "
+		"return ONLY a valid tool_call JSON.\n"
+		"Otherwise, respond naturally in the user's language.",
+		1
 	  );
       gemini_router(response);        
             
