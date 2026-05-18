@@ -1462,8 +1462,22 @@ void gemini_router(String message) {
   int end = message.lastIndexOf('}');
   
   if (start == -1 || end == -1 || end <= start) {
-      if (message != "NONE")
+      if (message != "NONE") {
+		message.replace("\\\"", "\""); 
+		message.replace("\\\\", "\\");             
+		message.replace("\\n", "\n");
+		message.replace("\\r", "");
+		message.replace("\r", "");
+		message.replace("\\t", "");
+		message.replace("\t", "");
+		message.replace(String((char)9), "");
+		message.replace("\0", "");
+		message.replace("\\-", "-");
+		message.replace("\\*", "*");
+		message.replace("\\_", "_");
+		message.replace("\\#", "#"); 		  
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, botmessage, "");
+	  }
       else
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.", "");
       return;
