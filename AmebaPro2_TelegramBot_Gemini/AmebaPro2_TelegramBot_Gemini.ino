@@ -1270,6 +1270,7 @@ void gemini_router(String message) {
   
   if (start == -1 || end == -1 || end <= start) {
       if (message != "NONE") {
+		message = botmessage;
 		message.replace("\\\"", "\""); 
 		message.replace("\\\\", "\\");             
 		message.replace("\\n", "\n");
@@ -1283,7 +1284,7 @@ void gemini_router(String message) {
 		message.replace("\\*", "*");
 		message.replace("\\_", "_");
 		message.replace("\\#", "#"); 		  
-        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, botmessage, "");
+        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
 	  }
       else
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.", "");
