@@ -103,6 +103,7 @@ Supported Tools
 /memory<br>        Runtime memory diagnostics<br>
 /reset<br>          Reset conversation state<br>
 /chat<br>           Natural language reply<br>
+/restart<br>        Restart the device<br>
 
 ------------------------------------------------------------
 Persistent Files
