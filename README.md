@@ -93,28 +93,28 @@ Multi-step workflows are executed step-by-step.
 Supported Tools
 ------------------------------------------------------------
 
-/digitalwrite   GPIO digital output<br>
-/analogwrite    GPIO analog output<br>
-/digitalread    GPIO digital input<br>
-/analogread     GPIO analog input<br>
-/still          Capture image<br>
-/vision         Capture + multimodal analysis<br>
-/search         Grounded web search<br>
-/memory         Runtime memory diagnostics<br>
-/reset          Reset conversation state<br>
-/chat           Natural language reply<br>
+/digitalwrite<br>   GPIO digital output<br>
+/analogwrite<br>    GPIO analog output<br>
+/digitalread<br>    GPIO digital input<br>
+/analogread<br>     GPIO analog input<br>
+/still<br>          Capture image<br>
+/vision<br>         Capture + multimodal analysis<br>
+/search<br>         Grounded web search<br>
+/memory<br>>        Runtime memory diagnostics<br>
+/reset<br>          Reset conversation state<br>
+/chat<br>           Natural language reply<br>
 
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
 
-env.md
+env.md<br>
   WiFi / Telegram / Gemini credentials
 
-soul.md
+soul.md<br>
   Custom assistant personality prompt
 
-memory.md
+memory.md<br>
   Conversation history persistence
 
 Conversation state is restored automatically on boot.
