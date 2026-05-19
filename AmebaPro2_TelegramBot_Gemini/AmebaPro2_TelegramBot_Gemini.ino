@@ -1651,7 +1651,7 @@ void setup() {
   if (xTaskCreate(
         getTelegramMessage_task,
         (const char *)"getTelegramMessage_task",
-        4096,
+        32768,
         NULL,
         tskIDLE_PRIORITY + 1,
         NULL
