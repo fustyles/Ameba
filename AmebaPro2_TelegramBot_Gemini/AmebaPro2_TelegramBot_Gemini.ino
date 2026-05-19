@@ -397,7 +397,6 @@ If tool execution is required:
 
 - Return ONLY the exact valid tool_call JSON
 - No conversational text before JSON
-- No conversational text after JSON
 - No explanation of tool behavior
 - No summary of tool parameters
 - No mixed natural language and JSON
@@ -407,18 +406,21 @@ A response containing both natural language and tool JSON is INVALID.
 If uncertain, suppress internal command details completely.
 
 ==================================================
-TOOL ROUTING
+GLOBAL DEVICE CONTROL POLICY
 ==================================================
 
-Recent information query:
+ALL hardware control actions MUST require user confirmation.
 
-{
-  "type":"tool_call",
-  "method":"/search",
-  "params":{
-    "query":"<user query>"
-  }
-}
+This applies to:
+
+- /digitalwrite
+- /analogwrite
+- any GPIO output control
+- any actuator (LED, motor, relay, fan)
+
+==================================================
+TOOL ROUTING
+==================================================
 
 Digital output control:
 
@@ -467,7 +469,7 @@ Analog input read:
 }
 
 Capture image:
-
+   
 {
   "type":"tool_call",
   "method":"/still",
@@ -480,7 +482,19 @@ Vision analysis:
   "type":"tool_call",
   "method":"/vision",
   "params":{
-    "query":"<analysis request>"
+    "query":"<what to analyze in image>",
+    "task":"<what to do after analysis>"
+  }
+}
+
+Recent information query:
+
+{
+  "type":"tool_call",
+  "method":"/search",
+  "params":{
+    "query":"<what to search>",
+    "task":"<what to do after search result>"
   }
 }
 
@@ -511,40 +525,6 @@ Normal conversational reply:
 }
 
 ==================================================
-OUTPUT FORMAT RULES
-==================================================
-
-- Always respond in user's language
-- Tool-required responses must return ONLY valid JSON
-- Never wrap JSON in markdown
-- Never include explanation text with JSON
-- JSON must be syntactically valid
-- Normal replies must never begin with "/" or "{"
-- Normal replies must never resemble command syntax
-
-==================================================
-PARAMETER VALIDATION
-==================================================
-
-Do not guess missing values.
-
-digitalwrite:
-- value must be exactly 0 or 1
-
-analogwrite:
-- value must be integer 0–255
-
-digitalread:
-- passive read only
-
-analogread:
-- passive read only
-
-If required information is missing:
-
-Ask naturally for clarification and wait for user response.
-
-==================================================
 SEARCH FOLLOW-UP RULES
 ==================================================
 
@@ -554,9 +534,55 @@ After /search returns:
 2. Check whether requested condition is satisfied
 3. Never assume hardware action already happened
 4. Never claim execution unless tool_call actually returned
-5. Ask for missing parameters if required
-6. Ask explicit confirmation before hardware execution
-7. Only then return tool_call JSON
+5. If hardware action required → MUST go through /confirm
+6. Only after confirmation → tool_call JSON
+
+==================================================
+VISION FOLLOW-UP RULES
+==================================================
+
+After /vision returns:
+
+1. Analyze observation result
+2. Combine with user task
+3. Do NOT directly execute hardware
+4. If hardware action required → MUST go through /confirm
+5. Only after confirmation → tool_call JSON
+
+==================================================
+IMAGE TOOL ROUTING RULES
+==================================================
+
+/still:
+- Capture image and send to Telegram only
+- MUST NOT analyze image
+- MUST NOT make decisions
+- MUST NOT trigger hardware actions
+
+/vision:
+- Capture image internally and analyze it
+- MUST return observation result only
+- MUST NOT directly trigger hardware actions
+
+Tool selection rules:
+
+Use /still when user explicitly requests:
+
+- capture image
+- send photo
+- take snapshot
+- show camera image
+
+Use /vision when user requests:
+
+- inspect scene
+- analyze image content
+- detect person/object
+- make condition-based decisions from camera input
+
+Never use /still as a substitute for /vision.
+
+Never use /vision when user only wants photo capture.
 
 ==================================================
 WORKFLOW ORDER
@@ -564,18 +590,20 @@ WORKFLOW ORDER
 
 Strict execution order:
 
-1. Search external data if needed
-2. Analyze conditions
-3. Ask missing information
-4. Ask execution confirmation
-5. Return tool_call
+1. /digitalread (if needed)
+2. /analogread (if needed)
+3. /vision (if needed)
+4. /search (if needed)
+5. planner decision
+6. confirm (if hardware action)
+7. execution
 
 Never:
 
 - skip steps
 - fabricate execution
-- simulate completed actions
-- expose raw control syntax
+- bypass confirmation
+- directly control hardware from vision/search
 
 ==================================================
 FALLBACK
@@ -847,7 +875,7 @@ String geminiChatRequest(String message, bool tools) {
 
       while (client.available()) {
         char c = client.read();
-
+Serial.print(c);
         if (state==true)
           getResponse += String(c);
 
@@ -1220,17 +1248,21 @@ void executeTool(String command, JsonObject params) {
       telegramSendMessage(telegrambotToken, telegrambotChatId, reply, "");
 
     } else if (command == "/search") {
-      String prompt = params["query"].as<String>();
-      String response = geminiSearchRequest(prompt, 0);
+      String query = params["query"].as<String>();
+      Serial.println(query);
+      String task = params["task"].as<String>();
+      Serial.println(task);
+      String response = geminiSearchRequest(query, 0);
+      response.trim();
       
       handleAgentResponse(response);
       
       response = geminiChatRequest(
           "Analyze the execution result and determine whether the workflow is complete.\n"
-          "User original request: " + prompt + "\n\n"
           "If additional hardware actions are strictly required to complete the request, "
+          "User task request:\n" + task + "\n\n"
           "return ONLY a valid tool_call JSON.\n"
-          "Otherwise, return EXACTLY: NONE\n"
+          "Otherwise, respond naturally in the user's language or EXACTLY: NONE\n"
           "Do not include explanation or extra text.",
           1
       );
@@ -1238,22 +1270,26 @@ void executeTool(String command, JsonObject params) {
       handleAgentResponse(response);  
 
     } else if (command == "/vision") {
-      String prompt = params["query"].as<String>();
-      String response = geminiVisionRequest(prompt);
-
+      String query = params["query"].as<String>();
+      Serial.println(query);
+      String task = params["task"].as<String>();
+      Serial.println(task);
+      String response = geminiVisionRequest(query);
+      response.trim();
+      
       handleAgentResponse(response);
       
       response = geminiChatRequest(
           "Analyze the execution result and determine whether the workflow is complete.\n"
-          "User original request: " + prompt + "\n\n"
           "If additional hardware actions are strictly required to complete the request, "
+          "User task request:\n" + task + "\n\n"
           "return ONLY a valid tool_call JSON.\n"
-          "Otherwise, return EXACTLY: NONE\n"
+          "Otherwise, respond naturally in the user's language or EXACTLY: NONE\n"
           "Do not include explanation or extra text.",
           1
       );
       
-      handleAgentResponse(response);  
+      handleAgentResponse(response); 
     }
 }
 
