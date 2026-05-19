@@ -172,15 +172,15 @@ Build Date: 2026-05-20 00:00
 */
 
 // WiFi credentials
-char wifiSsid[] = "3COM-5G";
-char wifiPassword[] = "godblessyou";
+char wifiSsid[] = "xxxxxxxxxx";
+char wifiPassword[] = "xxxxxxxxxx";
 
 // Telegram bot configuration
-String telegrambotToken = "7933943388:AAE69WmbCldVjFGtBW5U9vuv5_SFknFngQQ";
-String telegrambotChatId = "7310584328";
+String telegrambotToken = "xxxxxxxxxx";
+String telegrambotChatId = "xxxxxxxxxx";
 
 // Gemini API configuration
-String geminiApiKey = "AIzaSyCWb0HmAB7_SHlI9x2VVOIAqQsn9TODBmo";
+String geminiApiKey = "xxxxxxxxxx";
 
 // System prompt that defines assistant behavior.
 // Must be JSON-safe (avoid invalid escape characters or unsupported symbols).
