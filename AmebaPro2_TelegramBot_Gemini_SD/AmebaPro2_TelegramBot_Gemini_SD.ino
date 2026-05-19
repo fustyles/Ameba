@@ -101,6 +101,7 @@ Supported Tools
 /memory         Runtime memory diagnostics
 /reset          Reset conversation state
 /chat           Natural language reply
+/restart        Restart the device
 
 ------------------------------------------------------------
 Persistent Files
@@ -167,7 +168,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-19 21:00
+Build Date: 2026-05-19 21:30
 ------------------------------------------------------------
 */
 
@@ -416,6 +417,7 @@ This applies to:
 
 - /digitalwrite
 - /analogwrite
+- /restart
 - any GPIO output control
 - any actuator (LED, motor, relay, fan)
 
@@ -600,6 +602,14 @@ Normal conversational reply:
   "params":{
     "reply":"<natural reply>"
   }
+}
+
+Restart the device:
+
+{
+  "type":"tool_call",
+  "method":"/restart",
+  "params":{}
 }
 
 ==================================================
@@ -1495,21 +1505,29 @@ void executeTool(String command, JsonObject params) {
       
       handleAgentResponse(response);
       
-	  response = geminiChatRequest(
-		"Analyze the execution result and determine whether the workflow is complete.\n"
-		"If additional hardware actions are strictly required, "
-		"User task request:\n" + task + "\n\n"		
-		"return ONLY a valid tool_call JSON.\n"
-		"If the workflow is already complete, return EXACTLY: NONE.\n"
-		"If no tool action is required and a user-facing reply is needed, "
-		"respond naturally in the user's language.\n"
-		"Do not repeat the same meaning as your immediately previous response.\n"
-		"Do not include explanation or extra text.",
-		1
-	  );
+  	  response = geminiChatRequest(
+  		"Analyze the execution result and determine whether the workflow is complete.\n"
+  		"If additional hardware actions are strictly required, "
+  		"User task request:\n" + task + "\n\n"		
+  		"return ONLY a valid tool_call JSON.\n"
+  		"If the workflow is already complete, return EXACTLY: NONE.\n"
+  		"If no tool action is required and a user-facing reply is needed, "
+  		"respond naturally in the user's language.\n"
+  		"Do not repeat the same meaning as your immediately previous response.\n"
+  		"Do not include explanation or extra text.",
+  		1
+  	  );
       
       handleAgentResponse(response); 
     }
+  	else if (command == "/restart") {
+  		telegramSendMessage(telegrambotToken, telegrambotChatId, "Restarting the device, please wait...", "");
+  		
+  		Serial.println("User requested restart the device.");
+  		delay(2000);
+  		
+  		NVIC_SystemReset();
+  	}	
 }
 
 
