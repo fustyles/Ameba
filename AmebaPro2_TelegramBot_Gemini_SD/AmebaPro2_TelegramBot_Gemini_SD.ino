@@ -892,13 +892,8 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
 }
 
 // Convert role/content pair into Gemini-compatible JSON message object
-String buildHistoricalData(String role, String content, bool comma) {
-  content.replace("\"", "\\\"");
-  String jsonMessage = "";
-  if (comma)
-    jsonMessage = ", {\"role\": \"";
-  else
-    jsonMessage = "{\"role\": \"";
+String buildHistoricalData(String role, String content) {
+  String jsonMessage = ", {\"role\": \"";
   jsonMessage += role;
   jsonMessage += "\", \"parts\":[{ \"text\": \"";
   jsonMessage += content;
@@ -956,8 +951,8 @@ void storeHistoricalMessagesToFile() {
 // Reset conversation memory to initial system prompt state
 void Gemini_chat_reset() {
   historical_messages = "";
-  system_content = buildHistoricalData("user", gemini_role + devices_definition + tools_definition, 0) + buildHistoricalData("model", "OK", 1);
-  system_content_notools = buildHistoricalData("user", gemini_role + devices_definition, 0) + buildHistoricalData("model", "OK", 1); 
+  system_content = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + devices_definition + tools_definition + "\"}]}" + buildHistoricalData("model", "OK");
+  system_content_notools = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + devices_definition + "\"}]}" + buildHistoricalData("model", "OK");
   
   storeHistoricalMessagesToFile();
   
@@ -1343,16 +1338,16 @@ void useTools(String command, JsonObject params) {
       
       String response = tool_pinOutput(pin, pinmode, value);
     
-      historical_messages += buildHistoricalData("user", command, 1);
-      historical_messages += buildHistoricalData("model", response, 1);
+      historical_messages += buildHistoricalData("user", command);
+      historical_messages += buildHistoricalData("model", response);
       storeHistoricalMessagesToFile();    
 
       response = Gemini_chat_request(
-    		"Analyze the execution result and determine whether the workflow is complete.\n\n"
-    		"If additional hardware actions are strictly required to complete the request, "
-    		"return ONLY a valid tool_call JSON.\n"
-    		"Otherwise, respond naturally in the user's language.",
-    		1
+		"Analyze the execution result and determine whether the workflow is complete.\n\n"
+		"If additional hardware actions are strictly required to complete the request, "
+		"return ONLY a valid tool_call JSON.\n"
+		"Otherwise, respond naturally in the user's language.",
+		1
       );
       agent_dispatcher(response);
     
@@ -1362,40 +1357,40 @@ void useTools(String command, JsonObject params) {
 
       String response = tool_pinInput(pin, pinmode);
 
-      historical_messages += buildHistoricalData("user", command, 1);
-      historical_messages += buildHistoricalData("model", response, 1);
+      historical_messages += buildHistoricalData("user", command);
+      historical_messages += buildHistoricalData("model", response);
       storeHistoricalMessagesToFile();    
 
       response = Gemini_chat_request(
-    		"Analyze the execution result and determine whether the workflow is complete.\n\n"
-    		"If additional hardware actions are strictly required to complete the request, "
-    		"return ONLY a valid tool_call JSON.\n"
-    		"Otherwise, respond naturally in the user's language.",
-    		1
+		"Analyze the execution result and determine whether the workflow is complete.\n\n"
+		"If additional hardware actions are strictly required to complete the request, "
+		"return ONLY a valid tool_call JSON.\n"
+		"Otherwise, respond naturally in the user's language.",
+		1
       );
       agent_dispatcher(response);  
       
     } else if (command == "/still") {
       sendCapturedImageToTelegram(telegramBot_token, telegramBot_chatID, 1);
 
-      historical_messages += buildHistoricalData("user", command, 1);
-      historical_messages += buildHistoricalData("model", "Get still to Telegram Bot", 1);
+      historical_messages += buildHistoricalData("user", command);
+      historical_messages += buildHistoricalData("model", "Get still to Telegram Bot");
       storeHistoricalMessagesToFile();      
       
     } else if (command == "/reset") {
       Gemini_chat_reset();
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "OK","");
 
-      historical_messages += buildHistoricalData("user", command, 1);
-      historical_messages += buildHistoricalData("model", "Start a new chat", 1);
+      historical_messages += buildHistoricalData("user", command);
+      historical_messages += buildHistoricalData("model", "Start a new chat");
       storeHistoricalMessagesToFile();      
 
     } else if (command == "/memory") {
       String msg = getMemoryInfo();
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, msg, "");
 
-      historical_messages += buildHistoricalData("user", command, 1);
-      historical_messages += buildHistoricalData("model", msg, 1);
+      historical_messages += buildHistoricalData("user", command);
+      historical_messages += buildHistoricalData("model", msg);
       storeHistoricalMessagesToFile();      
 
     } else if (command == "/chat") {
@@ -1403,19 +1398,18 @@ void useTools(String command, JsonObject params) {
       sendMessageToTelegram(telegramBot_token, telegramBot_chatID, reply, "");
 
     } else if (command == "/search") {
-      String prompt = params["query"].as<String>();
-      String response = Gemini_chat_search_request(prompt, 0);
+      String query = params["query"].as<String>();
+      String response = Gemini_chat_search_request(query, 0);
       
       agent_dispatcher(response);
       
       response = Gemini_chat_request(
-          "Analyze the execution result and determine whether the workflow is complete.\n"
-          "User original request: " + prompt + "\n\n"
-          "If additional hardware actions are strictly required to complete the request, "
-          "return ONLY a valid tool_call JSON.\n"
-          "Otherwise, return EXACTLY: NONE\n"
-          "Do not include explanation or extra text.",
-          1
+		"Analyze the execution result and determine whether the workflow is complete.\n"
+		"User original request: " + query + "\n\n"
+		"If additional hardware actions are strictly required to complete the request, "
+		"return ONLY a valid tool_call JSON.\n"
+		"Otherwise, respond naturally in the user's language.",
+		1
       );
       agent_dispatcher(response);  
 
@@ -1423,20 +1417,19 @@ void useTools(String command, JsonObject params) {
       String prompt = params["query"].as<String>();
       String response = Gemini_vision_request(prompt);
       
-      historical_messages += buildHistoricalData("user", prompt, 1);
-      historical_messages += buildHistoricalData("model", response, 1);
+      historical_messages += buildHistoricalData("user", prompt);
+      historical_messages += buildHistoricalData("model", response);
       storeHistoricalMessagesToFile(); 
 
       agent_dispatcher(response);
       
       response = Gemini_chat_request(
-          "Analyze the execution result and determine whether the workflow is complete.\n"
-          "User original request: " + prompt + "\n\n"
-          "If additional hardware actions are strictly required to complete the request, "
-          "return ONLY a valid tool_call JSON.\n"
-          "Otherwise, return EXACTLY: NONE\n"
-          "Do not include explanation or extra text.",
-          1
+		"Analyze the execution result and determine whether the workflow is complete.\n"
+		"User original request: " + prompt + "\n\n"
+		"If additional hardware actions are strictly required to complete the request, "
+		"return ONLY a valid tool_call JSON.\n"
+		"Otherwise, respond naturally in the user's language.",
+		1
       );
       agent_dispatcher(response);  
     }
@@ -1478,7 +1471,7 @@ void agent_dispatcher(String message) {
         message.replace("&", "&amp;");
         message.replace("<", "&lt;");
         message.replace(">", "&gt;");
-		    message.replace("### ", "");
+		message.replace("### ", "");
         message.replace("## ", "");
         message.replace("# ", "");
         message.replace("__", "");
@@ -1494,12 +1487,14 @@ void agent_dispatcher(String message) {
         message.replace("***", "");
         message.replace("**", "");        
         message.replace("___", ""); 
+        message.replace("*• ", "");
+        message.replace("•   ** ", "      ");
 		
         sendMessageToTelegram(telegramBot_token, telegramBot_chatID, message, "");
 	  }
-   
-    return;
-    
+      else
+        sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.", "");
+      return;
   }
 
   JsonObject obj;
@@ -1639,8 +1634,8 @@ void getTelegramMessage() {
         
             sendMessageToTelegram(telegramBot_token, telegramBot_chatID, command, keyboard);
 
-            historical_messages += buildHistoricalData("user", "Command list", 1);
-            historical_messages += buildHistoricalData("model", command, 1);
+            historical_messages += buildHistoricalData("user", "Command list");
+            historical_messages += buildHistoricalData("model", command);
             storeHistoricalMessagesToFile();      
         
           } else if (message=="null") {
@@ -1777,8 +1772,12 @@ void setup() {
   if (soul != "")
     gemini_role = soul;
   
-  system_content = buildHistoricalData("user", gemini_role + devices_definition + tools_definition, 0) + buildHistoricalData("model", "OK", 1);
-  system_content_notools = buildHistoricalData("user", gemini_role + devices_definition, 0) + buildHistoricalData("model", "OK", 1);  
+  gemini_role.replace("\"", "\\\"");
+  devices_definition.replace("\"", "\\\"");
+  tools_definition.replace("\"", "\\\"");
+  
+  system_content = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + devices_definition + tools_definition + "\"}]}" + buildHistoricalData("model", "OK");
+  system_content_notools = "{\"role\": \"user\", \"parts\":[{ \"text\":\"" + gemini_role + devices_definition + "\"}]}" + buildHistoricalData("model", "OK");  
     
   String memory = getStringFromFile(memory_filename);
   Serial.println("memory.md len: " + String(memory.length()));
