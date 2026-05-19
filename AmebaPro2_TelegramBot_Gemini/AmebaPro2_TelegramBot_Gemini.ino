@@ -662,8 +662,8 @@ void handleAgentResponse(String message);
 #include "VideoStream.h"
 
 // Camera video configuration
-//VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
-VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
+VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
+//VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
 
 // WiFi AP channel
 char channel_ap[] = "2";
