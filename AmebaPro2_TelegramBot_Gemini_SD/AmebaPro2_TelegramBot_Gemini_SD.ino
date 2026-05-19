@@ -1286,12 +1286,14 @@ void executeTool(String command, JsonObject params) {
       storeHistoricalMessagesToFile();    
 
       response = geminiChatRequest(
-          "Analyze the execution result and determine whether the workflow is complete.\n"
-          "If additional hardware actions are strictly required to complete the request, "
-          "return ONLY a valid tool_call JSON.\n"
-          "Otherwise, respond naturally in the user's language or EXACTLY: NONE\n"
-          "Do not include explanation or extra text.",
-          1
+			"Analyze the execution result and determine whether the workflow is complete.\n"
+			"If additional hardware actions are strictly required, "	
+			"return ONLY a valid tool_call JSON.\n"
+			"If the workflow is already complete, return EXACTLY: NONE.\n"
+			"If no tool action is required and a user-facing reply is needed, "
+			"respond naturally in the user's language.\n"
+			"Do not include explanation or extra text.",
+			1
       );
 	  
       handleAgentResponse(response);
@@ -1307,12 +1309,14 @@ void executeTool(String command, JsonObject params) {
       storeHistoricalMessagesToFile();    
 
       response = geminiChatRequest(
-          "Analyze the execution result and determine whether the workflow is complete.\n"
-          "If additional hardware actions are strictly required to complete the request, "
-          "return ONLY a valid tool_call JSON.\n"
-          "Otherwise, respond naturally in the user's language or EXACTLY: NONE\n"
-          "Do not include explanation or extra text.",
-          1
+			"Analyze the execution result and determine whether the workflow is complete.\n"
+			"If additional hardware actions are strictly required, "
+			"return ONLY a valid tool_call JSON.\n"
+			"If the workflow is already complete, return EXACTLY: NONE.\n"
+			"If no tool action is required and a user-facing reply is needed, "
+			"respond naturally in the user's language.\n"
+			"Do not include explanation or extra text.",
+			1
       );
       
       handleAgentResponse(response);  
@@ -1352,13 +1356,15 @@ void executeTool(String command, JsonObject params) {
       handleAgentResponse(response);
       
       response = geminiChatRequest(
-          "Analyze the execution result and determine whether the workflow is complete.\n"
-          "If additional hardware actions are strictly required to complete the request, "
-          "User task request:\n" + task + "\n\n"
-          "return ONLY a valid tool_call JSON.\n"
-          "Otherwise, respond naturally in the user's language or EXACTLY: NONE\n"
-          "Do not include explanation or extra text.",
-          1
+			"Analyze the execution result and determine whether the workflow is complete.\n"
+			"If additional hardware actions are strictly required, "
+			"User task request:\n" + task + "\n\n"	
+			"return ONLY a valid tool_call JSON.\n"
+			"If the workflow is already complete, return EXACTLY: NONE.\n"
+			"If no tool action is required and a user-facing reply is needed, "
+			"respond naturally in the user's language.\n"
+			"Do not include explanation or extra text.",
+			1
       );
       
       handleAgentResponse(response);  
@@ -1371,13 +1377,15 @@ void executeTool(String command, JsonObject params) {
       handleAgentResponse(response);
       
       response = geminiChatRequest(
-          "Analyze the execution result and determine whether the workflow is complete.\n"
-          "If additional hardware actions are strictly required to complete the request, "
-          "User task request:\n" + task + "\n\n"
-          "return ONLY a valid tool_call JSON.\n"
-          "Otherwise, respond naturally in the user's language or EXACTLY: NONE\n"
-          "Do not include explanation or extra text.",
-          1
+			"Analyze the execution result and determine whether the workflow is complete.\n"
+			"If additional hardware actions are strictly required, "
+			"User task request:\n" + task + "\n\n"	
+			"return ONLY a valid tool_call JSON.\n"
+			"If the workflow is already complete, return EXACTLY: NONE.\n"
+			"If no tool action is required and a user-facing reply is needed, "
+			"respond naturally in the user's language.\n"
+			"Do not include explanation or extra text.",
+			1
       );
       
       handleAgentResponse(response); 
