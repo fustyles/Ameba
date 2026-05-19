@@ -100,7 +100,7 @@ Supported Tools
 /still<br>          Capture image<br>
 /vision<br>         Capture + multimodal analysis<br>
 /search<br>         Grounded web search<br>
-/memory<br>>        Runtime memory diagnostics<br>
+/memory<br>        Runtime memory diagnostics<br>
 /reset<br>          Reset conversation state<br>
 /chat<br>           Natural language reply<br>
 
@@ -109,13 +109,13 @@ Persistent Files
 ------------------------------------------------------------
 
 env.md<br>
-  WiFi / Telegram / Gemini credentials
+WiFi / Telegram / Gemini credentials
 
 soul.md<br>
-  Custom assistant personality prompt
+Custom assistant personality prompt
 
 memory.md<br>
-  Conversation history persistence
+Conversation history persistence
 
 Conversation state is restored automatically on boot.
 
