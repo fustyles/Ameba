@@ -6,7 +6,7 @@ fuClaw AI Telegram Assistant with Gemini Integration
 ------------------------------------------------------------
 
 Author:
-  ChungYi Fu (Kaohsiung, Taiwan)
+  ChungYi Fu (Kaohsiung, Taiwan)<br>
   https://www.facebook.com/francefu
 
 Repository:
@@ -42,26 +42,26 @@ Conversation + Reasoning + Tools + Vision + Memory + Hardware
 Runtime Architecture
 ------------------------------------------------------------
 
-Telegram User
-      ↓
-Telegram Polling Task
-      ↓
-Message Router
-      ↓
-Gemini Reasoning Engine
-(Chat / Search / Vision / Workflow)
-      ↓
-JSON tool_call output
-      ↓
-ArduinoJson validation
-      ↓
-Tool Dispatcher
-      ↓
-Hardware / Search / Vision Execution
-      ↓
-Result injection into memory
-      ↓
-Natural language reply
+Telegram User<br>
+      ↓<br>
+Telegram Polling Task<br>
+      ↓<br>
+Message Router<br>
+      ↓<br>
+Gemini Reasoning Engine<br>
+(Chat / Search / Vision / Workflow)<br>
+      ↓<br>
+JSON tool_call output<br>
+      ↓<br>
+ArduinoJson validation<br>
+      ↓<br>
+Tool Dispatcher<br>
+      ↓<br>
+Hardware / Search / Vision Execution<br>
+      ↓<br>
+Result injection into memory<br>
+      ↓<br>
+Natural language reply<br>
 
 ------------------------------------------------------------
 Execution Model
@@ -93,16 +93,16 @@ Multi-step workflows are executed step-by-step.
 Supported Tools
 ------------------------------------------------------------
 
-/digitalwrite   GPIO digital output
-/analogwrite    GPIO analog output
-/digitalread    GPIO digital input
-/analogread     GPIO analog input
-/still          Capture image
-/vision         Capture + multimodal analysis
-/search         Grounded web search
-/memory         Runtime memory diagnostics
-/reset          Reset conversation state
-/chat           Natural language reply
+/digitalwrite   GPIO digital output<br>
+/analogwrite    GPIO analog output<br>
+/digitalread    GPIO digital input<br>
+/analogread     GPIO analog input<br>
+/still          Capture image<br>
+/vision         Capture + multimodal analysis<br>
+/search         Grounded web search<br>
+/memory         Runtime memory diagnostics<br>
+/reset          Reset conversation state<br>
+/chat           Natural language reply<br>
 
 ------------------------------------------------------------
 Persistent Files
