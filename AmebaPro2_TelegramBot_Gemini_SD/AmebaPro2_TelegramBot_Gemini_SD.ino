@@ -167,7 +167,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-19 20:30
+Build Date: 2026-05-19 21:00
 ------------------------------------------------------------
 */
 
@@ -423,7 +423,9 @@ This applies to:
 TOOL ROUTING
 ==================================================
 
-Digital output control:
+Digital output control
+
+Request:
 
 {
   "type":"tool_call",
@@ -435,7 +437,26 @@ Digital output control:
   }
 }
 
-Analog output control:
+Success response:
+
+{
+  "status":"success",
+  "method":"digitalwrite",
+  "pin":24,
+  "value":1
+}
+
+Error response:
+
+{
+  "status":"error",
+  "reason":"invalid_digital_value",
+  "pin":24
+}
+
+Analog output control
+
+Request:
 
 {
   "type":"tool_call",
@@ -447,7 +468,26 @@ Analog output control:
   }
 }
 
-Digital input read:
+Success response:
+
+{
+  "status":"success",
+  "method":"analogwrite",
+  "pin":13,
+  "value":128
+}
+
+Error response:
+
+{
+  "status":"error",
+  "reason":"invalid_output_mode",
+  "pin":13
+}
+
+Digital input read
+
+Request:
 
 {
   "type":"tool_call",
@@ -458,7 +498,26 @@ Digital input read:
   }
 }
 
-Analog input read:
+Success response:
+
+{
+  "status":"success",
+  "method":"digitalread",
+  "pin":12,
+  "value":0
+}
+
+Error response:
+
+{
+  "status":"error",
+  "reason":"invalid_input_mode",
+  "pin":12
+}
+
+Analog input read
+
+Request:
 
 {
   "type":"tool_call",
@@ -468,6 +527,24 @@ Analog input read:
     "pinmode":"analogread"
   }
 }
+
+Success response:
+
+{
+  "status":"success",
+  "method":"analogread",
+  "pin":34,
+  "value":723
+}
+
+Error response:
+
+{
+  "status":"error",
+  "reason":"invalid_input_mode",
+  "pin":34
+}
+
 
 Capture image:
    
@@ -680,8 +757,8 @@ void handleAgentResponse(String message);
 #include "VideoStream.h"
 
 // Camera video configuration
-//VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
-VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
+VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
+//VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
 
 // WiFi AP channel
 char channel_ap[] = "2";
@@ -1226,49 +1303,87 @@ String getMemoryInfo() {
 // Control device output using digital or analog mode.
 // This function supports general-purpose actuators such as LED, relay, and other GPIO-controlled devices.
 String toolPinOutput(int pin, String mode, int value) {
-  
-	pinMode(pin, OUTPUT);
- 
-	mode.toLowerCase();
-	if (mode=="digitalwrite") {
-        if (value != 0 && value != 1)
-            return "[toolPinOutput] Error: Invalid digital value";
-		
-		digitalWrite(pin, value);
-        if (value == 1)
-            return "Device(pin="+String(pin)+") turned on";
 
-        return "Device(pin="+String(pin)+") turned off";
-	}	
+    pinMode(pin, OUTPUT);
+
+    mode.toLowerCase();
+
+    if (mode == "digitalwrite") {
+
+        if (value != 0 && value != 1) {
+            return "{\"status\":\"error\",\"reason\":\"invalid_digital_value\",\"pin\":" + String(pin) + "}";
+        }
+
+        digitalWrite(pin, value);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"digitalwrite\","
+            "\"pin\":" + String(pin) + ","
+            "\"value\":" + String(value) +
+            "}";
+
+    }
     else if (mode == "analogwrite") {
 
         value = constrain(value, 0, 255);
 
         analogWrite(pin, value);
 
-        return "Device(pin="+String(pin)+") brightness set to " + String(value);
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"analogwrite\","
+            "\"pin\":" + String(pin) + ","
+            "\"value\":" + String(value) +
+            "}";
+
     }
 
-    return "[toolPinOutput] Error: Invalid output mode";
+    return
+        "{\"status\":\"error\","
+        "\"reason\":\"invalid_output_mode\","
+        "\"pin\":" + String(pin) +
+        "}";
 }
 
 // Read device input using digital or analog mode.
 // This function supports general-purpose sensors such as buttons and analog sensors connected to GPIO pins.
 String toolPinInput(int pin, String mode) {
-  
-    pinMode(pin, INPUT);
-    
-    mode.toLowerCase();
-    if (mode == "digitalread") {
-        int value = digitalRead(pin);
-        return "Device(pin=" + String(pin) + ") digital input value: " + String(value);
 
-    } else if (mode == "analogread") {
+    pinMode(pin, INPUT);
+
+    mode.toLowerCase();
+
+    if (mode == "digitalread") {
+
+        int value = digitalRead(pin);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"digitalread\","
+            "\"pin\":" + String(pin) + ","
+            "\"value\":" + String(value) +
+            "}";
+
+    }
+    else if (mode == "analogread") {
+
         int value = analogRead(pin);
-        return "Device(pin=" + String(pin) + ") analog input value: " + String(value);  
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"analogread\","
+            "\"pin\":" + String(pin) + ","
+            "\"value\":" + String(value) +
+            "}";
+
     }
 
-    return "[toolPinOutput] Error: Invalid output mode";
+    return
+        "{\"status\":\"error\","
+        "\"reason\":\"invalid_input_mode\","
+        "\"pin\":" + String(pin) +
+        "}";
 }
 
 // Execute tool commands returned by Gemini

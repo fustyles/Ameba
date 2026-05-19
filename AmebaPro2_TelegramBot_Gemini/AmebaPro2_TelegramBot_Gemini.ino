@@ -165,7 +165,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Volatile Runtime Memory Version
 
-Build Date: 2026-05-19 20:30
+Build Date: 2026-05-19 21:00
 
 ------------------------------------------------------------
 */
@@ -1137,49 +1137,87 @@ String getMemoryInfo() {
 // Control device output using digital or analog mode.
 // This function supports general-purpose actuators such as LED, relay, and other GPIO-controlled devices.
 String toolPinOutput(int pin, String mode, int value) {
-  
-	pinMode(pin, OUTPUT);
- 
-	mode.toLowerCase();
-	if (mode=="digitalwrite") {
-        if (value != 0 && value != 1)
-            return "[toolPinOutput] Error: Invalid digital value";
-		
-		digitalWrite(pin, value);
-        if (value == 1)
-            return "Device(pin="+String(pin)+") turned on";
 
-        return "Device(pin="+String(pin)+") turned off";
-	}	
+    pinMode(pin, OUTPUT);
+
+    mode.toLowerCase();
+
+    if (mode == "digitalwrite") {
+
+        if (value != 0 && value != 1) {
+            return "{\"status\":\"error\",\"reason\":\"invalid_digital_value\",\"pin\":" + String(pin) + "}";
+        }
+
+        digitalWrite(pin, value);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"digitalwrite\","
+            "\"pin\":" + String(pin) + ","
+            "\"value\":" + String(value) +
+            "}";
+
+    }
     else if (mode == "analogwrite") {
 
         value = constrain(value, 0, 255);
 
         analogWrite(pin, value);
 
-        return "Device(pin="+String(pin)+") brightness set to " + String(value);
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"analogwrite\","
+            "\"pin\":" + String(pin) + ","
+            "\"value\":" + String(value) +
+            "}";
+
     }
 
-    return "[toolPinOutput] Error: Invalid output mode";
+    return
+        "{\"status\":\"error\","
+        "\"reason\":\"invalid_output_mode\","
+        "\"pin\":" + String(pin) +
+        "}";
 }
 
 // Read device input using digital or analog mode.
 // This function supports general-purpose sensors such as buttons and analog sensors connected to GPIO pins.
 String toolPinInput(int pin, String mode) {
-  
-    pinMode(pin, INPUT);
-    
-    mode.toLowerCase();
-    if (mode == "digitalread") {
-        int value = digitalRead(pin);
-        return "Device(pin=" + String(pin) + ") digital input value: " + String(value);
 
-    } else if (mode == "analogread") {
+    pinMode(pin, INPUT);
+
+    mode.toLowerCase();
+
+    if (mode == "digitalread") {
+
+        int value = digitalRead(pin);
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"digitalread\","
+            "\"pin\":" + String(pin) + ","
+            "\"value\":" + String(value) +
+            "}";
+
+    }
+    else if (mode == "analogread") {
+
         int value = analogRead(pin);
-        return "Device(pin=" + String(pin) + ") analog input value: " + String(value);  
+
+        return
+            "{\"status\":\"success\","
+            "\"method\":\"analogread\","
+            "\"pin\":" + String(pin) + ","
+            "\"value\":" + String(value) +
+            "}";
+
     }
 
-    return "[toolPinOutput] Error: Invalid output mode";
+    return
+        "{\"status\":\"error\","
+        "\"reason\":\"invalid_input_mode\","
+        "\"pin\":" + String(pin) +
+        "}";
 }
 
 // Execute tool commands returned by Gemini
