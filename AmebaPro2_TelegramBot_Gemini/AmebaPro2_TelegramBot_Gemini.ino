@@ -165,7 +165,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Volatile Runtime Memory Version
 
-Build Date: 2026-05-19
+Build Date: 2026-05-19 20:00
 
 ------------------------------------------------------------
 */
@@ -1196,12 +1196,14 @@ void executeTool(String command, JsonObject params) {
       historicalMessages += buildGeminiMessage("model", response, 1);   
 
       response = geminiChatRequest(
-    		"Analyze the execution result and determine whether the workflow is complete.\n\n"
-    		"If additional hardware actions are strictly required to complete the request, "
-    		"return ONLY a valid tool_call JSON.\n"
-    		"Otherwise, respond naturally in the user's language.",
-    		1
+          "Analyze the execution result and determine whether the workflow is complete.\n"
+          "If additional hardware actions are strictly required to complete the request, "
+          "return ONLY a valid tool_call JSON.\n"
+          "Otherwise, respond naturally in the user's language or EXACTLY: NONE\n"
+          "Do not include explanation or extra text.",
+          1
       );
+	  
       handleAgentResponse(response);
     
     } else if (command == "/digitalread" || command == "/analogread") {
@@ -1214,14 +1216,15 @@ void executeTool(String command, JsonObject params) {
       historicalMessages += buildGeminiMessage("model", response, 1);   
 
       response = geminiChatRequest(
-    		"Analyze the execution result and determine whether the workflow is complete.\n\n"
-    		"If additional hardware actions are strictly required to complete the request, "
-    		"return ONLY a valid tool_call JSON.\n"
-    		"Otherwise, respond naturally in the user's language.",
-    		1
+          "Analyze the execution result and determine whether the workflow is complete.\n"
+          "If additional hardware actions are strictly required to complete the request, "
+          "return ONLY a valid tool_call JSON.\n"
+          "Otherwise, respond naturally in the user's language or EXACTLY: NONE\n"
+          "Do not include explanation or extra text.",
+          1
       );
-      
-      handleAgentResponse(response);  
+	  
+      handleAgentResponse(response); 
       
     } else if (command == "/still") {
       telegramSendCapturedImage(telegrambotToken, telegrambotChatId, 1);
@@ -1249,11 +1252,8 @@ void executeTool(String command, JsonObject params) {
 
     } else if (command == "/search") {
       String query = params["query"].as<String>();
-      Serial.println(query);
       String task = params["task"].as<String>();
-      Serial.println(task);
       String response = geminiSearchRequest(query, 0);
-      response.trim();
       
       handleAgentResponse(response);
       
@@ -1271,11 +1271,8 @@ void executeTool(String command, JsonObject params) {
 
     } else if (command == "/vision") {
       String query = params["query"].as<String>();
-      Serial.println(query);
       String task = params["task"].as<String>();
-      Serial.println(task);
       String response = geminiVisionRequest(query);
-      response.trim();
       
       handleAgentResponse(response);
       
