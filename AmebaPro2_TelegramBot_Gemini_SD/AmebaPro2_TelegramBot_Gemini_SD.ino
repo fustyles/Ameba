@@ -168,7 +168,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-19 21:30
+Build Date: 2026-05-20 00:00
 ------------------------------------------------------------
 */
 
@@ -997,131 +997,118 @@ void geminiChatReset() {
 
 // Send request to Gemini and return response text
 String geminiChatRequest(String message, bool tools) {
-
   historicalMessages += buildGeminiMessage("user", message, 1);
   storeHistoricalMessagesToFile();
 
+  String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
 
-  String contents = "";
-  if (tools)
-    contents = systemContent + historicalMessages;
-  else
-    contents = systemContentNoTools + historicalMessages;  
+  String request = "{\"contents\": [" + contents +
+                   "],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
 
-  String request =
-    "{\"contents\": [" + contents +
-    "],\"generationConfig\": {\"maxOutputTokens\": " +
-    geminiMaxOutputTokens +
-    ", \"temperature\": " +
-    geminiTemperature +
-    "}}";  
-  
   WiFiSSLClient client;
+  String responseText = "";
 
   if (client.connect("generativelanguage.googleapis.com", 443)) {
-
     client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
     client.println("Content-Type: application/json; charset=utf-8");
     client.println("Content-Length: " + String(request.length()));
     client.println();
+    
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
 
-    for (int i = 0; i < request.length(); i += 1024)
-      client.print(request.substring(i, i+1024));
+    String body = "";
+    unsigned long timeout = millis() + 18000;
+    bool headersEnded = false;
+    String line = "";
 
-    String getResponse="",Feedback="";
-    bool state = false;
-
-    int waitTime = 10000;
-    unsigned long startTime = millis();
-
-    while ((startTime + waitTime) > millis()) {
-      delay(100);
-
+    while (client.connected() && millis() < timeout) {
       while (client.available()) {
         char c = client.read();
 
-        if (state==true)
-          getResponse += String(c);
-
-        if (c == '\n')
-          Feedback = "";
-        else if (c != '\r')
-          Feedback += String(c);
-
-        if (Feedback.indexOf("\",\"text\":\"")!=-1)
-          state=true;
-
-        if (Feedback.indexOf("\"},")!=-1)
-          state=false;
-
-        startTime = millis();
-
-        if (Feedback.indexOf("\",\"text\":\"")!=-1||Feedback.indexOf("\"text\": \"")!=-1)
-          state=true;
-
-        if (getResponse.indexOf("\"\n\r")!=-1&&state==true) {
-          state=false;
-          getResponse = getResponse.substring(0, getResponse.lastIndexOf("\""));
-          break;
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) { 
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } 
+        else {
+          body += c;
         }
-        else if (getResponse.indexOf("\"")!=-1&&c == '\n'&&state==true) {
-          state=false;
-          getResponse = getResponse.substring(0, getResponse.lastIndexOf("\""));
-          break;
-        }
-
       }
+      delay(10);
+    }
+    
+    client.stop();
 
-      if (getResponse.length()>0) {
-        client.stop();
-        
-        historicalMessages += buildGeminiMessage("model", getResponse, 1);
-        storeHistoricalMessagesToFile();
-
-        return getResponse;
-      }
+    body.trim();
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
     }
 
-    client.stop();
-    Serial.println(Feedback);
+    DynamicJsonDocument doc(16384);
+    DeserializationError error = deserializeJson(doc, body);
 
-    historicalMessages += buildGeminiMessage("model", "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.", 1);
-    storeHistoricalMessagesToFile();    
+    if (error) {
+      Serial.println("JSON parse failed: " + String(error.c_str()));
+      Serial.println("Body preview: " + body.substring(0, 500));
+      responseText = "Parse error. Please try again.";
+    } 
+    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    } 
+    else if (doc["error"]) {
+      responseText = "Gemini API Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+    } 
+    else {
+      responseText = "Unexpected response from Gemini.";
+      Serial.println("Unknown response format.");
+    }
 
-    return "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.";
-    //return "NONE";
+  } else {
+    Serial.println("Failed to connect to Gemini API");
+    responseText = "Connection failed";
   }
-  else {
-    historicalMessages += buildGeminiMessage("model", "Connection failed", 1);
-    storeHistoricalMessagesToFile();    
-        
-    return "Connection failed";
+
+  if (responseText == "") {
+    responseText = "Gemini did not respond. Please try again.";
   }
+
+  historicalMessages += buildGeminiMessage("model", responseText, 1);
+  storeHistoricalMessagesToFile();
+
+  return responseText;
 }
 
 // Send Gemini request with Google Search tool enabled
 String geminiSearchRequest(String message, bool tools) {
-  
   historicalMessages += buildGeminiMessage("user", message, 1);
   storeHistoricalMessagesToFile();
 
-  String contents = "";
-  if (tools)
-    contents = systemContent + historicalMessages;
-  else
-    contents = systemContentNoTools + historicalMessages;
+  String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
 
-  // Build Gemini API request with Google Search tool
-  String request = "{\"contents\": [" + contents + "],\"tools\": [{google_search: {}}],\"generationConfig\": {\"maxOutputTokens\": " + geminiMaxOutputTokens + ", \"temperature\": " + geminiTemperature + "}}";
-  
+  // Build request with Google Search tool
+  String request = "{\"contents\": [" + contents +
+                   "],\"tools\": [{\"google_search\": {}}],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
   WiFiSSLClient client;
-    
-  // Connect to Gemini API server
-  if (client.connect("generativelanguage.googleapis.com", 443)) {
+  String responseText = "";
 
-    // Send HTTP POST request headers
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+    // Send HTTP Request
     client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
@@ -1129,85 +1116,75 @@ String geminiSearchRequest(String message, bool tools) {
     client.println("Content-Length: " + String(request.length()));
     client.println();
     
-    // Send request body in chunks
     for (int i = 0; i < request.length(); i += 1024) {
-      client.print(request.substring(i, i+1024));
+      client.print(request.substring(i, i + 1024));
     }
 
-    // Response parsing variables
-    String getResponse="",Feedback="";
-    bool state = false;
+    String body = "";
+    unsigned long timeout = millis() + 20000;
+    bool headersEnded = false;
+    String line = "";
 
-    // Maximum response wait time
-    int waitTime = 20000;
-    unsigned long startTime = millis();
-
-    while ((startTime + waitTime) > millis()) {
-
-      //Serial.print(".");
-      delay(100);
-
+    while (client.connected() && millis() < timeout) {
       while (client.available()) {
-
         char c = client.read();
 
-        if (state==true)
-          getResponse += String(c);
-
-        if (c == '\n')
-          Feedback = "";
-        else if (c != '\r')
-          Feedback += String(c);
-          
-        if (Feedback.indexOf("\",\"text\":\"")!=-1)
-          state=true;
-          
-        if (Feedback.indexOf("\"},")!=-1)
-          state=false;
-
-        startTime = millis();
-
-        if (Feedback.indexOf("\",\"text\":\"")!=-1||Feedback.indexOf("\"text\": \"")!=-1)
-          state=true;
-
-        if (getResponse.indexOf("\"\n\r")!=-1&&state==true) {
-          state=false;
-          getResponse = getResponse.substring(0, getResponse.lastIndexOf("\""));
-          break;
-        } else if (getResponse.indexOf("\"")!=-1&&c == '\n'&&state==true) {
-          state=false;
-          getResponse = getResponse.substring(0, getResponse.lastIndexOf("\""));
-          break;
+        if (!headersEnded) {
+          if (c == '\n') {
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
         }
       }
-
-      if (getResponse.length()>0) {
-
-        client.stop();
-
-        historicalMessages += buildGeminiMessage("model", getResponse, 1);
-        storeHistoricalMessagesToFile();
-
-        return getResponse;
-      }
+      delay(10);
     }
-
+    
     client.stop();
 
-    Serial.println(Feedback);
+    body.trim();
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
+    }
 
-    historicalMessages += buildGeminiMessage("model", "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.", 1);
-    storeHistoricalMessagesToFile();    
+    DynamicJsonDocument doc(16384);
+    DeserializationError error = deserializeJson(doc, body);
 
-    return "Gemini did not respond. Please try again, provide more details, or check your API key and network connection.";
-    //return "NONE";
+    if (error) {
+      Serial.println("JSON parse failed (Search): " + String(error.c_str()));
+      Serial.println("Body preview: " + body.substring(0, 500));
+      responseText = "Search parse error. Please try again.";
+    } 
+    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    } 
+    else if (doc["error"]) {
+      responseText = "Gemini Search API Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+    } 
+    else {
+      responseText = "Unexpected response from Gemini Search.";
+    }
+
+  } else {
+    Serial.println("Failed to connect to Gemini API (Search)");
+    responseText = "Connection failed";
   }
-  else {
-    historicalMessages += buildGeminiMessage("model", "Connection failed", 1);
-    storeHistoricalMessagesToFile();    
-        
-    return "Connection failed";
+
+  if (responseText == "") {
+    responseText = "Gemini Search did not respond. Please try again.";
   }
+
+  historicalMessages += buildGeminiMessage("model", responseText, 1);
+  storeHistoricalMessagesToFile();
+
+  return responseText;
 }
 
 // Capture camera frame and send it to Gemini Vision for multimodal analysis
@@ -1215,13 +1192,11 @@ String geminiVisionRequest(String message) {
   historicalMessages += buildGeminiMessage("user", message, 1);
   storeHistoricalMessagesToFile();
 
-  const char* myDomain = "generativelanguage.googleapis.com";
-  String getResponse="",Feedback="";
-  
   WiFiSSLClient client;
-  //Serial.println("Connect to " + String(myDomain));
+  String responseText = "";
+  const char* myDomain = "generativelanguage.googleapis.com";
+
   if (client.connect(myDomain, 443)) {
-    //Serial.println("Connection successful");
     Camera.getImage(0, &imageAddress, &imageLength);
     
     uint8_t *fbBuf = (uint8_t*)imageAddress;
@@ -1230,68 +1205,92 @@ String geminiVisionRequest(String message) {
     char *input = (char *)fbBuf;
     char output[base64_enc_len(3)];
     String imageFile = "";
-    for (int i=0;i<fbLen;i++) {
+    
+    for (size_t i = 0; i < fbLen; i++) {
       base64_encode(output, (input++), 3);
-      if (i%3==0) imageFile += String(output);
+      if (i % 3 == 0) imageFile += String(output);
     }
-    String Data = "{\"contents\": [{\"parts\": [{\"text\": \""+message+"\"}, {\"inline_data\": {\"mime_type\":\"image/jpeg\",\"data\":\""+imageFile+"\"}}]}]}";
+
+    String Data = "{\"contents\": [{\"parts\": [{\"text\": \"" + message + 
+                  "\"}, {\"inline_data\": {\"mime_type\":\"image/jpeg\",\"data\":\"" + 
+                  imageFile + "\"}}]}]}";
 
     client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
-    client.println("Host: "+String(myDomain));
+    client.println("Host: " + String(myDomain));
     client.println("Content-Type: application/json; charset=utf-8");
     client.println("Content-Length: " + String(Data.length()));
     client.println("Connection: close");
     client.println();
-
-    int Index;
-    for (Index = 0; Index < Data.length(); Index = Index+1024) {
-      client.print(Data.substring(Index, Index+1024));
+    
+    for (size_t i = 0; i < Data.length(); i += 1024) {
+      client.print(Data.substring(i, i + 1024));
     }
 
-    int waitTime = 10000;
-    unsigned long startTime = millis();
-    bool state = false;
-    bool markState = false;
-    while ((startTime + waitTime) > millis()) {
-      Serial.print(".");
-      delay(100);
-      while (client.available())  {
-          char c = client.read();
-          if (String(c)=="{") markState=true;
-          if (state==true&&markState==true) Feedback += String(c);
+    String body = "";
+    unsigned long timeout = millis() + 18000;
+    bool headersEnded = false;
+    String line = "";
+
+    while (client.connected() && millis() < timeout) {
+      while (client.available()) {
+        char c = client.read();
+
+        if (!headersEnded) {
           if (c == '\n') {
-            if (getResponse.length()==0) state=true;
-            getResponse = "";
-         }
-          else if (c != '\r')
-            getResponse += String(c);
-          startTime = millis();
-       }
-       if (Feedback.length()>0) break;
+            if (line.length() <= 1) {
+              headersEnded = true;
+            }
+            line = "";
+          } else if (c != '\r') {
+            line += c;
+          }
+        } else {
+          body += c;
+        }
+      }
+      delay(10);
     }
+    
     client.stop();
-    Serial.println("");
-    //Serial.println(Feedback);
 
-    JsonObject obj;
-    DynamicJsonDocument doc(8192);
-    deserializeJson(doc, Feedback);
-    obj = doc.as<JsonObject>();
-    getResponse = obj["candidates"][0]["content"]["parts"][0]["text"].as<String>();
-    if (getResponse == "null")
-      getResponse = obj["error"]["message"].as<String>();
+    body.trim();
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
+      body = body.substring(jsonStart);
+    }
 
-    historicalMessages += buildGeminiMessage("model", getResponse, 1);
-    storeHistoricalMessagesToFile();     
-  
-    return getResponse;   
+    DynamicJsonDocument doc(16384);
+    DeserializationError error = deserializeJson(doc, body);
+
+    if (error) {
+      Serial.println("JSON parse failed (Vision): " + String(error.c_str()));
+      Serial.println("Body preview: " + body.substring(0, 400));
+      responseText = "Vision parse error. Please try again.";
+    } 
+    else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    } 
+    else if (doc["error"]) {
+      responseText = "Gemini Vision API Error: " + doc["error"]["message"].as<String>();
+      Serial.println(responseText);
+    } 
+    else {
+      responseText = "Unexpected response from Gemini Vision.";
+    }
+
+  } else {
+    Serial.println("Failed to connect to Gemini API (Vision)");
+    responseText = "Connection failed";
   }
-  else {
-    historicalMessages += buildGeminiMessage("model", "Connection failed", 1);
-    storeHistoricalMessagesToFile();    
-        
-    return "Connection failed";
+
+  if (responseText == "") {
+    responseText = "Gemini Vision did not respond. Please try again.";
   }
+
+  historicalMessages += buildGeminiMessage("model", responseText, 1);
+  storeHistoricalMessagesToFile();
+
+  return responseText;
 }
 
 // Get current memory usage information
