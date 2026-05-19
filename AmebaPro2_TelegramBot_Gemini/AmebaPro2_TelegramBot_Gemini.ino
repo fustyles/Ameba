@@ -29,7 +29,7 @@ It combines:
 - Prompt-driven JSON tool routing
 - GPIO digital / analog I/O control
 - Camera capture and image upload
-- Persistent conversation memory
+- Volatile conversation memory (RAM only)
 - FreeRTOS concurrent task scheduling
 
 The runtime acts as a hybrid autonomous agent:
@@ -57,7 +57,7 @@ Tool Dispatcher
       ↓
 Hardware / Search / Vision Execution
       ↓
-Result injection into memory
+Result injection into runtime memory
       ↓
 Natural language reply
 
@@ -103,19 +103,17 @@ Supported Tools
 /chat           Natural language reply
 
 ------------------------------------------------------------
-Persistent Files
+Conversation Memory
 ------------------------------------------------------------
 
-env.md
-  WiFi / Telegram / Gemini credentials
+Conversation history is stored in RAM only.
 
-soul.md
-  Custom assistant personality prompt
+- Preserved during runtime
+- Cleared on reboot
+- Cleared by /reset
+- Used as Gemini conversational context
 
-memory.md
-  Conversation history persistence
-
-Conversation state is restored automatically on boot.
+No SD card or filesystem persistence is required.
 
 ------------------------------------------------------------
 Hardware Safety
@@ -124,8 +122,8 @@ Hardware Safety
 Confirmed device mappings only.
 
 AMB82-mini
-- Green LED: GPIO 24
-- Blue LED : GPIO 23
+- Green LED : GPIO 24
+- Blue LED  : GPIO 23
 
 HUB 8735 Ultra
 - Green LED : GPIO 25
@@ -147,27 +145,28 @@ Software Stack
 - FreeRTOS
 - VideoStream
 - Base64
-- AmebaFatFS
 
 ------------------------------------------------------------
 Known Limitations
 ------------------------------------------------------------
 
-- Conversation history grows over time
-- String-heavy heap fragmentation risk
-- Vision encoding is CPU intensive
-- Large JSON parsing impacts heap usage
-- Gemini response format sensitivity
+- Conversation history grows during runtime
+- Heap fragmentation risk from String-heavy operations
+- Large Gemini responses increase heap pressure
+- Vision image base64 encoding is CPU intensive
+- JSON parsing depends on strict response formatting
 - Recursive tool chaining requires safeguards
+- Conversation memory is lost after reboot
 
 ------------------------------------------------------------
 Version
 ------------------------------------------------------------
 
 Prompt-Orchestrated Embedded Agent Edition
-Persistent Filesystem Runtime
+Volatile Runtime Memory Version
 
-Build Date: 2026-05-19 14:00
+Build Date: 2026-05-19
+
 ------------------------------------------------------------
 */
 
