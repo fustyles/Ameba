@@ -101,7 +101,7 @@ Supported Tools
 /memory         Runtime memory diagnostics
 /reset          Reset conversation state
 /chat           Natural language reply
-/restart        Restart the device
+/reboot        Reboot the device
 
 ------------------------------------------------------------
 Conversation Memory
@@ -166,7 +166,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Volatile Runtime Memory Version
 
-Build Date: 2026-05-20 00:00
+Build Date: 2026-05-20 09:00
 
 ------------------------------------------------------------
 */
@@ -416,7 +416,7 @@ This applies to:
 
 - /digitalwrite
 - /analogwrite
-- /restart
+- /reboot
 - any GPIO output control
 - any actuator (LED, motor, relay, fan)
 
@@ -526,11 +526,11 @@ Normal conversational reply:
   }
 }
 
-Restart the device:
+Reboot the device:
 
 {
   "type":"tool_call",
-  "method":"/restart",
+  "method":"/reboot",
   "params":{}
 }
 
@@ -1353,10 +1353,10 @@ void executeTool(String command, JsonObject params) {
       
       handleAgentResponse(response); 
     }
-  	else if (command == "/restart") {
-  		telegramSendMessage(telegrambotToken, telegrambotChatId, "Restarting the device, please wait...", "");
+  	else if (command == "/reboot") {
+  		telegramSendMessage(telegrambotToken, telegrambotChatId, "Rebooting the device, please wait...", "");
   		
-  		Serial.println("User requested restart the device.");
+  		Serial.println("User requested reboot the device.");
   		delay(2000);
   		
   		NVIC_SystemReset();
