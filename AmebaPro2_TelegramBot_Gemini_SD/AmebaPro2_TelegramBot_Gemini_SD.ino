@@ -110,6 +110,9 @@ Persistent Files
 env.md
   WiFi / Telegram / Gemini credentials
 
+devices.md
+  device definitions
+
 soul.md
   Custom assistant personality prompt
 
@@ -168,7 +171,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-20 09:00
+Build Date: 2026-05-20 20:00
 ------------------------------------------------------------
 */
 
@@ -307,28 +310,55 @@ Never output:
 
 If the user's request requires multiple hardware actions:
 
-Execute ONLY the first required action.
+First determine the correct execution order based on time sequence.
 
-Then WAIT for system feedback before issuing the next action.
+Then construct a JSON array of tool_call objects by following these rules:
 
-Never anticipate later steps.
+1. Evaluate each planned tool_call in order.
 
-Never plan ahead.
+2. ONLY include tool_call objects that are fully complete.
+
+A tool_call is COMPLETE only if:
+- method is valid
+- all required parameters for that method are present and valid
+
+3. Append complete tool_call objects sequentially into the JSON array.
+
+4. The moment a tool_call is found to be incomplete, invalid, or ambiguous:
+
+   - STOP processing immediately
+   - DO NOT include this tool_call
+   - DO NOT include any tool_calls after it
+   - DISCARD all subsequent planned actions
+
+This means the output array must always be a
+"longest valid prefix of complete tool_calls".
+
+5. Never reorder actions.
+
+6. Never skip required steps before a valid one.
+
+7. Never speculate or fill missing parameters.
 
 Example:
 
 User:
-Turn off green and blue LEDs
+Turn off green LED, then blue LED
 
-Correct behavior:
+Correct output:
 
-Step 1:
-Return ONE tool_call for green LED only
+[
+  { complete tool_call #1 },
+  { complete tool_call #2 }
+]
 
-Wait for execution feedback
+If second is incomplete:
 
-Step 2:
-Return ONE tool_call for blue LED only
+[
+  { complete tool_call #1 }
+]
+
+All later tool_calls are discarded.
 
 ==================================================
 EXECUTION VALIDATION
@@ -1045,7 +1075,6 @@ String geminiChatRequest(String message, bool tools) {
           body += c;
         }
       }
-      delay(10);
     }
     
     client.stop();
@@ -1142,7 +1171,6 @@ String geminiSearchRequest(String message, bool tools) {
           body += c;
         }
       }
-      delay(10);
     }
     
     client.stop();
@@ -1396,7 +1424,7 @@ String toolPinInput(int pin, String mode) {
 }
 
 // Execute tool commands returned by Gemini
-void executeTool(String command, JsonObject params) {
+void executeTool(String command, JsonObject params, bool reCheck = true) {
 
     if (command == "/digitalwrite"||command == "/analogwrite") {
       int pin = params["pin"].as<int>();
@@ -1409,19 +1437,21 @@ void executeTool(String command, JsonObject params) {
       historicalMessages += buildGeminiMessage("model", response, 1);
       storeHistoricalMessagesToFile();    
 
-	  response = geminiChatRequest(
-		"Analyze the execution result and determine whether the workflow is complete.\n"
-		"If additional hardware actions are strictly required, "
-		"return ONLY a valid tool_call JSON.\n"
-		"If the workflow is already complete, return EXACTLY: NONE.\n"
-		"If no tool action is required and a user-facing reply is needed, "
-		"respond naturally in the user's language.\n"
-		"Do not repeat the same meaning as your immediately previous response.\n"
-		"Do not include explanation or extra text.",
-		1
-	  );
-	  
-      handleAgentResponse(response);
+      if (reCheck) {
+    	  response = geminiChatRequest(
+      		"Analyze the execution result and determine whether the workflow is complete.\n"
+      		"If additional hardware actions are strictly required, "
+      		"return ONLY a valid tool_call JSON.\n"
+      		"If the workflow is already complete, return EXACTLY: NONE.\n"
+      		"If no tool action is required and a user-facing reply is needed, "
+      		"respond naturally in the user's language.\n"
+      		"Do not repeat the same meaning as your immediately previous response.\n"
+      		"Do not include explanation or extra text.",
+      		1
+    	  );
+  	  
+        handleAgentResponse(response);
+      }
     
     } else if (command == "/digitalread" || command == "/analogread") {
       int pin = params["pin"].as<int>();
@@ -1433,27 +1463,52 @@ void executeTool(String command, JsonObject params) {
       historicalMessages += buildGeminiMessage("model", response, 1);
       storeHistoricalMessagesToFile();    
 
-	  response = geminiChatRequest(
-		"Analyze the execution result and determine whether the workflow is complete.\n"
-		"If additional hardware actions are strictly required, "
-		"return ONLY a valid tool_call JSON.\n"
-		"If the workflow is already complete, return EXACTLY: NONE.\n"
-		"If no tool action is required and a user-facing reply is needed, "
-		"respond naturally in the user's language.\n"
-		"Do not repeat the same meaning as your immediately previous response.\n"
-		"Do not include explanation or extra text.",
-		1
-	  );
-
-      
-      handleAgentResponse(response);  
+      if (reCheck) {
+    	  response = geminiChatRequest(
+      		"Analyze the execution result and determine whether the workflow is complete.\n"
+      		"If additional hardware actions are strictly required, "
+      		"return ONLY a valid tool_call JSON.\n"
+      		"If the workflow is already complete, return EXACTLY: NONE.\n"
+      		"If no tool action is required and a user-facing reply is needed, "
+      		"respond naturally in the user's language.\n"
+      		"Do not repeat the same meaning as your immediately previous response.\n"
+      		"Do not include explanation or extra text.",
+      		1
+    	  );
+  
+        handleAgentResponse(response);
+      }  
       
     } else if (command == "/still") {
-      telegramSendCapturedImage(telegrambotToken, telegrambotChatId, 1);
+      String tgResponse = telegramSendCapturedImage(telegrambotToken, telegrambotChatId, 1);
 
+      tgResponse.replace("\\", "\\\\");
+      tgResponse.replace("\"", "\\\"");   
+       
+      String response =
+        "{\"status\":\"success\","
+        "\"method\":\"still\","
+        "\"result\":\"" + tgResponse + "\"}";
+    
       historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", "Get still to Telegram Bot", 1);
-      storeHistoricalMessagesToFile();      
+      historicalMessages += buildGeminiMessage("model", response, 1);
+      storeHistoricalMessagesToFile(); 
+
+      if (reCheck) {
+        response = geminiChatRequest(
+          "Analyze the execution result and determine whether the workflow is complete.\n"
+          "If additional hardware actions are strictly required, "
+          "return ONLY a valid tool_call JSON.\n"
+          "If the workflow is already complete, return EXACTLY: NONE.\n"
+          "If no tool action is required and a user-facing reply is needed, "
+          "respond naturally in the user's language.\n"
+          "Do not repeat the same meaning as your immediately previous response.\n"
+          "Do not include explanation or extra text.",
+          1
+        );
+      
+        handleAgentResponse(response);  
+      }      
       
     } else if (command == "/reset") {
       geminiChatReset();
@@ -1461,7 +1516,7 @@ void executeTool(String command, JsonObject params) {
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", "Start a new chat", 1);
-      storeHistoricalMessagesToFile();      
+      storeHistoricalMessagesToFile();            
 
     } else if (command == "/memory") {
       String msg = getMemoryInfo();
@@ -1469,7 +1524,23 @@ void executeTool(String command, JsonObject params) {
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", msg, 1);
-      storeHistoricalMessagesToFile();      
+      storeHistoricalMessagesToFile();  
+
+      if (reCheck) {
+        String response = geminiChatRequest(
+          "Analyze the execution result and determine whether the workflow is complete.\n"
+          "If additional hardware actions are strictly required, "
+          "return ONLY a valid tool_call JSON.\n"
+          "If the workflow is already complete, return EXACTLY: NONE.\n"
+          "If no tool action is required and a user-facing reply is needed, "
+          "respond naturally in the user's language.\n"
+          "Do not repeat the same meaning as your immediately previous response.\n"
+          "Do not include explanation or extra text.",
+          1
+        );
+      
+        handleAgentResponse(response);  
+      }           
 
     } else if (command == "/chat") {
       String reply = params["reply"].as<String>();
@@ -1482,20 +1553,22 @@ void executeTool(String command, JsonObject params) {
       
       handleAgentResponse(response);
       
-	  response = geminiChatRequest(
-		"Analyze the execution result and determine whether the workflow is complete.\n"
-		"If additional hardware actions are strictly required, "
-		"User task request:\n" + task + "\n\n"		
-		"return ONLY a valid tool_call JSON.\n"
-		"If the workflow is already complete, return EXACTLY: NONE.\n"
-		"If no tool action is required and a user-facing reply is needed, "
-		"respond naturally in the user's language.\n"
-		"Do not repeat the same meaning as your immediately previous response.\n"
-		"Do not include explanation or extra text.",
-		1
-	  );
-      
-      handleAgentResponse(response);  
+      if (reCheck) {
+    	  response = geminiChatRequest(
+      		"Analyze the execution result and determine whether the workflow is complete.\n"
+      		"If additional hardware actions are strictly required, "
+      		"User task request:\n" + task + "\n\n"		
+      		"return ONLY a valid tool_call JSON.\n"
+      		"If the workflow is already complete, return EXACTLY: NONE.\n"
+      		"If no tool action is required and a user-facing reply is needed, "
+      		"respond naturally in the user's language.\n"
+      		"Do not repeat the same meaning as your immediately previous response.\n"
+      		"Do not include explanation or extra text.",
+      		1
+    	  );
+        
+        handleAgentResponse(response);  
+      }
 
     } else if (command == "/vision") {
       String query = params["query"].as<String>();
@@ -1504,20 +1577,22 @@ void executeTool(String command, JsonObject params) {
       
       handleAgentResponse(response);
       
-  	  response = geminiChatRequest(
-  		"Analyze the execution result and determine whether the workflow is complete.\n"
-  		"If additional hardware actions are strictly required, "
-  		"User task request:\n" + task + "\n\n"		
-  		"return ONLY a valid tool_call JSON.\n"
-  		"If the workflow is already complete, return EXACTLY: NONE.\n"
-  		"If no tool action is required and a user-facing reply is needed, "
-  		"respond naturally in the user's language.\n"
-  		"Do not repeat the same meaning as your immediately previous response.\n"
-  		"Do not include explanation or extra text.",
-  		1
-  	  );
-      
-      handleAgentResponse(response); 
+      if (reCheck) {
+    	  response = geminiChatRequest(
+      		"Analyze the execution result and determine whether the workflow is complete.\n"
+      		"If additional hardware actions are strictly required, "
+      		"User task request:\n" + task + "\n\n"		
+      		"return ONLY a valid tool_call JSON.\n"
+      		"If the workflow is already complete, return EXACTLY: NONE.\n"
+      		"If no tool action is required and a user-facing reply is needed, "
+      		"respond naturally in the user's language.\n"
+      		"Do not repeat the same meaning as your immediately previous response.\n"
+      		"Do not include explanation or extra text.",
+      		1
+    	  );
+        
+        handleAgentResponse(response); 
+      }
     }
   	else if (command == "/reboot") {
   		telegramSendMessage(telegrambotToken, telegrambotChatId, "Rebooting the device, please wait...", "");
@@ -1528,7 +1603,6 @@ void executeTool(String command, JsonObject params) {
   		NVIC_SystemReset();
   	}	
 }
-
 
 // Invalid JSON is rejected and logged to Serial.
 // No tool execution occurs on malformed payloads.
@@ -1564,6 +1638,40 @@ void handleAgentResponse(String message) {
     String method =  obj["method"].as<String>();
     JsonObject params = obj["params"];
     executeTool(method, params); 
+  }
+  else if (message.startsWith("[") && message.endsWith("]")) {
+  
+    DynamicJsonDocument doc(8192);
+  
+    DeserializationError error = deserializeJson(doc, message);
+  
+    if (error) {
+      Serial.println("executeTools JSON parse failed");
+      Serial.println(message);
+      return;
+    }
+  
+    JsonArray toolsArray = doc.as<JsonArray>();
+    
+    int toolCount = toolsArray.size();
+    
+    for (int i = 0; i < toolCount; i++) {
+      JsonObject toolObject = toolsArray[i];
+    
+      if (toolObject.isNull()) continue;
+    
+      String command = toolObject["method"].as<String>();
+      JsonObject params = toolObject["params"];
+    
+      if (command == "" || params.isNull()) {
+        Serial.println("Incomplete tool detected → abort remaining tools");
+        break;
+      }
+    
+      bool isLast = (i == toolCount - 1);
+    
+      executeTool(command, params, isLast);
+    }
   }
   else {
       if (message != "NONE") {
@@ -1732,10 +1840,9 @@ void getTelegramMessage() {
         
           } else {
         
-            if (message.startsWith("/")) {
-              executeTool(message, JsonObject());
-              
-            } else {
+            if (message.startsWith("/")) 
+              executeTool(message, JsonObject()); 
+            else {
               message = geminiChatRequest(message, 1);
               handleAgentResponse(message);
               
