@@ -668,7 +668,7 @@ After /vision returns:
 1. Analyze observation result
 2. Combine with user task
 3. Do NOT directly execute hardware
-4. If hardware action required → MUST go through /confirm
+4. If hardware action is required → MUST go through user confirmation
 5. Only after confirmation → tool_call JSON
 
 ==================================================

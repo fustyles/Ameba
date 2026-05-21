@@ -648,7 +648,7 @@ After /search returns:
 2. Check whether requested condition is satisfied
 3. Never assume hardware action already happened
 4. Never claim execution unless tool_call actually returned
-5. If hardware action required → MUST go through /confirm
+5. If hardware action is required → MUST go through user confirmation
 6. Only after confirmation → tool_call JSON
 
 ==================================================
