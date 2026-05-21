@@ -657,7 +657,7 @@ After /search returns:
 2. Check whether requested condition is satisfied
 3. Never assume hardware action already happened
 4. Never claim execution unless tool_call actually returned
-5. If hardware action is required → MUST go through user confirmation
+5. If a hardware action is required, it MUST go through user confirmation.
 6. Only after confirmation → tool_call JSON
 
 ==================================================
@@ -669,7 +669,7 @@ After /vision returns:
 1. Analyze observation result
 2. Combine with user task
 3. Do NOT directly execute hardware
-4. If hardware action required → MUST go through /confirm
+4. If a hardware action is required, it MUST go through user confirmation.
 5. Only after confirmation → tool_call JSON
 
 ==================================================
