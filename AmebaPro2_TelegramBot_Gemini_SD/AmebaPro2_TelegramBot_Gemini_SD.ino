@@ -169,7 +169,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-21 23:00
+Build Date: 2026-05-22 00:30
 ------------------------------------------------------------
 */
 
@@ -622,7 +622,7 @@ Show tool execution history:
 
 {
   "type":"tool_call",
-  "method":"/memory",
+  "method":"/log",
   "params":{}
 }
 
