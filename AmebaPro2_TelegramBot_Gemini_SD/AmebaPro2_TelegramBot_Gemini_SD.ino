@@ -99,9 +99,10 @@ Supported Tools
 /vision         Capture + multimodal analysis
 /search         Grounded web search
 /memory         Runtime memory diagnostics
+/log            show tool execution history
 /reset          Reset conversation state
 /chat           Natural language reply
-/reboot        Reboot the device
+/reboot         Reboot the device
 
 ------------------------------------------------------------
 Persistent Files
@@ -109,9 +110,6 @@ Persistent Files
 
 env.md
   WiFi / Telegram / Gemini credentials
-
-devices.md
-  device definitions
 
 soul.md
   Custom assistant personality prompt
@@ -620,6 +618,14 @@ Memory status:
   "params":{}
 }
 
+Show tool execution history:
+
+{
+  "type":"tool_call",
+  "method":"/memory",
+  "params":{}
+}
+
 Reset conversation:
 
 {
@@ -741,6 +747,7 @@ Return natural conversational reply only.
 String systemContent = "";
 String systemContentNoTools = "";
 
+// Logs each tool execution as a human-readable record for /log command
 String executeToolHistory = "";
   
 // Stores entire chat history in Gemini API JSON format
@@ -1779,7 +1786,7 @@ void getTelegramMessage() {
               "/help command list\n"
               "/still capture and send a camera image\n"
               "/memory show system memory usage\n"
-			  "/log show tool execution history\n"
+              "/log show tool execution history\n"
               "/reset start a new conversation\n\n"
               "Hardware control supported:\n"
               "- Digital output (0 or 1)\n"
@@ -1793,8 +1800,7 @@ void getTelegramMessage() {
               "Documentation:\n"
               "https://github.com/fustyles/fuClaw";
           
-            String keyboard =
-              "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
+            String keyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
         
             telegramSendMessage(telegrambotToken, telegrambotChatId, command, keyboard);
 
