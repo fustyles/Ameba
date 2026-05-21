@@ -1498,10 +1498,10 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       
     } else if (command == "/reset") {
       geminiChatReset();
-      telegramSendMessage(telegrambotToken, telegrambotChatId, "OK","");
+      telegramSendMessage(telegrambotToken, telegrambotChatId, "New chat started.","");
 
       historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", "Start a new chat", 1);
+      historicalMessages += buildGeminiMessage("model", "New chat started.", 1);
       storeHistoricalMessagesToFile();            
 
     } else if (command == "/memory") {
