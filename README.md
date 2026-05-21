@@ -16,7 +16,8 @@ Repository:<br>
 Overview
 ------------------------------------------------------------
 
-fuClaw is an embedded multimodal AI agent framework running
+fuClaw is a Prompt-Orchestrated Embedded AI Agent Runtime on Ameba Pro2
+
 on Realtek Ameba Pro2 devices:
 
 - AMB82-mini
