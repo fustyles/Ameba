@@ -166,25 +166,21 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Volatile Runtime Memory Version
 
-Build Date: 2026-05-20 09:00
+Build Date: 2026-05-21 15:30
 
 ------------------------------------------------------------
 */
 
 // WiFi credentials
-String wifiSsid = "xxxxxxxxxx";
-String wifiPassword = "xxxxxxxxxx";
+String wifiSsid = "teacher";
+String wifiPassword = "12345678";
 
 // Telegram bot configuration
-String telegrambotToken = "xxxxxxxxxx";
-String telegrambotChatId = "xxxxxxxxxx";
+String telegrambotToken = "7933943388:AAE69WmbCldVjFGtBW5U9vuv5_SFknFngQQ";
+String telegrambotChatId = "7310584328";
 
 // Gemini API configuration
-String geminiApiKey = "xxxxxxxxxx";
-
-String geminiModel = "gemini-3-flash-preview";
-int geminiMaxOutputTokens = 2000;  // If the AI ​​is unable to transmit complete data, please increase the value.
-float geminiTemperature = 1.0;
+String geminiApiKey = "AIzaSyCE7RiZxztIu1km7NOlkn1opKdHL_WgjWU";
 
 // System prompt that defines assistant behavior.
 // Must be JSON-safe (avoid invalid escape characters or unsupported symbols).
@@ -732,6 +728,10 @@ If no tool is required:
 Return natural conversational reply only.
 
 )";
+
+String geminiModel = "gemini-3-flash-preview";
+int geminiMaxOutputTokens = 2000;  // If the AI ​​is unable to transmit complete data, please increase the value.
+float geminiTemperature = 1.0;
 
 // Serialized system prompt content used as the initial conversation context
 String systemContent = "";
@@ -1510,6 +1510,10 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
   		
   		NVIC_SystemReset();
   	}	
+    else {
+      String response = geminiChatRequest(command, 1);
+      handleAgentResponse(response);
+    }
 }
 
 // Invalid JSON is rejected and logged to Serial.
@@ -1582,7 +1586,7 @@ void handleAgentResponse(String message) {
     }
   }
   else {
-      if (message != "NONE") {
+      if (message != "NONE" && !message.startsWith("[") && !message.endsWith("{")) {
         message = rawMessage;
 		
         message.replace("\\\"", "\"");
@@ -1685,6 +1689,12 @@ void getTelegramMessage() {
           break;
       }
 
+      getBody.trim();
+      int jsonStart = getBody.indexOf('{');
+      if (jsonStart != -1) {
+        getBody = getBody.substring(jsonStart);
+      }
+
       DeserializationError err = deserializeJson(doc, getBody);
       if (err) {
         Serial.println("JSON parse failed\n" + getBody);
@@ -1747,8 +1757,10 @@ void getTelegramMessage() {
         
           } else {
         
-            if (message.startsWith("/")) 
-              executeTool(message, JsonObject()); 
+            if (message.startsWith("/")) {
+              executeTool(message, JsonObject());
+              
+            } 
             else {
               message = geminiChatRequest(message, 1);
               handleAgentResponse(message);
