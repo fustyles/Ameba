@@ -100,10 +100,11 @@ Supported Tools
 /still<br>          Capture image<br>
 /vision<br>         Capture + multimodal analysis<br>
 /search<br>         Grounded web search<br>
-/memory<br>        Runtime memory diagnostics<br>
+/memory<br>         Runtime memory diagnostics<br>
+/log<br>            show tool execution history<br>
 /reset<br>          Reset conversation state<br>
 /chat<br>           Natural language reply<br>
-/reboot<br>        Reboot the device<br>
+/reboot<br>         Reboot the device<br>
 
 ------------------------------------------------------------
 Persistent Files
