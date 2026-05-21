@@ -171,7 +171,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-20 20:00
+Build Date: 2026-05-21 15:30
 ------------------------------------------------------------
 */
 
@@ -1602,6 +1602,10 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
   		
   		NVIC_SystemReset();
   	}	
+    else {
+      String response = geminiChatRequest(command, 1);
+      handleAgentResponse(response);
+    }	
 }
 
 // Invalid JSON is rejected and logged to Serial.
@@ -1674,7 +1678,7 @@ void handleAgentResponse(String message) {
     }
   }
   else {
-      if (message != "NONE") {
+      if (message != "NONE" && !message.startsWith("[") && !message.endsWith("{")) {
         message = rawMessage;
 		
         message.replace("\\\"", "\"");
