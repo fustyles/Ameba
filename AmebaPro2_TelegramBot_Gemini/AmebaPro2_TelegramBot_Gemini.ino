@@ -182,6 +182,10 @@ String telegrambotChatId = "xxxxxxxxxx";
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
 
+String geminiModel = "gemini-3-flash-preview";
+int geminiMaxOutputTokens = 2000;  // If the AI ​​is unable to transmit complete data, please increase the value.
+float geminiTemperature = 1.0;
+
 // System prompt that defines assistant behavior.
 // Must be JSON-safe (avoid invalid escape characters or unsupported symbols).
 String geminiRole = R"(
@@ -728,10 +732,6 @@ If no tool is required:
 Return natural conversational reply only.
 
 )";
-
-String geminiModel = "gemini-3-flash-preview";
-int geminiMaxOutputTokens = 2000;  // If the AI ​​is unable to transmit complete data, please increase the value.
-float geminiTemperature = 1.0;
 
 // Serialized system prompt content used as the initial conversation context
 String systemContent = "";
