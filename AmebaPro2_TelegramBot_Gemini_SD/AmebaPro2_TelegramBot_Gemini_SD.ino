@@ -171,7 +171,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-21 21:00
+Build Date: 2026-05-21 23:00
 ------------------------------------------------------------
 */
 
@@ -740,6 +740,8 @@ Return natural conversational reply only.
 // Serialized system prompt content used as the initial conversation context
 String systemContent = "";
 String systemContentNoTools = "";
+
+String executeToolHistory = "";
   
 // Stores entire chat history in Gemini API JSON format
 // Used to preserve conversation memory across requests
@@ -1463,7 +1465,9 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();    
+      storeHistoricalMessagesToFile();
+
+	  executeToolHistory += command + " ("+String(pin)+", "+pinmode+", "+String(value)+")\n";	  
 
       evaluateWorkflowContinuation(reCheck);
     
@@ -1475,7 +1479,9 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();    
+      storeHistoricalMessagesToFile();
+
+	  executeToolHistory += command + " ("+String(pin)+", "+pinmode+")\n";	  
 
       evaluateWorkflowContinuation(reCheck); 
       
@@ -1492,7 +1498,9 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile(); 
+      storeHistoricalMessagesToFile();
+
+	  executeToolHistory += command + "\n";
 
       evaluateWorkflowContinuation(reCheck);     
       
@@ -1502,7 +1510,9 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", "New chat started.", 1);
-      storeHistoricalMessagesToFile();            
+      storeHistoricalMessagesToFile();
+
+	  executeToolHistory += command + "\n";	  
 
     } else if (command == "/memory") {
       String msg = getMemoryInfo();
@@ -1510,10 +1520,15 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", msg, 1);
-      storeHistoricalMessagesToFile();  
+      storeHistoricalMessagesToFile();
+
+	  executeToolHistory += command + "\n";
 
       evaluateWorkflowContinuation(reCheck);          
 
+    } else if (command == "/log") {
+      telegramSendMessage(telegrambotToken, telegrambotChatId, executeToolHistory, "");
+	
     } else if (command == "/chat") {
       String reply = params["reply"].as<String>();
       telegramSendMessage(telegrambotToken, telegrambotChatId, reply, "");
@@ -1521,18 +1536,22 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     } else if (command == "/search") {
       String query = params["query"].as<String>();
       String task = params["task"].as<String>();
+	  
       String response = geminiSearchRequest(query, 0);
-      
       handleAgentResponse(response);
+	  
+	  executeToolHistory += command + " ("+query+", "+task+")\n";
       
       evaluateWorkflowContinuation(reCheck, task);
 
     } else if (command == "/vision") {
       String query = params["query"].as<String>();
       String task = params["task"].as<String>();
+	  
       String response = geminiVisionRequest(query);
-      
       handleAgentResponse(response);
+	  
+	  executeToolHistory += command + " ("+query+", "+task+")\n";
       
       evaluateWorkflowContinuation(reCheck, task);
     }
@@ -1541,6 +1560,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
   		
   		Serial.println("User requested reboot the device.");
   		delay(2000);
+		
+		executeToolHistory += command + "\n";
   		
   		NVIC_SystemReset();
   	}	
@@ -1758,6 +1779,7 @@ void getTelegramMessage() {
               "/help command list\n"
               "/still capture and send a camera image\n"
               "/memory show system memory usage\n"
+			  "/log show tool execution history\n"
               "/reset start a new conversation\n\n"
               "Hardware control supported:\n"
               "- Digital output (0 or 1)\n"
@@ -1772,7 +1794,7 @@ void getTelegramMessage() {
               "https://github.com/fustyles/fuClaw";
           
             String keyboard =
-              "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
+              "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
         
             telegramSendMessage(telegrambotToken, telegrambotChatId, command, keyboard);
 
