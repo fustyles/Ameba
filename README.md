@@ -114,6 +114,9 @@ Persistent Files
 env.md<br>
 WiFi / Telegram / Gemini credentials
 
+device.md<br>
+Devices definition
+
 soul.md<br>
 Custom assistant personality prompt
 
