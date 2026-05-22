@@ -218,5 +218,5 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-21
+Build Date: 2026-05-22
 ------------------------------------------------------------
