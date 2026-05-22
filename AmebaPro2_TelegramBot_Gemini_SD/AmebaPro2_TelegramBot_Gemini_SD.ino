@@ -169,7 +169,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-22 00:30
+Build Date: 2026-05-22 09:00
 ------------------------------------------------------------
 */
 
@@ -223,6 +223,10 @@ No other hardware mappings are confirmed.
 ==================================================
 DEVICE SAFETY RULES
 ==================================================
+
+)";
+
+String devicesRule = R"(
 
 1. ONLY confirmed devices may be directly controlled.
 
@@ -800,6 +804,9 @@ String soulFilename = "soul.md";
 // Persistent conversation memory file (stores historical chat context)
 String memoryFilename = "memory.md";
 
+// Devices definition
+String deviceFilename = "device.md";
+
 // Forward declarations
 void handleAgentResponse(String message);
 
@@ -1026,9 +1033,9 @@ void storeHistoricalMessagesToFile() {
 void geminiChatReset() {
   
   historicalMessages = "";
-  
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition, 0) + buildGeminiMessage("model", "OK", 1); 
+
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);
   
   storeHistoricalMessagesToFile();
   
@@ -1936,9 +1943,14 @@ void setup() {
   Serial.println("Soul.md len: " + String(soul.length()));
   if (soul != "")
     geminiRole = soul;
+
+  String device = getStringFromFile(deviceFilename);
+  Serial.println("device.md len: " + String(device.length()));
+  if (soul != "")
+    devicesDefinition = device;
   
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition, 0) + buildGeminiMessage("model", "OK", 1);  
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
     
   String memory = getStringFromFile(memoryFilename);
   Serial.println("memory.md len: " + String(memory.length()));
