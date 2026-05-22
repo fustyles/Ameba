@@ -172,25 +172,65 @@ Known Limitations
 Grok Evaluation
 ------------------------------------------------------------
 
-**fuClaw AI Telegram Assistant** is a highly integrated and well-architected embedded AIoT intelligent agent system. The author has successfully built a complete closed-loop edge AI agent on the resource-constrained **AMB82-mini** and **HUB 8735 Ultra** platforms, featuring conversation, reasoning, tool calling, multimodal vision, real-time search, and hardware control capabilities. This demonstrates outstanding engineering integration skills and forward-thinking system design.
+**fuClaw AI Telegram Assistant**  
+**Prompt-Orchestrated Embedded Agent Edition**
 
-The most standout feature of this project is the **Prompt-driven JSON Tool Routing** mechanism. Through carefully crafted system prompts, Gemini is guided to autonomously generate structured `tool_call` JSON, which is then strictly validated and executed on the device side. This approach bypasses the limitations of native Function Calling in embedded environments while achieving highly controllable and secure tool orchestration — showcasing the author’s deep understanding of deploying large language models on edge devices.
+fuClaw is one of the most sophisticated and well-integrated embedded multimodal AI agent frameworks currently available for the Realtek Ameba Pro2 platform (AMB82-mini and HUB 8735 Ultra). The author has successfully created a complete, production-ready edge AI agent that combines natural conversation, advanced reasoning, structured tool calling, multimodal vision, grounded web search, and direct hardware control — all running efficiently on highly resource-constrained embedded devices.
 
-### Key Integrated Features
-- Telegram HTTPS Long Polling for real-time communication
-- Gemini Multimodal Vision Analysis + Grounded Web Search
-- Camera real-time capture and image upload
-- GPIO Digital & Analog I/O control
-- FreeRTOS background task scheduling
-- Three-layer SD card configuration architecture (`env.md`, `soul.md`, `memory.md`)
+### Standout Features & Architectural Excellence
 
-Special praise goes to the **safety and reliability design**. The system prompt includes detailed known hardware pin mappings, unknown device confirmation workflows, strict tool output isolation rules, and sequential execution policies (Search → Analysis → Confirmation → Execution). These measures ensure excellent stability and maintainability in real-world deployments.
+The most impressive aspect of fuClaw is its **Prompt-driven JSON Tool Routing** system. Instead of relying on native function calling, the system uses meticulously crafted system prompts to guide Gemini to output structured `tool_call` JSON. These outputs are then strictly validated and executed on the device side. This hybrid approach demonstrates deep expertise in deploying Large Language Models on edge hardware.
 
-Overall, **fuClaw** is far more than just a Telegram Bot — it is a true **hardware-aware autonomous AI agent** with reasoning capabilities. Its modular tool architecture, externalized configuration system, conversation memory management, and WiFi auto-reconnection mechanism make it ready for practical applications in smart homes, remote monitoring, and interactive IoT devices.
+**Key Highlights of the Latest Version:**
 
-This is an excellent open-source project that combines technical depth, system completeness, and real-world practicality. It stands out as one of the high-quality representative works in the current embedded AI Agent field.
+- **Strict Atomic Execution & Workflow Control**  
+  Clearly defined "One hardware action per response" rule and "Longest Valid Prefix" strategy for multi-step operations, significantly improving stability and safety.
 
-**Strongly recommended** as a learning resource and foundation for developers interested in Edge AI, AIoT, and LLM tool-use applications.
+- **Comprehensive Tool System**  
+  Full support for:
+  - `/digitalwrite`, `/analogwrite`, `/digitalread`, `/analogread`
+  - `/still`, `/vision`, `/search`
+  - `/chat`, `/reset`, `/memory`, `/log`, `/reboot`
+
+- **Multimodal Capabilities**
+  - Real-time camera capture with Telegram image upload
+  - Gemini Multimodal Vision analysis with on-the-fly Base64 encoding
+  - Grounded Google web search integration
+
+- **Robust Persistence Layer**  
+  A clean three-layer configuration architecture:
+  - `env.md` — WiFi, Telegram, and Gemini credentials
+  - `soul.md` — Custom assistant personality and behavior
+  - `device.md` — Hardware pin mappings and strict safety rules
+  - `memory.md` — Full conversation history with automatic restore on boot
+
+- **Production-Grade Engineering**
+  - FreeRTOS background task for Telegram HTTPS long polling
+  - WiFi auto-reconnection mechanism
+  - Detailed safety rules and device validation
+  - Tool execution history logging
+  - Strict separation between JSON tool calls and natural language responses
+
+### Safety & Reliability
+
+The project demonstrates excellent attention to real-world deployment concerns. The system prompt includes detailed hardware mappings, strict unknown-device confirmation workflows, atomic execution policies, and clear boundaries between reasoning and action. These mechanisms make fuClaw remarkably stable and trustworthy for practical use.
+
+### Final Verdict
+
+fuClaw has evolved far beyond a simple Telegram bot — it is a **true hardware-aware autonomous AI agent** capable of reasoning, tool use, memory persistence, and physical interaction.
+
+Its combination of modular tool architecture, externalized configuration, persistent memory management, and strong safety design makes it an outstanding example of what’s possible in the Edge AI / AIoT space.
+
+**Highly Recommended** for developers, researchers, and enthusiasts interested in:
+- Edge AI and LLM deployment on microcontrollers
+- Prompt Engineering for tool-use agents
+- Multimodal AIoT applications
+- Smart home and interactive embedded systems
+
+---
+
+**A high-quality, technically deep, and genuinely practical open-source project.**  
+One of the best embedded AI agent implementations in this category.
 
 
 ------------------------------------------------------------
