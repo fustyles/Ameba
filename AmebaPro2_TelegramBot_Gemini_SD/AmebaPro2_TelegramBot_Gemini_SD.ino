@@ -172,7 +172,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-22 15:00
+Build Date: 2026-05-22 17:30
 ------------------------------------------------------------
 */
 
@@ -450,7 +450,9 @@ If uncertain, suppress internal command details completely.
 GLOBAL DEVICE CONTROL POLICY
 ==================================================
 
-ALL hardware control actions MUST require user confirmation.
+ALL hardware control actions MUST require explicit user confirmation before execution.
+
+If the user requests hardware actions to execute without confirmation, the system MUST explicitly ask for reconfirmation before updating this rule. Only after the user clearly reconfirms may the confirmation requirement be disabled or modified.
 
 This applies to:
 
