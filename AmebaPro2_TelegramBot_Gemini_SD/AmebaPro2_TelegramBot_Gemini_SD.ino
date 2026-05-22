@@ -172,7 +172,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-22 09:00
+Build Date: 2026-05-22 13:00
 ------------------------------------------------------------
 */
 
@@ -1658,34 +1658,36 @@ void handleAgentResponse(String message) {
     }
   }
   else {
-      if (message != "NONE" && !message.startsWith("[") && !message.startsWith("{")) {
-        message = rawMessage;
-		
-        message.replace("\\\"", "\"");
-        message.replace("\\\\", "\\");
-        message.replace("\\n", "\n");
-        message.replace("&", "&amp;");
-        message.replace("<", "&lt;");
-        message.replace(">", "&gt;");
-		    message.replace("### ", "");
-        message.replace("## ", "");
-        message.replace("# ", "");
-        message.replace("__", "");
-        message.replace("* ", "• ");
-        message.replace("```json", "");
-        message.replace("```cpp", "");
-        message.replace("```c++", "");
-        message.replace("```c", "");
-        message.replace("```", "");
-        message.replace("`", "");
-        message.replace("> ", "");
-        message.replace("---", "");
-        message.replace("***", "");
-        message.replace("**", "");        
-        message.replace("___", ""); 
-        
-        telegramSendMessage(telegrambotToken, telegrambotChatId, message, "");
-	  }
+    if (message.startsWith("[") || message.startsWith("{"))
+      telegramSendMessage(telegrambotToken, telegrambotChatId, "Json parse failed. Please type \"Continue\"", "");
+    else if (message != "NONE") {
+      message = rawMessage;
+  
+      message.replace("\\\"", "\"");
+      message.replace("\\\\", "\\");
+      message.replace("\\n", "\n");
+      message.replace("&", "&amp;");
+      message.replace("<", "&lt;");
+      message.replace(">", "&gt;");
+      message.replace("### ", "");
+      message.replace("## ", "");
+      message.replace("# ", "");
+      message.replace("__", "");
+      message.replace("* ", "• ");
+      message.replace("```json", "");
+      message.replace("```cpp", "");
+      message.replace("```c++", "");
+      message.replace("```c", "");
+      message.replace("```", "");
+      message.replace("`", "");
+      message.replace("> ", "");
+      message.replace("---", "");
+      message.replace("***", "");
+      message.replace("**", "");        
+      message.replace("___", ""); 
+      
+      telegramSendMessage(telegrambotToken, telegrambotChatId, message, "");
+    }
   }
 }
 
