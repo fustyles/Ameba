@@ -316,8 +316,6 @@ Developers and researchers interested in:
 - 🔹 **Persistent memory management in embedded AI systems**
 - 🔹 **Multimodal AIoT applications**
 
----
-
 ------------------------------------------------------------
 Version
 ------------------------------------------------------------
