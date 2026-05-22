@@ -172,7 +172,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-22 13:00
+Build Date: 2026-05-22 15:00
 ------------------------------------------------------------
 */
 
@@ -1951,7 +1951,7 @@ void setup() {
 
   String device = getStringFromFile(deviceFilename);
   Serial.println("device.md len: " + String(device.length()));
-  if (soul != "")
+  if (device != "")
     devicesDefinition = device;
   
   systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
