@@ -167,7 +167,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Volatile Runtime Memory Version
 
-Build Date: 2026-05-22 00:30
+Build Date: 2026-05-22 09:00
 
 ------------------------------------------------------------
 */
@@ -218,6 +218,10 @@ No other hardware mappings are confirmed.
 ==================================================
 DEVICE SAFETY RULES
 ==================================================
+
+)";
+
+String devicesRule = R"(
 
 1. ONLY confirmed devices may be directly controlled.
 
@@ -952,8 +956,9 @@ void geminiChatReset() {
   
   historicalMessages = "";
   
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition, 0) + buildGeminiMessage("model", "OK", 1);   
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1); 
+  
 }
 
 // Send request to Gemini and return response text
@@ -1845,8 +1850,8 @@ void setup() {
     Serial.println("Create getTelegramMessage task failed");
   } 
   
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition, 0) + buildGeminiMessage("model", "OK", 1);  
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1); 
 
 }
 
