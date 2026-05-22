@@ -1564,7 +1564,7 @@ void handleAgentResponse(String message) {
     }
   }
   else {
-      if (message != "NONE" && !message.startsWith("[") && !message.endsWith("{")) {
+      if (message != "NONE" && !message.startsWith("[") && !message.startsWith("{")) {
         message = rawMessage;
 		
         message.replace("\\\"", "\"");
