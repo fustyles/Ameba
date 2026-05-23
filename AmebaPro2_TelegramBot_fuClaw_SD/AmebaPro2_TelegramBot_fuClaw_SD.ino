@@ -2132,9 +2132,6 @@ void getTelegramMessage_task(void *param) {
 
 // Initialize WiFi
 void initWiFi() {
-  Serial.println(wifiSsid);  
-  Serial.println(wifiPassword); 
-
     
   for (int i=0;i<2;i++) {
 
@@ -2157,6 +2154,7 @@ void initWiFi() {
         break;
     }
   }
+  
 }
 
 void setEnvironmentSettings(String jsonString) {

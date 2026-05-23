@@ -28,7 +28,7 @@ String telegramBot_chatID = "xxxxxxxxxx";
 // ============================================================
 
 // LED output pin (AMB82-mini: 24 / HUB 8735 Ultra: 25)
-int pinLed = 24;
+int ledPin = 24;
 
 // Tracks the last processed Telegram message ID to avoid duplicates
 long messageLastId = 0;
@@ -298,13 +298,13 @@ void executeCommand(String botMessage) {
   // ---- LED on ----
   } else if (botMessage == "/on") {
 
-    digitalWrite(pinLed, 1);
+    digitalWrite(ledPin, 1);
     sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Turn on", "");
 
   // ---- LED off ----
   } else if (botMessage == "/off") {
 
-    digitalWrite(pinLed, 0);
+    digitalWrite(ledPin, 0);
     sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Turn off", "");
 
   // ---- Camera snapshot ----
@@ -391,8 +391,15 @@ void getTelegramMessage() {
 
   if (botClient.connect(myDomain, 443)) {
 
-    if (messageLastId == 0)
+    if (messageLastId == 0) {
       Serial.println("Connection successful");
+
+      // Signal successful connection with 3 LED blinks
+      for (int i = 0; i < 3; i++) {
+        digitalWrite(ledPin, HIGH); delay(500);
+        digitalWrite(ledPin, LOW);  delay(500);
+      }
+    }
 
     // ---- Main polling loop ----
     while (botClient.connected()) {
@@ -499,7 +506,7 @@ void setup() {
   Serial.begin(115200);
   delay(10);
 
-  pinMode(pinLed, OUTPUT);
+  pinMode(ledPin, OUTPUT);
 
   initWiFi();
 

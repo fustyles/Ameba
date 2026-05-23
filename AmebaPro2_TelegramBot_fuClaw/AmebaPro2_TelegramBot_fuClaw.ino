@@ -11,6 +11,15 @@ Repository:
   https://github.com/fustyles/fuClaw
 
 ------------------------------------------------------------
+Version
+------------------------------------------------------------
+
+Prompt-Orchestrated Embedded Agent Edition
+Volatile Runtime Memory Version
+
+Build Date: 2026-05-23 14:30
+
+------------------------------------------------------------
 Overview
 ------------------------------------------------------------
 
@@ -161,15 +170,6 @@ Known Limitations
 - Conversation memory is lost after reboot
 
 ------------------------------------------------------------
-Version
-------------------------------------------------------------
-
-Prompt-Orchestrated Embedded Agent Edition
-Volatile Runtime Memory Version
-
-Build Date: 2026-05-22 17:30
-
-------------------------------------------------------------
 */
 
 // WiFi credentials
@@ -182,6 +182,15 @@ String telegrambotChatId = "xxxxxxxxxx";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
+String geminiModel = "gemini-3-flash-preview";
+int geminiMaxOutputTokens = 2000;  // If the AI ​​is unable to transmit complete data, please increase the value.
+float geminiTemperature = 1.0;
+
+// Maximum download buffer size for Telegram voice files (256 KB)
+#define MAX_FILE_SIZE 262144
+
+// Actual number of bytes downloaded from Telegram
+size_t downloadedFileSize = 0;
 
 // System prompt that defines assistant behavior.
 // Must be JSON-safe (avoid invalid escape characters or unsupported symbols).
@@ -744,17 +753,13 @@ Return natural conversational reply only.
 
 )";
 
-String geminiModel = "gemini-3-flash-preview";
-int geminiMaxOutputTokens = 2000;  // If the AI ​​is unable to transmit complete data, please increase the value.
-float geminiTemperature = 1.0;
-
 // Serialized system prompt content used as the initial conversation context
 String systemContent = "";
 String systemContentNoTools = "";
 
 // Logs each tool execution as a human-readable record for /log command
 String executeToolHistory = "";
-
+  
 // Stores entire chat history in Gemini API JSON format
 // Used to preserve conversation memory across requests
 String historicalMessages = "";
@@ -957,9 +962,9 @@ String buildGeminiMessage(String role, String message, bool comma) {
 void geminiChatReset() {
   
   historicalMessages = "";
-  
+
   systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1); 
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);
   
 }
 
@@ -1396,7 +1401,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", response, 1);
 
-	  executeToolHistory += command + " ("+String(pin)+", "+pinmode+", "+String(value)+")\n";	  
+    executeToolHistory += command + " ("+String(pin)+", "+pinmode+", "+String(value)+")\n";   
 
       evaluateWorkflowContinuation(reCheck);
     
@@ -1409,7 +1414,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", response, 1);
 
-	  executeToolHistory += command + " ("+String(pin)+", "+pinmode+")\n";	  
+    executeToolHistory += command + " ("+String(pin)+", "+pinmode+")\n";    
 
       evaluateWorkflowContinuation(reCheck); 
       
@@ -1427,7 +1432,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", response, 1);
 
-	  executeToolHistory += command + "\n";
+    executeToolHistory += command + "\n";
 
       evaluateWorkflowContinuation(reCheck);     
       
@@ -1438,7 +1443,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", "New chat started.", 1);
 
-	  executeToolHistory += command + "\n";	  
+    executeToolHistory += command + "\n";   
 
     } else if (command == "/memory") {
       String msg = getMemoryInfo();
@@ -1447,13 +1452,13 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", msg, 1);
 
-	  executeToolHistory += command + "\n";
+    executeToolHistory += command + "\n";
 
       evaluateWorkflowContinuation(reCheck);          
 
     } else if (command == "/log") {
       telegramSendMessage(telegrambotToken, telegrambotChatId, executeToolHistory, "");
-	
+  
     } else if (command == "/chat") {
       String reply = params["reply"].as<String>();
       telegramSendMessage(telegrambotToken, telegrambotChatId, reply, "");
@@ -1461,39 +1466,39 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     } else if (command == "/search") {
       String query = params["query"].as<String>();
       String task = params["task"].as<String>();
-	  
+    
       String response = geminiSearchRequest(query, 0);
       handleAgentResponse(response);
-	  
-	  executeToolHistory += command + " ("+query+", "+task+")\n";
+    
+    executeToolHistory += command + " ("+query+", "+task+")\n";
       
       evaluateWorkflowContinuation(reCheck, task);
 
     } else if (command == "/vision") {
       String query = params["query"].as<String>();
       String task = params["task"].as<String>();
-	  
+    
       String response = geminiVisionRequest(query);
       handleAgentResponse(response);
-	  
-	  executeToolHistory += command + " ("+query+", "+task+")\n";
+    
+    executeToolHistory += command + " ("+query+", "+task+")\n";
       
       evaluateWorkflowContinuation(reCheck, task);
     }
-  	else if (command == "/reboot") {
+    else if (command == "/reboot") {
       telegramSendMessage(telegrambotToken, telegrambotChatId, "Rebooting the device, please wait...", "");
-
+      
       Serial.println("User requested reboot the device.");
       delay(2000);
-
-      executeToolHistory += command + "\n";
-
+    
+    executeToolHistory += command + "\n";
+      
       NVIC_SystemReset();
-  	}	
+    } 
     else {
       String response = geminiChatRequest(command, 1);
       handleAgentResponse(response);
-    }	
+    } 
 }
 
 // Invalid JSON is rejected and logged to Serial.
@@ -1599,6 +1604,233 @@ void handleAgentResponse(String message) {
   }
 }
 
+/**
+ * @brief Base64-encode an audio buffer and send it to Gemini for transcription.
+ *
+ * The audio is embedded directly in the JSON request body (inline_data),
+ * so no separate file upload step is needed.
+ *
+ * @param fileinput  Pointer to raw audio bytes (OGG/Opus from Telegram)
+ * @param fileSize   Number of valid bytes in the buffer
+ * @param mimeType   MIME type string, e.g. "audio/ogg; codecs=opus"
+ * @param prompt     Instruction text sent alongside the audio
+ * @return           Transcribed text, or an error message string
+ */
+String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize,
+                                String mimeType, String prompt) {
+
+  // Allocate and fill Base64 output buffer
+  int   encodedLen  = base64_enc_len(fileSize);
+  char* encodedData = (char*)malloc(encodedLen);
+  if (!encodedData) return "Malloc failed for Base64 encoding.";
+
+  base64_encode(encodedData, (char*)fileinput, fileSize);
+
+  WiFiSSLClient client;
+
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+
+    prompt.replace("\n", "");   // Gemini dislikes bare newlines in JSON strings
+
+    // Build Gemini request JSON with inline audio + text prompt
+    String filePart = "{\"inline_data\": {\"data\": \"" + String(encodedData) +
+                      "\", \"mime_type\": \"" + mimeType + "\"}}";
+    String textPart = "{\"text\": \"" + prompt + "\"}";
+    String request  = "{\"contents\": [{\"role\": \"user\", \"parts\": ["
+                      + filePart + ", " + textPart + "]}]}";
+
+    free(encodedData);   // Release Base64 buffer before the blocking send
+
+    // Send HTTP POST to Gemini generateContent endpoint
+    client.println("POST /v1beta/models/gemini-2.5-flash:generateContent?key="
+                   + geminiApiKey + " HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+
+    // Stream request body in 1 KB chunks
+    for (int i = 0; i < (int)request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    // Read response (skip HTTP headers, collect JSON body)
+    String  getResponse = "", Feedback = "";
+    int     waitTime    = 20000;
+    long    startTime   = millis();
+    boolean state       = false;
+    boolean headState   = false;
+
+    while ((startTime + waitTime) > millis()) {
+      delay(100);
+
+      while (client.available()) {
+        char c = client.read();
+
+        if (state == true) Feedback += String(c);
+
+        if (c == '\n') {
+          if (getResponse.length() == 0) {
+            if (!headState) {
+              // Skip the chunk-size line present in chunked transfer encoding
+              client.readStringUntil('\n');
+              headState = true;
+            }
+            state = true;
+          }
+          getResponse = "";
+        } else if (c != '\r') {
+          getResponse += String(c);
+        }
+
+        startTime = millis();
+      }
+
+      if (Feedback.length() > 0) break;
+    }
+
+    client.stop();
+
+    // Parse JSON response
+    DynamicJsonDocument doc(4096);
+    DeserializationError err = deserializeJson(doc, Feedback);
+    if (err) return "JSON Parsing Error: " + String(err.c_str());
+
+    if (doc.containsKey("error"))
+      return "Gemini Error: " + doc["error"]["message"].as<String>();
+
+    if (doc["candidates"][0]["content"]["parts"][0].containsKey("text")) {
+      String getText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+      getText.replace("\n", "");
+      return getText;
+    }
+
+    return "No text returned from Gemini.";
+
+  } else {
+    free(encodedData);
+    return "Connected to Gemini failed.";
+  }
+}
+
+// ============================================================
+//  Telegram: Download File by Path
+// ============================================================
+
+/**
+ * @brief Download a file from Telegram's CDN into a heap-allocated buffer.
+ *
+ * Uses HTTP/1.0 to avoid chunked transfer encoding, then scans for the
+ * blank line that separates HTTP headers from the binary body.
+ *
+ * @param filePath  Relative path returned by getTelegramFilePath()
+ * @return          Pointer to allocated buffer (caller must free()), or NULL
+ */
+uint8_t* downloadTelegramFile(String filePath) {
+
+  uint8_t* voiceFile = (uint8_t*)malloc(MAX_FILE_SIZE);
+  if (!voiceFile) return NULL;
+
+  downloadedFileSize = 0;
+  WiFiSSLClient client;
+
+  if (client.connect("api.telegram.org", 443)) {
+
+    // HTTP/1.0 prevents chunked transfer encoding so the body is pure binary
+    client.println("GET /file/bot" + telegrambotToken + "/" + filePath + " HTTP/1.0");
+    client.println("Host: api.telegram.org");
+    client.println("Connection: close");
+    client.println();
+
+    // Skip HTTP headers: accumulate characters until "\r\n\r\n" is found
+    String header    = "";
+    long   startTime = millis();
+
+    while (client.connected() || client.available()) {
+      if (millis() - startTime > 10000) break;
+      if (client.available()) {
+        char c = client.read();
+        header += c;
+        if (header.endsWith("\r\n\r\n")) break;   // Headers fully consumed
+      }
+    }
+
+    // Read binary body directly into the output buffer
+    startTime = millis();
+    while ((client.connected() || client.available()) &&
+           downloadedFileSize < MAX_FILE_SIZE) {
+      if (millis() - startTime > 10000) break;
+      if (client.available()) {
+        voiceFile[downloadedFileSize++] = client.read();
+        startTime = millis();   // Reset timeout on each received byte
+      }
+    }
+
+    client.stop();
+  }
+
+  return voiceFile;
+}
+
+// ============================================================
+//  Telegram: Resolve File ID → Download Path
+// ============================================================
+
+/**
+ * @brief Call Telegram's getFile API to convert a file_id into a download path.
+ *
+ * @param fileId  Telegram file_id (e.g. from a voice message object)
+ * @return        Relative file path string, e.g. "voice/file_123.oga"
+ */
+String getTelegramFilePath(String fileId) {
+
+  WiFiSSLClient client;
+  String filePath = "";
+  String getAll = "", getBody = "";
+
+  if (client.connect("api.telegram.org", 443)) {
+
+    client.println("GET /bot" + telegrambotToken +
+                   "/getFile?file_id=" + fileId + " HTTP/1.1");
+    client.println("Host: api.telegram.org");
+    client.println("Connection: close");
+    client.println();
+
+    int     waitTime  = 5000;
+    long    startTime = millis();
+    boolean state     = false;
+
+    while ((startTime + waitTime) > millis()) {
+      delay(100);
+
+      while (client.available()) {
+        char c = client.read();
+
+        if (c == '\n') {
+          if (getAll.length() == 0) state = true;
+          getAll = "";
+        } else if (c != '\r') {
+          getAll += String(c);
+        }
+
+        if (state == true) getBody += String(c);
+
+        startTime = millis();
+      }
+
+      if (getBody.length() > 0) break;
+    }
+
+    // Extract file_path from the JSON response
+    DynamicJsonDocument doc(2048);
+    deserializeJson(doc, getBody);
+    filePath = doc["result"]["file_path"].as<String>();
+  }
+
+  return filePath;
+}
+
 // Poll Telegram Bot API for latest user message
 void getTelegramMessage() {
 
@@ -1608,9 +1840,10 @@ void getTelegramMessage() {
   JsonObject obj;
   DynamicJsonDocument doc(8192);
 
-  String message;
-  long message_id;
-
+  String text        = "";
+  String voiceFileId = "";
+  long   message_id  = 0;
+  
   if (lastMessageId == 0)
     Serial.println("Connect to " + String(myDomain));
 
@@ -1671,12 +1904,6 @@ void getTelegramMessage() {
           break;
       }
 
-      getBody.trim();
-      int jsonStart = getBody.indexOf('{');
-      if (jsonStart != -1) {
-        getBody = getBody.substring(jsonStart);
-      }
-
       DeserializationError err = deserializeJson(doc, getBody);
       if (err) {
         Serial.println("JSON parse failed\n" + getBody);
@@ -1685,7 +1912,6 @@ void getTelegramMessage() {
       obj = doc.as<JsonObject>();
 
       message_id = obj["result"][0]["message"]["message_id"].as<long>();
-      message = obj["result"][0]["message"]["text"].as<String>();
 
       if (message_id!=lastMessageId&&message_id) {
 
@@ -1695,16 +1921,18 @@ void getTelegramMessage() {
         if (id_last==0) {
           message_id = 0;
 
-          if (shouldSendHelp == true)
-            message = "/help";
-          else
-            message = "";
-        }
-
-        if (message!="") {
-        
-          if (message=="help"||message=="/help"||message=="/start") {
-        
+          if (shouldSendHelp == true) { 
+            executeTool("/help", JsonObject());
+            return; 
+          }
+      
+        } else {  
+    
+          if (obj["result"][0]["message"].containsKey("text")) {
+            text = obj["result"][0]["message"]["text"].as<String>();
+          
+            if (text=="help"||text=="/help"||text=="/start") {
+          
             String mem = getMemoryInfo();
             
             String command =
@@ -1725,29 +1953,54 @@ void getTelegramMessage() {
               "The system supports real-time search and vision-based analysis.\n\n"
               "Documentation:\n"
               "https://github.com/fustyles/fuClaw";
+            
+              String keyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
+            
+              telegramSendMessage(telegrambotToken, telegrambotChatId, command, keyboard);
+      
+              historicalMessages += buildGeminiMessage("user", "Command list", 1);
+              historicalMessages += buildGeminiMessage("model", command, 1);
           
-            String keyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
-        
-            telegramSendMessage(telegrambotToken, telegrambotChatId, command, keyboard);
+            } else if (text=="null") {
+          
+              botClient.stop();
+          
+            } else {
+          
+              if (text.startsWith("/")) 
+                executeTool(text, JsonObject()); 
+              else {
+                text = geminiChatRequest(text, 1);
+                handleAgentResponse(text);
+              } 
+            }
+          }
+          else if (doc["result"][0]["message"].containsKey("voice")) {
 
-            historicalMessages += buildGeminiMessage("user", "Command list", 1);
-            historicalMessages += buildGeminiMessage("model", command, 1);
-        
-          } else if (message=="null") {
-        
-            botClient.stop();
-        
-          } else {
-        
-            if (message.startsWith("/")) {
-              executeTool(message, JsonObject());
-              
-            } 
-            else {
-              message = geminiChatRequest(message, 1);
-              handleAgentResponse(message);
-              
-            } 
+            voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
+
+            // Resolve file_id → CDN path → download raw OGG bytes
+            String   filePath  = getTelegramFilePath(voiceFileId);
+            uint8_t* voiceFile = downloadTelegramFile(filePath);
+
+            if (voiceFile && downloadedFileSize > 0) {
+
+              // Transcribe with Gemini and treat result as a text command
+              text = sendAudioFileToGeminiSTT(
+                voiceFile, downloadedFileSize,
+                "audio/ogg; codecs=opus",
+                "Transcribe this audio to text exactly as spoken.");
+
+                if (text.startsWith("/")) 
+                  executeTool(text, JsonObject()); 
+                else {
+                  text = geminiChatRequest(text, 1);
+                  handleAgentResponse(text);
+                } 
+            }
+
+            if (voiceFile) free(voiceFile);   // Always release the voice buffer
+            
           }
         }
       }
@@ -1782,9 +2035,6 @@ void getTelegramMessage_task(void *param) {
 
 // Initialize WiFi
 void initWiFi() {
-  Serial.println(wifiSsid);  
-  Serial.println(wifiPassword); 
-
     
   for (int i=0;i<2;i++) {
 
@@ -1807,6 +2057,7 @@ void initWiFi() {
         break;
     }
   }
+  
 }
 
 void setEnvironmentSettings(String jsonString) {
@@ -1855,7 +2106,7 @@ void setup() {
   } 
   
   systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1); 
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
 
 }
 
