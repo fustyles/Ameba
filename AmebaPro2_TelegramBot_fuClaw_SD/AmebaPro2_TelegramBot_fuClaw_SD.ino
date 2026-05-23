@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-23 14:00
+Build Date: 2026-05-23 18:00
 
 ------------------------------------------------------------
 Overview
@@ -1712,102 +1712,97 @@ void handleAgentResponse(String message) {
  * @param prompt     Instruction text sent alongside the audio
  * @return           Transcribed text, or an error message string
  */
-String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize,
-                                String mimeType, String prompt) {
+String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
 
-  // Allocate and fill Base64 output buffer
   int   encodedLen  = base64_enc_len(fileSize);
   char* encodedData = (char*)malloc(encodedLen);
-  if (!encodedData) return "Malloc failed for Base64 encoding.";
-
+  if (!encodedData) {
+    Serial.println("[STT] malloc failed for Base64 buffer");
+    return "Malloc failed for Base64 encoding.";
+  }
   base64_encode(encodedData, (char*)fileinput, fileSize);
 
+  prompt.replace("\n", "");
+  prompt.replace("\"", "\\\"");
+
+  String request =
+    "{\"contents\": [{\"role\": \"user\", \"parts\": ["
+    "{\"inline_data\": {\"data\": \"" + String(encodedData) + "\","
+    "\"mime_type\": \"" + mimeType + "\"}},"
+    "{\"text\": \"" + prompt + "\"}"
+    "]}]}";
+
+  free(encodedData);
+
   WiFiSSLClient client;
-
-  if (client.connect("generativelanguage.googleapis.com", 443)) {
-
-    prompt.replace("\n", "");   // Gemini dislikes bare newlines in JSON strings
-
-    // Build Gemini request JSON with inline audio + text prompt
-    String filePart = "{\"inline_data\": {\"data\": \"" + String(encodedData) +
-                      "\", \"mime_type\": \"" + mimeType + "\"}}";
-    String textPart = "{\"text\": \"" + prompt + "\"}";
-    String request  = "{\"contents\": [{\"role\": \"user\", \"parts\": ["
-                      + filePart + ", " + textPart + "]}]}";
-
-    free(encodedData);   // Release Base64 buffer before the blocking send
-
-    // Send HTTP POST to Gemini generateContent endpoint
-    client.println("POST /v1beta/models/gemini-2.5-flash:generateContent?key="
-                   + geminiApiKey + " HTTP/1.1");
-    client.println("Connection: close");
-    client.println("Host: generativelanguage.googleapis.com");
-    client.println("Content-Type: application/json; charset=utf-8");
-    client.println("Content-Length: " + String(request.length()));
-    client.println();
-
-    // Stream request body in 1 KB chunks
-    for (int i = 0; i < (int)request.length(); i += 1024) {
-      client.print(request.substring(i, i + 1024));
-    }
-
-    // Read response (skip HTTP headers, collect JSON body)
-    String  getResponse = "", Feedback = "";
-    int     waitTime    = 20000;
-    long    startTime   = millis();
-    boolean state       = false;
-    boolean headState   = false;
-
-    while ((startTime + waitTime) > millis()) {
-      delay(100);
-
-      while (client.available()) {
-        char c = client.read();
-
-        if (state == true) Feedback += String(c);
-
-        if (c == '\n') {
-          if (getResponse.length() == 0) {
-            if (!headState) {
-              // Skip the chunk-size line present in chunked transfer encoding
-              client.readStringUntil('\n');
-              headState = true;
-            }
-            state = true;
-          }
-          getResponse = "";
-        } else if (c != '\r') {
-          getResponse += String(c);
-        }
-
-        startTime = millis();
-      }
-
-      if (Feedback.length() > 0) break;
-    }
-
-    client.stop();
-
-    // Parse JSON response
-    DynamicJsonDocument doc(4096);
-    DeserializationError err = deserializeJson(doc, Feedback);
-    if (err) return "JSON Parsing Error: " + String(err.c_str());
-
-    if (doc.containsKey("error"))
-      return "Gemini Error: " + doc["error"]["message"].as<String>();
-
-    if (doc["candidates"][0]["content"]["parts"][0].containsKey("text")) {
-      String getText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
-      getText.replace("\n", "");
-      return getText;
-    }
-
-    return "No text returned from Gemini.";
-
-  } else {
-    free(encodedData);
+  if (!client.connect("generativelanguage.googleapis.com", 443)) {
+    Serial.println("[STT] Connection to Gemini failed");
     return "Connected to Gemini failed.";
   }
+
+  client.println("POST /v1beta/models/" + geminiModel +
+                 ":generateContent?key=" + geminiApiKey + " HTTP/1.1");
+  client.println("Host: generativelanguage.googleapis.com");
+  client.println("Content-Type: application/json; charset=utf-8");
+  client.println("Content-Length: " + String(request.length()));
+  client.println("Connection: close");
+  client.println();
+
+  for (int i = 0; i < (int)request.length(); i += 1024) {
+    client.print(request.substring(i, i + 1024));
+  }
+
+  String body = "";
+  unsigned long timeout = millis() + 20000;
+  bool headersEnded = false;
+  String line = "";
+
+  while (client.connected() && millis() < timeout) {
+    while (client.available()) {
+      char c = client.read();
+
+      if (!headersEnded) {
+        if (c == '\n') {
+          if (line.length() <= 1) {
+            headersEnded = true;
+          }
+          line = "";
+        } else if (c != '\r') {
+          line += c;
+        }
+      } else {
+        body += c;
+      }
+    }
+  }
+
+  client.stop();
+
+  body.trim();
+  int jsonStart = body.indexOf('{');
+  if (jsonStart != -1) body = body.substring(jsonStart);
+
+  DynamicJsonDocument doc(4096);
+  DeserializationError err = deserializeJson(doc, body);
+
+  if (err) {
+    Serial.println("[STT] JSON parse failed: " + String(err.c_str()));
+    Serial.println("[STT] Body preview: " + body.substring(0, 300));
+    return "JSON Parsing Error: " + String(err.c_str());
+  }
+
+  if (doc.containsKey("error")) {
+    String msg = "Gemini STT Error: " + doc["error"]["message"].as<String>();
+    return msg;
+  }
+
+  if (doc["candidates"][0]["content"]["parts"][0].containsKey("text")) {
+    String result = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+    result.replace("\n", "");
+    return result;
+  }
+
+  return "No text returned from Gemini.";
 }
 
 // ============================================================
