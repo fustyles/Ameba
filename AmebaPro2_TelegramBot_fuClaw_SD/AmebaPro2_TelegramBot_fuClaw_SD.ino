@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-23 18:00
+Build Date: 2026-05-23 20:00
 
 ------------------------------------------------------------
 Overview
@@ -596,7 +596,7 @@ Error response:
 }
 
 
-Capture image:
+Capture image from device camera:
    
 {
   "type":"tool_call",
@@ -604,14 +604,15 @@ Capture image:
   "params":{}
 }
 
-Vision analysis:
+Device camera vision analysis:
 
 {
-  "type":"tool_call",
-  "method":"/vision",
-  "params":{
-    "query":"<what to analyze in image>",
-    "task":"<what to do after analysis>"
+  "type": "tool_call",
+  "method": "/vision",
+  "params": {
+    "query": "<what to analyze in image>",
+    "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
+    "task": "<what to do after analysis>"
   }
 }
 
@@ -704,7 +705,8 @@ IMAGE TOOL ROUTING RULES
 - MUST NOT trigger hardware actions
 
 /vision:
-- Capture image internally and analyze it
+- Capture image from device camera and analyze it
+- Use previously cached image and analyze it if frames is false
 - MUST return observation result only
 - MUST NOT directly trigger hardware actions
 
@@ -1244,7 +1246,7 @@ String geminiSearchRequest(String message, bool tools) {
 }
 
 // Capture camera frame and send it to Gemini Vision for multimodal analysis
-String geminiVisionRequest(String message) {
+String geminiVisionRequest(String message, bool frames) {
   historicalMessages += buildGeminiMessage("user", message, 1);
   storeHistoricalMessagesToFile();
 
@@ -1253,7 +1255,12 @@ String geminiVisionRequest(String message) {
   const char* myDomain = "generativelanguage.googleapis.com";
 
   if (client.connect(myDomain, 443)) {
-    Camera.getImage(0, &imageAddress, &imageLength);
+    if (frames)
+      Camera.getImage(0, &imageAddress, &imageLength);
+    else if (!frames && imageLength == 0) {
+      client.stop();
+      return "Previous image does not exist";
+    }
     
     uint8_t *fbBuf = (uint8_t*)imageAddress;
     size_t fbLen = imageLength;
@@ -1572,12 +1579,13 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
     } else if (command == "/vision") {
       String query = params["query"].as<String>();
+      bool frames = params["frames"].as<bool>();
       String task = params["task"].as<String>();
 	  
-      String response = geminiVisionRequest(query);
+      String response = geminiVisionRequest(query, frames);
       handleAgentResponse(response);
 	  
-	  executeToolHistory += command + " ("+query+", "+task+")\n";
+      executeToolHistory += command + " ("+query+", "+frames+", "+task+")\n";
       
       evaluateWorkflowContinuation(reCheck, task);
     }
