@@ -355,11 +355,6 @@ void initWiFi() {
     }
   }
 
-  // Camera setup: no rotation, channel 0, JPEG stream
-  config.setRotation(0);
-  Camera.configVideoChannel(0, config);
-  Camera.videoInit();
-  Camera.channelBegin(0);
 }
 
 // ============================================================
@@ -510,11 +505,17 @@ void setup() {
 
   initWiFi();
 
+  // Camera setup: no rotation, channel 0, JPEG stream
+  config.setRotation(0);
+  Camera.configVideoChannel(0, config);
+  Camera.videoInit();
+  Camera.channelBegin(0);  
+
   // Spawn the Telegram polling task
   if (xTaskCreate(
         getTelegramMessage_task,
         "getTelegramMessage_task",
-        4096,           // Stack: 4 KB (no audio processing needed)
+        32768,           // Stack: 4 KB (no audio processing needed)
         NULL,
         tskIDLE_PRIORITY + 1,
         NULL) != pdPASS) {
