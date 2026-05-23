@@ -334,7 +334,7 @@ void getTelegramMessage() {
       deserializeJson(doc, getBody);
       obj = doc.as<JsonObject>();
 
-      message_id = obj["result"][0]["message"]["message_id"].as<String>().toInt();
+      message_id = obj["result"][0]["message"]["message_id"].as<long>();
       message = obj["result"][0]["message"]["text"].as<String>();
 
       if (message_id!=messageLastId&&message_id) {
