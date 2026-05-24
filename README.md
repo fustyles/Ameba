@@ -5,19 +5,27 @@
 fuClaw AI Telegram Assistant with Gemini Integration
 ------------------------------------------------------------
 
-Author:<br>
-  ChungYi Fu (Kaohsiung, Taiwan)<br>
+Author:
+  ChungYi Fu (Kaohsiung, Taiwan)
   https://www.facebook.com/francefu
 
-Repository:<br>
+Repository:
   https://github.com/fustyles/fuClaw
+
+------------------------------------------------------------
+Version
+------------------------------------------------------------
+
+Prompt-Orchestrated Embedded Agent Edition
+Persistent Filesystem Runtime
+
+Build Date: 2026-05-24 18:00
 
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
 
-fuClaw is a Prompt-Orchestrated Embedded AI Agent Runtime on Ameba Pro2
-
+fuClaw is an embedded multimodal AI agent framework running
 on Realtek Ameba Pro2 devices:
 
 - AMB82-mini
@@ -43,26 +51,26 @@ Conversation + Reasoning + Tools + Vision + Memory + Hardware
 Runtime Architecture
 ------------------------------------------------------------
 
-Telegram User<br>
-      ↓<br>
-Telegram Polling Task<br>
-      ↓<br>
-Message Router<br>
-      ↓<br>
-Gemini Reasoning Engine<br>
-(Chat / Search / Vision / Workflow)<br>
-      ↓<br>
-JSON tool_call output<br>
-      ↓<br>
-ArduinoJson validation<br>
-      ↓<br>
-Tool Dispatcher<br>
-      ↓<br>
-Hardware / Search / Vision Execution<br>
-      ↓<br>
-Result injection into memory<br>
-      ↓<br>
-Natural language reply<br>
+Telegram User
+      ↓
+Telegram Polling Task
+      ↓
+Message Router
+      ↓
+Gemini Reasoning Engine
+(Chat / Search / Vision / Workflow)
+      ↓
+JSON tool_call output
+      ↓
+ArduinoJson validation
+      ↓
+Tool Dispatcher
+      ↓
+Hardware / Search / Vision Execution
+      ↓
+Result injection into memory
+      ↓
+Natural language reply
 
 ------------------------------------------------------------
 Execution Model
@@ -94,34 +102,38 @@ Multi-step workflows are executed step-by-step.
 Supported Tools
 ------------------------------------------------------------
 
-/digitalwrite<br>   GPIO digital output<br>
-/analogwrite<br>    GPIO analog output<br>
-/digitalread<br>    GPIO digital input<br>
-/analogread<br>     GPIO analog input<br>
-/still<br>          Capture image<br>
-/vision<br>         Capture + multimodal analysis<br>
-/search<br>         Grounded web search<br>
-/memory<br>         Runtime memory diagnostics<br>
-/log<br>            show tool execution history<br>
-/reset<br>          Reset conversation state<br>
-/chat<br>           Natural language reply<br>
-/reboot<br>         Reboot the device<br>
+/digitalwrite   GPIO digital output
+/analogwrite    GPIO analog output
+/digitalread    GPIO digital input
+/analogread     GPIO analog input
+/still          Capture image
+/vision         Capture + multimodal analysis
+/search         Grounded web search
+/delay          Pause execution for specified milliseconds
+/memory         Runtime memory diagnostics
+/log            Show tool execution history
+/reset          Reset conversation state
+/chat           Natural language reply
+/reboot         Reboot the device
 
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
 
-env.md<br>
-WiFi / Telegram / Gemini credentials
+env.md
+  WiFi / Telegram / Gemini credentials
 
-device.md<br>
-Devices definition
+device.md
+  Devices definition
 
-soul.md<br>
-Custom assistant personality prompt
+skill.md
+  Skills definition
 
-memory.md<br>
-Conversation history persistence
+soul.md
+  Custom assistant personality prompt
+
+memory.md
+  Conversation history persistence
 
 Conversation state is restored automatically on boot.
 
@@ -165,8 +177,10 @@ Known Limitations
 - String-heavy heap fragmentation risk
 - Vision encoding is CPU intensive
 - Large JSON parsing impacts heap usage
-- Gemini response format sensitivity
-- Recursive tool chaining requires safeguards
+- Gemini response format handled by ArduinoJson validation layer
+- Recursive tool chaining controlled via reCheck flag and NONE sentinel
+
+------------------------------------------------------------
 
 ------------------------------------------------------------
 Grok Evaluation
