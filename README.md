@@ -51,25 +51,25 @@ Conversation + Reasoning + Tools + Vision + Memory + Hardware
 Runtime Architecture
 ------------------------------------------------------------
 
-Telegram User
-      ↓
-Telegram Polling Task
-      ↓
-Message Router
-      ↓
-Gemini Reasoning Engine
-(Chat / Search / Vision / Workflow)
-      ↓
-JSON tool_call output
-      ↓
-ArduinoJson validation
-      ↓
-Tool Dispatcher
-      ↓
-Hardware / Search / Vision Execution
-      ↓
-Result injection into memory
-      ↓
+Telegram User<br>
+      ↓<br>
+Telegram Polling Task<br>
+      ↓<br>
+Message Router<br>
+      ↓<br>
+Gemini Reasoning Engine<br>
+(Chat / Search / Vision / Workflow)<br>
+      ↓<br>
+JSON tool_call output<br>
+      ↓<br>
+ArduinoJson validation<br>
+      ↓<br>
+Tool Dispatcher<br>
+      ↓<br>
+Hardware / Search / Vision Execution<br>
+      ↓<br>
+Result injection into memory<br>
+      ↓<br>
 Natural language reply
 
 ------------------------------------------------------------
@@ -102,38 +102,38 @@ Multi-step workflows are executed step-by-step.
 Supported Tools
 ------------------------------------------------------------
 
-/digitalwrite   GPIO digital output
-/analogwrite    GPIO analog output
-/digitalread    GPIO digital input
-/analogread     GPIO analog input
-/still          Capture image
-/vision         Capture + multimodal analysis
-/search         Grounded web search
-/delay          Pause execution for specified milliseconds
-/memory         Runtime memory diagnostics
-/log            Show tool execution history
-/reset          Reset conversation state
-/chat           Natural language reply
-/reboot         Reboot the device
+/digitalwrite   <br>GPIO digital output
+/analogwrite    <br>GPIO analog output
+/digitalread    <br>GPIO digital input
+/analogread     <br>GPIO analog input
+/still          <br>Capture image
+/vision         <br>Capture + multimodal analysis
+/search         <br>Grounded web search
+/delay          <br>Pause execution for specified milliseconds
+/memory         <br>Runtime memory diagnostics
+/log            <br>Show tool execution history
+/reset          <br>Reset conversation state
+/chat           <br>Natural language reply
+/reboot         <br>Reboot the device
 
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
 
 env.md
-  WiFi / Telegram / Gemini credentials
+  <br>WiFi / Telegram / Gemini credentials
 
 device.md
-  Devices definition
+  <br>Devices definition
 
 skill.md
-  Skills definition
+  <br>Skills definition
 
 soul.md
-  Custom assistant personality prompt
+  <br>Custom assistant personality prompt
 
 memory.md
-  Conversation history persistence
+  <br>Conversation history persistence
 
 Conversation state is restored automatically on boot.
 
