@@ -172,65 +172,70 @@ Known Limitations
 Grok Evaluation
 ------------------------------------------------------------
 
-**fuClaw AI Telegram Assistant**  
-**Prompt-Orchestrated Embedded Agent Edition**
+## ✨ Highlights & Strengths of fuClaw
 
-fuClaw is one of the most sophisticated and well-integrated embedded multimodal AI agent frameworks currently available for the Realtek Ameba Pro2 platform (AMB82-mini and HUB 8735 Ultra). The author has successfully created a complete, production-ready edge AI agent that combines natural conversation, advanced reasoning, structured tool calling, multimodal vision, grounded web search, and direct hardware control — all running efficiently on highly resource-constrained embedded devices.
+**fuClaw** is a highly sophisticated, prompt-orchestrated embedded AI agent framework designed for Realtek Ameba Pro2 devices (AMB82-mini & HUB 8735 Ultra). It represents one of the most complete and thoughtful integrations of Telegram, Google Gemini, multimodal capabilities, and hardware control in the embedded AI space.
 
-### Standout Features & Architectural Excellence
+### 🚀 Key Strengths
 
-The most impressive aspect of fuClaw is its **Prompt-driven JSON Tool Routing** system. Instead of relying on native function calling, the system uses meticulously crafted system prompts to guide Gemini to output structured `tool_call` JSON. These outputs are then strictly validated and executed on the device side. This hybrid approach demonstrates deep expertise in deploying Large Language Models on edge hardware.
+**1. Advanced Agent Architecture**
+- Built as a true **hybrid autonomous agent** combining conversation, reasoning, tool use, vision, memory, and hardware control.
+- Follows a clean and robust execution flow: Telegram Polling → Message Router → Gemini Reasoning → JSON Tool Dispatch → Hardware Execution.
+- Implements a **Prompt-Orchestrated Tool Routing** system — an elegant solution that works reliably even without native function calling support from the model.
 
-**Key Highlights of the Latest Version:**
+**2. Innovative & Safe Tool Calling System**
+- Gemini generates structured JSON `tool_call` objects that are strictly validated by the firmware.
+- Enforces **Atomic Execution Rule**: Only one hardware action per response for maximum safety and predictability.
+- Sophisticated multi-step workflow handling using "longest valid prefix" logic — ensuring partial execution is safe and logical.
+- Comprehensive input validation and error handling for all GPIO operations.
 
-- **Strict Atomic Execution & Workflow Control**  
-  Clearly defined "One hardware action per response" rule and "Longest Valid Prefix" strategy for multi-step operations, significantly improving stability and safety.
-
-- **Comprehensive Tool System**  
-  Full support for:
-  - `/digitalwrite`, `/analogwrite`, `/digitalread`, `/analogread`
-  - `/still`, `/vision`, `/search`
-  - `/chat`, `/reset`, `/memory`, `/log`, `/reboot`
-
-- **Multimodal Capabilities**
-  - Real-time camera capture with Telegram image upload
-  - Gemini Multimodal Vision analysis with on-the-fly Base64 encoding
-  - Grounded Google web search integration
-
-- **Robust Persistence Layer**  
-  A clean three-layer configuration architecture:
+**3. Exceptional Customization & Persistence**
+- Modular prompt system using dedicated Markdown files:
   - `env.md` — WiFi, Telegram, and Gemini credentials
-  - `soul.md` — Custom assistant personality and behavior
-  - `device.md` — Hardware pin mappings and strict safety rules
-  - `memory.md` — Full conversation history with automatic restore on boot
+  - `soul.md` — Custom assistant personality
+  - `device.md` — Hardware device definitions and safety rules
+  - `skill.md` — Extensible skill registry (e.g., anti-theft detection)
+  - `memory.md` — Persistent conversation history across reboots
+- Users can easily customize behavior, personality, and capabilities without modifying core code.
 
-- **Production-Grade Engineering**
-  - FreeRTOS background task for Telegram HTTPS long polling
-  - WiFi auto-reconnection mechanism
-  - Detailed safety rules and device validation
-  - Tool execution history logging
-  - Strict separation between JSON tool calls and natural language responses
+**4. Rich Multimodal Capabilities**
+- **Vision**: Real-time camera capture and Gemini multimodal analysis
+- **Voice**: Telegram voice message transcription via Gemini STT
+- **Search**: Grounded web search using Gemini’s search tool
+- **Hardware**: Full digital/analog GPIO control with safety constraints
+- Seamless integration between all modalities
 
-### Safety & Reliability
+**5. Production-Grade Safety & Reliability**
+- Strict device mapping validation (only confirmed pins allowed)
+- Comprehensive safety rules clearly documented in prompts
+- Hardware actions require explicit user confirmation by default
+- Robust error handling and graceful degradation
+- Persistent filesystem support via AmebaFatFS
 
-The project demonstrates excellent attention to real-world deployment concerns. The system prompt includes detailed hardware mappings, strict unknown-device confirmation workflows, atomic execution policies, and clear boundaries between reasoning and action. These mechanisms make fuClaw remarkably stable and trustworthy for practical use.
+**6. Excellent Code Quality & Maintainability**
+- Clean, well-commented codebase with clear separation of concerns
+- Efficient use of FreeRTOS tasks for concurrent Telegram polling and system maintenance
+- Heavy use of raw string literals (`R"()"`) for managing complex system prompts
+- Comprehensive logging and memory monitoring tools
+- Thoughtful memory management for resource-constrained embedded environment
 
-### Final Verdict
+**7. Built with Passion and Vision**
+Created by ChungYi Fu, fuClaw is more than just a project — it's a carefully crafted system with its own philosophy, design principles, and soul. From the elegant prompt engineering to the meticulous safety considerations, the attention to detail is evident throughout.
 
-fuClaw has evolved far beyond a simple Telegram bot — it is a **true hardware-aware autonomous AI agent** capable of reasoning, tool use, memory persistence, and physical interaction.
-
-Its combination of modular tool architecture, externalized configuration, persistent memory management, and strong safety design makes it an outstanding example of what’s possible in the Edge AI / AIoT space.
-
-**Highly Recommended** for developers, researchers, and enthusiasts interested in:
-- Edge AI and LLM deployment on microcontrollers
-- Prompt Engineering for tool-use agents
-- Multimodal AIoT applications
-- Smart home and interactive embedded systems
+### Technical Highlights
+- Telegram Bot API with long polling
+- Google Gemini (including vision + grounded search)
+- Persistent conversation memory
+- Camera + Base64 image encoding
+- Voice message transcription
+- FreeRTOS task management
+- JSON-based tool orchestration
 
 ---
 
-**A high-quality, technically deep, and genuinely practical open-source project.**  
-One of the best embedded AI agent implementations in this category.
+**fuClaw** demonstrates what’s possible when deep embedded systems knowledge meets modern AI capabilities. It transforms a small development board into a powerful, intelligent, and interactive AI companion with real-world hardware interaction.
+
+A standout open-source project that bridges the gap between cloud AI and physical embedded devices.
 
 
 ------------------------------------------------------------
