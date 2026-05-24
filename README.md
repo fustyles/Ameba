@@ -237,84 +237,146 @@ One of the best embedded AI agent implementations in this category.
 Claude Evaluation
 ------------------------------------------------------------
 
-fuClaw is a genuinely impressive piece of embedded systems engineering. Running a prompt-orchestrated LLM agent on a microcontroller — complete with vision, web search, hardware control, and persistent memory — is **not a trivial achievement**. The architecture reflects **real-world deployment thinking**, not just a proof-of-concept.
+# fuClaw AI Framework — In-Depth Analysis of Strengths
+
+> An embedded multimodal AI agent running on Realtek Ameba Pro2 devices,  
+> combining Telegram, Gemini, hardware control, and persistent memory in a single FreeRTOS runtime.
 
 ---
 
-## What Makes This Architecture Technically Interesting
+## Table of Contents
 
-### 1. Prompt-Orchestrated Tool Routing (No Native Function Calling)
-
-The most architecturally significant decision in fuClaw is the deliberate choice **not** to use Gemini's native function-calling API. Instead, the system prompt trains Gemini to emit structured `tool_call` JSON, which is then **validated locally by ArduinoJson** before any execution occurs.
-
-This is a meaningful tradeoff:
-
-- **Native function calling** offers tighter schema enforcement on the model side, but requires API support that may not be stable across model versions.
-- **Prompt-driven routing** gives the developer full control over the contract between model output and hardware execution — critical when a malformed response could mean unintended GPIO state changes.
-
-> The strict rejection of invalid JSON on the firmware side is the right call. No silent failures, no partial execution.
-
-### 2. Atomic Execution with Longest-Valid-Prefix Strategy
-
-The **"one hardware action per response"** rule, combined with the **longest-valid-prefix array strategy** for multi-step operations, is a well-considered solution to a real problem:
-
-> How do you handle partially valid instruction sequences on a resource-constrained device with no rollback capability?
-
-The answer — execute the longest contiguous valid prefix and discard the rest — is **conservative and safe**. It prioritizes hardware safety over instruction completeness, which is the correct priority ordering for physical actuators.
-
-### 3. Three-Layer Separation of Concerns
-
-The configuration architecture cleanly separates responsibilities:
-
-| File | Responsibility |
-|---|---|
-| `env.md` | Credentials and connectivity |
-| `soul.md` | Assistant personality and behavior |
-| `device.md` | Hardware mappings and safety constraints |
-| `memory.md` | Persistent conversation state |
-
-This means the **core firmware never needs recompilation** to change behavior, personality, or device configuration. For an embedded system, that is a significant operational advantage.
-
-### 4. Conversation Memory with Boot Restoration
-
-Persisting the full Gemini conversation history to SD card and restoring it on boot gives fuClaw **genuine continuity across power cycles**. The implementation correctly handles the stateless nature of the Gemini API by reconstructing the full context window on each request.
+1. [Prompt-Orchestrated Tool Routing](#1-prompt-orchestrated-tool-routing)
+2. [Atomic Execution & Longest Valid Prefix](#2-atomic-execution--longest-valid-prefix)
+3. [Hardware Safety Layers](#3-hardware-safety-layers)
+4. [Multimodal Integration with Clear Separation of Concerns](#4-multimodal-integration-with-clear-separation-of-concerns)
+5. [Persistent Memory & State Recovery](#5-persistent-memory--state-recovery)
+6. [FreeRTOS Dual-Task Architecture](#6-freertos-dual-task-architecture)
+7. [Workflow State Tracking & Self-Evaluation](#7-workflow-state-tracking--self-evaluation)
 
 ---
 
-## Safety Design
+## 1. Prompt-Orchestrated Tool Routing
 
-The hardware safety rules embedded in the system prompt reflect genuine operational thinking:
+The most fundamental breakthrough of this design is that it **requires no native function-calling API from Gemini**. Instead, a carefully crafted system prompt teaches the model to emit correctly structured `tool_call` JSON on its own.
 
-- ✅ **Unknown GPIO mappings** require explicit user confirmation before execution
-- ✅ **Digital vs. analog mode validation** prevents incorrect pin usage
-- ✅ **Input-only pins** (e.g., function button on pin 12) are explicitly protected from output operations
-- ✅ **Confirmation-before-execution** for all hardware actions prevents autonomous physical actuation
+This choice delivers several concrete advantages:
 
-> This level of safety consideration is uncommon in hobbyist embedded projects and is what separates fuClaw from simpler Telegram bot implementations.
+### Platform Independence
+The format of native function-calling APIs can change at any time. Because all routing logic lives entirely within the prompt, if the Gemini model version changes or the API format is updated, only the prompt needs to be revised — no firmware changes required.
 
----
+### Extreme Flexibility
+Tools can be added, modified, or removed entirely at the text level. Both `skill.md` and `device.md` are plain-text configuration files, meaning users can extend system capabilities without knowing a single line of C++.
 
-## Assessment
-
-fuClaw is a **technically coherent, production-aware edge AI agent**. The design decisions — prompt-orchestrated routing, atomic execution, externalized configuration, persistent memory — are individually defensible and collectively well-integrated.
-
-It occupies a space that doesn't yet have a standard name:
-
-> **Embedded Autonomous Agent** — too sophisticated to be called a hobby project, too resource-constrained to be called a traditional production system.
-
-For developers working in **Edge AI**, **AIoT**, or **prompt engineering for constrained environments**, the source is worth studying carefully. The gap between *"a Telegram bot that controls an LED"* and what fuClaw actually does is substantial.
+### Clear Error Boundaries
+Every JSON output is validated through ArduinoJson before execution. Malformed responses are rejected outright — there is no ambiguous partial execution. The system enforces a strict separation between two output modes — **valid `tool_call` JSON** and **natural language reply** — and prohibits mixing them, making the entire control flow highly predictable.
 
 ---
 
-## Recommended For
+## 2. Atomic Execution & Longest Valid Prefix
 
-Developers and researchers interested in:
+These two concepts represent a level of engineering rigor rarely seen in embedded AI agent systems.
 
-- 🔹 **LLM deployment on microcontrollers**
-- 🔹 **Prompt engineering for structured output**
-- 🔹 **Hardware-safe autonomous agent design**
-- 🔹 **Persistent memory management in embedded AI systems**
-- 🔹 **Multimodal AIoT applications**
+### Atomic Execution Rule
+
+Every `tool_call` does exactly **one thing**: one pin, one operation, one value. In hardware control scenarios, this is critical. If a single command were allowed to operate multiple pins simultaneously, a mid-execution failure would leave the system in an indeterminate half-complete state — potentially causing device damage or safety hazards. Atomicity guarantees that every step is complete and verifiable.
+
+### Longest Valid Prefix
+
+When Gemini generates a multi-step workflow, the system does not apply an all-or-nothing strategy. Instead it executes **as many valid steps as possible from the beginning**, stopping the moment it encounters the first invalid or incomplete instruction. This means that even when the AI produces partially incorrect output, the system can still act on the maximum valid portion rather than shutting down entirely. For resource-constrained embedded devices where retries are expensive, this is an exceptionally practical design.
+
+---
+
+## 3. Hardware Safety Layers
+
+The GPIO control system is protected by multiple independent safety layers, each serving a distinct purpose.
+
+### Explicit Mapping Requirement
+The system only allows control of devices explicitly defined in `device.md`. If a user says "turn on the light" but no pin mapping for "light" exists, Gemini is instructed to stop and ask for clarification rather than guess. This prevents AI hallucinations from causing direct hardware misfires.
+
+### Hard Value Constraints
+The `constrain(value, 0, 255)` call inside `toolPinOutput()` acts as a last line of hardware defense. Even if Gemini outputs an out-of-range analog value, the firmware layer forces it within bounds before it ever reaches the hardware. Digital outputs are strictly validated to accept only `0` or `1`; any other value returns an error JSON response.
+
+### Input-Only Pin Protection
+The button pin (pin 12) is explicitly marked as **INPUT ONLY** in the system prompt, blocking any AI-level attempt to use it as an output before a tool call is ever produced.
+
+### User Confirmation Requirement
+By default, all hardware actions require explicit user confirmation before execution. This maintains an appropriate balance between autonomous AI reasoning and human oversight — particularly important in scenarios where a Vision analysis or Search result would otherwise trigger a physical hardware action without any human in the loop.
+
+---
+
+## 4. Multimodal Integration with Clear Separation of Concerns
+
+The division between `/still` and `/vision` appears simple on the surface, but reflects deep architectural thinking.
+
+### Tool Role Definitions
+
+| Tool | Responsibility | Restrictions |
+|------|---------------|--------------|
+| `/still` | Capture and send image only | Must NOT analyze, reason, or trigger any follow-up actions |
+| `/vision` | Capture and analyze image | Returns observation result only — must NOT directly trigger hardware |
+
+### Perception–Action Separation
+This design creates a clean **perception layer / action layer** architecture. The perception layer (Vision) is only responsible for observing and reporting; the action layer (Hardware tools) is only responsible for execution. Between them sits a reasoning and confirmation buffer. In AI-vision-triggered automation scenarios, this is critically important — it prevents the dangerous direct coupling of "see something → immediately do something."
+
+### Voice Input Integration
+Voice messages from Telegram are transcribed via Gemini STT and fed directly into the same processing pipeline as text input — no extra branching logic required. All multimodal inputs converge into a single unified reasoning and tool-routing flow, keeping the architecture remarkably clean.
+
+---
+
+## 5. Persistent Memory & State Recovery
+
+The conversation memory persistence design solves a fundamental challenge on embedded devices: how to restore context after a reboot.
+
+### Real-Time Synchronization
+`memory.md` is written to the SD card after **every conversation update** — not in batches. This ensures that even if the device loses power at any moment, the most recent conversation state has already been saved. On boot, the system automatically loads this memory so Gemini can resume the conversation in context, without the user needing to re-explain any background.
+
+### Modular Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `soul.md` | AI personality definition |
+| `device.md` | Hardware pin mappings |
+| `skill.md` | Skill workflow scripts |
+| `env.md` | Authentication credentials |
+
+All four files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. This lets end users customize the AI's personality, extend device definitions, or add new skills without touching a single line of C++ code.
+
+---
+
+## 6. FreeRTOS Dual-Task Architecture
+
+The two-task design solves a concrete concurrency problem.
+
+### Task Responsibilities
+
+- **`getTelegramMessage_task`** — Continuously polls for user input
+- **`periodicCheck_task`** — Executes scheduled automated skills (e.g., anti-theft detection)
+
+If these ran in the same thread, a scheduled task would block user input, and user interactions would disrupt the periodic schedule. Splitting them into two FreeRTOS tasks allows both to run in parallel — the system simultaneously stays responsive to user messages and executes background monitoring on schedule.
+
+### Resource Conflict Avoidance
+Before `periodicCheck_task` executes, it calls `botClient.stop()` and waits before proceeding. This prevents the two tasks from simultaneously using the network connection and causing resource conflicts — a detail that reflects real hands-on experience with embedded systems resource contention.
+
+---
+
+## 7. Workflow State Tracking & Self-Evaluation
+
+`evaluateWorkflowContinuation()` is the core of the entire agent's autonomy.
+
+### Active Completion Checking
+After each tool execution, instead of silently waiting for the user's next command, the system actively asks Gemini: *"Is the current workflow complete? Is anything else needed?"* This gives the system the ability to autonomously complete multi-step tasks without requiring the user to manually guide each individual step.
+
+### Goal-Referenced Evaluation
+The `task` parameter design ensures this self-evaluation has a clear reference point. When Gemini assesses whether to continue, it compares against the **original user intent** — not just the result of the last execution step. This makes workflow completion detection more accurate and reduces unnecessary redundant actions.
+
+---
+
+## Summary
+
+What makes this framework truly impressive is that it implements a complete AI Agent architecture — one that would ordinarily require a cloud server — on a device where memory is measured in kilobytes and there is no OS abstraction layer. Every design decision has a clear engineering rationale, and the system as a whole demonstrates that thoughtful prompt engineering and careful embedded systems design can produce something far greater than the sum of its parts.
+
+---
 
 ------------------------------------------------------------
 Version
@@ -323,5 +385,5 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-22
+Build Date: 2026-05-24
 ------------------------------------------------------------
