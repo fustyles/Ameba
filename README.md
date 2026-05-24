@@ -102,19 +102,19 @@ Multi-step workflows are executed step-by-step.
 Supported Tools
 ------------------------------------------------------------
 
-/digitalwrite   <br>GPIO digital output
-/analogwrite    <br>GPIO analog output
-/digitalread    <br>GPIO digital input
-/analogread     <br>GPIO analog input
-/still          <br>Capture image
-/vision         <br>Capture + multimodal analysis
-/search         <br>Grounded web search
-/delay          <br>Pause execution for specified milliseconds
-/memory         <br>Runtime memory diagnostics
-/log            <br>Show tool execution history
-/reset          <br>Reset conversation state
-/chat           <br>Natural language reply
-/reboot         <br>Reboot the device
+/digitalwrite <br>   GPIO digital output<br>
+/analogwrite <br>    GPIO analog output<br>
+/digitalread <br>    GPIO digital input<br>
+/analogread <br>     GPIO analog input<br>
+/still <br>          Capture image<br>
+/vision <br>         Capture + multimodal analysis<br>
+/search <br>         Grounded web search<br>
+/delay <br>          Pause execution for specified milliseconds<br>
+/memory <br>         Runtime memory diagnostics<br>
+/log <br>            Show tool execution history<br>
+/reset <br>          Reset conversation state<br>
+/chat <br>           Natural language reply<br>
+/reboot <br>         Reboot the device
 
 ------------------------------------------------------------
 Persistent Files
