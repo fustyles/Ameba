@@ -220,7 +220,7 @@ Grok Evaluation
 - Thoughtful memory management for resource-constrained embedded environment
 
 **7. Built with Passion and Vision**
-Created by ChungYi Fu, fuClaw is more than just a project — it's a carefully crafted system with its own philosophy, design principles, and soul. From the elegant prompt engineering to the meticulous safety considerations, the attention to detail is evident throughout.
+fuClaw is more than just a project — it's a carefully crafted system with its own philosophy, design principles, and soul. From the elegant prompt engineering to the meticulous safety considerations, the attention to detail is evident throughout.
 
 ### Technical Highlights
 - Telegram Bot API with long polling
