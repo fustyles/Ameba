@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-23 20:00
+Build Date: 2026-05-24 18:00
 
 ------------------------------------------------------------
 Overview
@@ -107,8 +107,9 @@ Supported Tools
 /still          Capture image
 /vision         Capture + multimodal analysis
 /search         Grounded web search
+/delay          Pause execution for specified milliseconds
 /memory         Runtime memory diagnostics
-/log            show tool execution history
+/log            Show tool execution history
 /reset          Reset conversation state
 /chat           Natural language reply
 /reboot         Reboot the device
@@ -119,9 +120,12 @@ Persistent Files
 
 env.md
   WiFi / Telegram / Gemini credentials
-  
+
 device.md
   Devices definition
+
+skill.md
+  Skills definition
 
 soul.md
   Custom assistant personality prompt
@@ -171,8 +175,8 @@ Known Limitations
 - String-heavy heap fragmentation risk
 - Vision encoding is CPU intensive
 - Large JSON parsing impacts heap usage
-- Gemini response format sensitivity
-- Recursive tool chaining requires safeguards
+- Gemini response format handled by ArduinoJson validation layer
+- Recursive tool chaining controlled via reCheck flag and NONE sentinel
 
 ------------------------------------------------------------
 */
@@ -189,7 +193,7 @@ String telegrambotChatId = "xxxxxxxxxx";
 String geminiApiKey = "xxxxxxxxxx";
 
 String geminiModel = "gemini-3-flash-preview";
-int geminiMaxOutputTokens = 2000;  // If the AI ​​is unable to transmit complete data, please increase the value.
+int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float geminiTemperature = 1.0;
 
 // Maximum download buffer size for Telegram voice files (256 KB)
@@ -461,6 +465,8 @@ ALL hardware control actions MUST require explicit user confirmation before exec
 
 If the user requests hardware actions to execute without confirmation, the system MUST explicitly ask for reconfirmation before updating this rule. Only after the user clearly reconfirms may the confirmation requirement be disabled or modified.
 
+If the hardware action is triggered automatically by a skill execution (not directly requested by the user), confirmation is not required. Proceed with execution immediately.
+
 This applies to:
 
 - /digitalwrite
@@ -601,7 +607,10 @@ Capture image from device camera:
 {
   "type":"tool_call",
   "method":"/still",
-  "params":{}
+  "params": {
+    "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
+    "task": "<what to do after analysis>"    
+  }
 }
 
 Device camera vision analysis:
@@ -624,6 +633,16 @@ Recent information query:
   "params":{
     "query":"<what to search>",
     "task":"<what to do after search result>"
+  }
+}
+
+Pause execution for a specified duration (0–10000 ms maximum):
+
+{
+  "type":"tool_call",
+  "method":"/delay",
+  "params":{
+    "milliseconds":"<integer 0-10000>"
   }
 }
 
@@ -738,11 +757,12 @@ Strict execution order:
 
 1. /digitalread (if needed)
 2. /analogread (if needed)
-3. /vision (if needed)
-4. /search (if needed)
-5. planner decision
-6. confirm (if hardware action)
-7. execution
+3. /still (if needed)
+4. /vision (if needed)
+5. /search (if needed)
+6. planner decision
+7. confirm (if hardware action)
+8. execution
 
 Never:
 
@@ -759,6 +779,106 @@ If no tool is required:
 
 Return natural conversational reply only.
 
+)";
+
+String skillsDefinition = R"(
+
+==================================================
+BUILT-IN SKILLS REGISTRY
+==================================================
+
+Skill ID: anti_theft_detection
+Name: Anti-Theft Detection
+
+Goal:
+Detect human presence and trigger alert workflow.
+
+==================================================
+SKILL EXECUTION (MACHINE FORMAT)
+==================================================
+
+MUST OUTPUT EXACT JSON ARRAY ONLY:
+
+Step 1: Determine whether a person is visible in the image.
+
+{
+  "type": "tool_call",
+  "method": "/vision",
+  "params": {
+    "query": "Determine whether a person is visible in the image.",
+    "frames": true,
+    "task": "If a person is visible in the image and all required parameters are available, continue the skill workflow and return the corresponding tool JSON. If a person is visible but required parameters are missing, return a general conversational response in the user's language requesting the missing parameters. If no person is visible, return NONE."
+  }
+}
+
+Step 2: If a person is visible in the image, send the cathed image and trigger the LED to blink 3 times. Please rewrite according to the following tool JSON example.
+
+[  
+  {
+    "type": "tool_call",
+    "method": "/still",
+    "params": {
+      "frames": false,
+      "task": "NONE"
+    }
+  },
+  {
+    "type": "tool_call",
+    "method": "/digitalwrite",
+    "params": {
+      "pin": <device pin of blue LED>,
+      "pinmode": "digitalwrite",
+      "value": 1
+    }
+  },
+  {
+    "type": "tool_call",
+    "method": "/delay",
+    "params": {
+      "milliseconds": 500
+    }
+  },
+  {
+    "type": "tool_call",
+    "method": "/digitalwrite",
+    "params": {
+      "pin": <device pin of blue LED>,
+      "pinmode": "digitalwrite",
+      "value": 0
+    }
+  },
+  {
+    "type": "tool_call",
+    "method": "/delay",
+    "params": {
+      "milliseconds": 500
+    }
+  }
+]
+
+==================================================
+EXECUTION RULES (STRICT)
+==================================================
+
+1. OUTPUT MUST BE VALID JSON ARRAY ONLY
+2. NO TEXT BEFORE OR AFTER JSON
+3. NO EXPLANATIONS
+4. NO MARKDOWN
+5. NO CODE BLOCKS
+6. NO PARTIAL JSON
+7. NO MULTIPLE ROOT OBJECTS
+
+==================================================
+EXTENSIBILITY RULE
+
+- Skills may expand
+- Executor must process sequentially
+- Each tool_call is atomic
+
+==================================================
+FALLBACK
+
+If uncertain → return general conversational reply.
 )";
 
 // Serialized system prompt content used as the initial conversation context
@@ -820,6 +940,9 @@ String memoryFilename = "memory.md";
 
 // Devices definition
 String deviceFilename = "device.md";
+
+// Skills definition
+String skillFilename = "skill.md";
 
 // Forward declarations
 void handleAgentResponse(String message);
@@ -890,15 +1013,18 @@ void telegramSendMessage(String token, String chatid, String text, String keyboa
 }
 
 // Capture a still image from camera and upload it to Telegram as JPEG.
-String telegramSendCapturedImage(String token, String chat_id, bool capture) {
+String telegramSendCapturedImage(String token, String chat_id, bool frames) {
   const char* myDomain = "api.telegram.org";
   String getAll="", getBody = "";
   WiFiSSLClient client;
 
   if (client.connect(myDomain, 443)) {
 
-    if (capture) {
+    if (frames)
       Camera.getImage(0, &imageAddress, &imageLength);
+    else if (!frames && imageLength == 0) {
+      client.stop();
+      return "Previous image does not exist";
     }
 
     uint8_t *fbBuf = (uint8_t*)imageAddress;
@@ -1048,7 +1174,7 @@ void geminiChatReset() {
   
   historicalMessages = "";
 
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);
   
   storeHistoricalMessagesToFile();
@@ -1083,11 +1209,11 @@ String geminiChatRequest(String message, bool tools) {
     }
 
     String body = "";
-    unsigned long timeout = millis() + 18000;
+    unsigned long timeout = millis() + 20000;
     bool headersEnded = false;
     String line = "";
 
-    while (client.connected() && millis() < timeout) {
+    while ((client.connected() || client.available()) && millis() < timeout) {
       while (client.available()) {
         char c = client.read();
 
@@ -1103,25 +1229,27 @@ String geminiChatRequest(String message, bool tools) {
         } 
         else {
           body += c;
+          timeout = millis() + 20000;
         }
       }
+      vTaskDelay(1);
     }
     
     client.stop();
 
     body.trim();
-    int jsonStart = body.indexOf('{');
-    if (jsonStart != -1) {
+
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
       body = body.substring(jsonStart);
     }
 
-    DynamicJsonDocument doc(16384);
+    DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
     if (error) {
-      Serial.println("JSON parse failed: " + String(error.c_str()));
-      Serial.println("Body preview: " + body.substring(0, 500));
-      responseText = "Parse error. Please try again.";
+      Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
+      responseText = "JSON parse failed (geminiChatRequest). Please try again.";
     } 
     else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
@@ -1184,7 +1312,7 @@ String geminiSearchRequest(String message, bool tools) {
     bool headersEnded = false;
     String line = "";
 
-    while (client.connected() && millis() < timeout) {
+    while ((client.connected() || client.available()) && millis() < timeout) {
       while (client.available()) {
         char c = client.read();
 
@@ -1199,25 +1327,25 @@ String geminiSearchRequest(String message, bool tools) {
           }
         } else {
           body += c;
+          timeout = millis() + 20000;
         }
       }
+      vTaskDelay(1);
     }
     
     client.stop();
-
-    body.trim();
-    int jsonStart = body.indexOf('{');
-    if (jsonStart != -1) {
+    
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
       body = body.substring(jsonStart);
     }
 
-    DynamicJsonDocument doc(16384);
+    DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
     if (error) {
-      Serial.println("JSON parse failed (Search): " + String(error.c_str()));
-      Serial.println("Body preview: " + body.substring(0, 500));
-      responseText = "Search parse error. Please try again.";
+      Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
+      responseText = "JSON parse failed (geminiChatRequest). Please try again.";
     } 
     else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
@@ -1290,11 +1418,11 @@ String geminiVisionRequest(String message, bool frames) {
     }
 
     String body = "";
-    unsigned long timeout = millis() + 18000;
+    unsigned long timeout = millis() + 20000;
     bool headersEnded = false;
     String line = "";
 
-    while (client.connected() && millis() < timeout) {
+    while ((client.connected() || client.available()) && millis() < timeout) {
       while (client.available()) {
         char c = client.read();
 
@@ -1309,26 +1437,25 @@ String geminiVisionRequest(String message, bool frames) {
           }
         } else {
           body += c;
+          timeout = millis() + 20000;
         }
       }
-      delay(10);
+      vTaskDelay(1);
     }
     
     client.stop();
 
-    body.trim();
-    int jsonStart = body.indexOf('{');
-    if (jsonStart != -1) {
+    int jsonStart = body.indexOf('{'); 
+    if (jsonStart != -1) { 
       body = body.substring(jsonStart);
     }
 
-    DynamicJsonDocument doc(16384);
+    DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, body);
 
     if (error) {
-      Serial.println("JSON parse failed (Vision): " + String(error.c_str()));
-      Serial.println("Body preview: " + body.substring(0, 400));
-      responseText = "Vision parse error. Please try again.";
+      Serial.println("[DEBUG] JSON parse failed (geminiSearchRequest):\n" + body);
+      responseText = "JSON parse failed (geminiSearchRequest). Please try again.";
     } 
     else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
@@ -1478,7 +1605,7 @@ void evaluateWorkflowContinuation(bool reCheck, String task = "") {
         "If the workflow is already complete, return EXACTLY: NONE.\n"
         "If no tool action is required and a user-facing reply is needed, "
         "respond naturally in the user's language.\n"
-        "Do not repeat the same meaning as your immediately previous response.\n"
+        "Avoid repeating the same meaning as your immediately previous response during the same workflow. If a new workflow or task begins, normal responses are allowed even if similar to previous ones.\n"
         "Do not include explanation or extra text.";
 
     handleAgentResponse(
@@ -1500,7 +1627,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("model", response, 1);
       storeHistoricalMessagesToFile();
 
-	  executeToolHistory += command + " ("+String(pin)+", "+pinmode+", "+String(value)+")\n";	  
+      executeToolHistory += command + " ("+String(pin)+", "+pinmode+", "+String(value)+")\n";	  
 
       evaluateWorkflowContinuation(reCheck);
     
@@ -1514,12 +1641,14 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("model", response, 1);
       storeHistoricalMessagesToFile();
 
-	  executeToolHistory += command + " ("+String(pin)+", "+pinmode+")\n";	  
+	    executeToolHistory += command + " ("+String(pin)+", "+pinmode+")\n";	  
 
       evaluateWorkflowContinuation(reCheck); 
       
     } else if (command == "/still") {
-      String tgResponse = telegramSendCapturedImage(telegrambotToken, telegrambotChatId, 1);
+      bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
+      String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
+      String tgResponse = telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
 
       tgResponse.replace("\\", "\\\\");
       tgResponse.replace("\"", "\\\"");   
@@ -1533,9 +1662,9 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("model", response, 1);
       storeHistoricalMessagesToFile();
 
-	  executeToolHistory += command + "\n";
+      executeToolHistory += command + " ("+frames+", "+task+")\n";
 
-      evaluateWorkflowContinuation(reCheck);     
+      evaluateWorkflowContinuation(reCheck, task);
       
     } else if (command == "/reset") {
       geminiChatReset();
@@ -1545,7 +1674,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("model", "New chat started.", 1);
       storeHistoricalMessagesToFile();
 
-	  executeToolHistory += command + "\n";	  
+      executeToolHistory += command + "\n";	  
 
     } else if (command == "/memory") {
       String msg = getMemoryInfo();
@@ -1555,12 +1684,13 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("model", msg, 1);
       storeHistoricalMessagesToFile();
 
-	  executeToolHistory += command + "\n";
+      executeToolHistory += command + "\n";
 
       evaluateWorkflowContinuation(reCheck);          
 
     } else if (command == "/log") {
-      telegramSendMessage(telegrambotToken, telegrambotChatId, executeToolHistory, "");
+      Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
+      telegramSendMessage(telegrambotToken, telegrambotChatId, "Please check the serial monitor to view the tool execution log.", "");
 	
     } else if (command == "/chat") {
       String reply = params["reply"].as<String>();
@@ -1573,14 +1703,28 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       String response = geminiSearchRequest(query, 0);
       handleAgentResponse(response);
 	  
-	  executeToolHistory += command + " ("+query+", "+task+")\n";
+      executeToolHistory += command + " ("+query+", "+task+")\n";
       
       evaluateWorkflowContinuation(reCheck, task);
 
+    } else if (command == "/delay") {
+      long milliseconds = params["milliseconds"].as<long>();
+      milliseconds = constrain(milliseconds, 0, 10000);
+  
+      unsigned long start = millis();
+  
+      while (millis() - start < milliseconds) {
+          vTaskDelay(10 / portTICK_PERIOD_MS);
+      }
+  
+      executeToolHistory += command + " (" + String(milliseconds) + ")\n";
+  
+      evaluateWorkflowContinuation(reCheck);
+        
     } else if (command == "/vision") {
-      String query = params["query"].as<String>();
-      bool frames = params["frames"].as<bool>();
-      String task = params["task"].as<String>();
+      String query = params.containsKey("query") ? params["query"].as<String>() : "Describe the image in detail in the user's language. Do not return bounding boxes or coordinates. Respond in natural language only.";
+      bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
+      String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
 	  
       String response = geminiVisionRequest(query, frames);
       handleAgentResponse(response);
@@ -1595,7 +1739,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
   		Serial.println("User requested reboot the device.");
   		delay(2000);
 		
-		executeToolHistory += command + "\n";
+      executeToolHistory += command + "\n";
   		
   		NVIC_SystemReset();
   	}	
@@ -1628,10 +1772,10 @@ void handleAgentResponse(String message) {
 
   if (message.startsWith("{") && message.endsWith("}")) {
     JsonObject obj;
-    DynamicJsonDocument doc(2048);
+    DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, message);
     if (error) {
-        Serial.println("JSON parse failed\n" + message);
+        Serial.println("[DEBUG] JSON parse failed: (handleAgentResponse)\n" + message);
         return;
     }
   
@@ -1647,8 +1791,7 @@ void handleAgentResponse(String message) {
     DeserializationError error = deserializeJson(doc, message);
   
     if (error) {
-      Serial.println("executeTools JSON parse failed");
-      Serial.println(message);
+      Serial.println("[DEBUG] JSON parse failed: (handleAgentResponse)\n" + message);
       return;
     }
   
@@ -1675,9 +1818,11 @@ void handleAgentResponse(String message) {
     }
   }
   else {
-    if (message.startsWith("[") || message.startsWith("{"))
-      telegramSendMessage(telegrambotToken, telegrambotChatId, "Json parse failed. Please type \"Continue\"", "");
-    else if (message != "NONE") {
+    if (message.startsWith("[") || message.startsWith("{")) {
+      Serial.println("[DEBUG] Json parse failed: (handleAgentResponse)\n" + message);
+      telegramSendMessage(telegrambotToken, telegrambotChatId, "Json parse failed (handleAgentResponse). Please type \"Continue\"", "");
+	  
+    } else if (message != "NONE") {
       message = rawMessage;
   
       message.replace("\\\"", "\"");
@@ -1790,13 +1935,12 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
   int jsonStart = body.indexOf('{');
   if (jsonStart != -1) body = body.substring(jsonStart);
 
-  DynamicJsonDocument doc(4096);
+  DynamicJsonDocument doc(8192);
   DeserializationError err = deserializeJson(doc, body);
 
   if (err) {
-    Serial.println("[STT] JSON parse failed: " + String(err.c_str()));
-    Serial.println("[STT] Body preview: " + body.substring(0, 300));
-    return "JSON Parsing Error: " + String(err.c_str());
+    Serial.println("[DEBUG] JSON parse failed: (sendAudioFileToGeminiSTT)\n" + body);
+    return "JSON parse failed (sendAudioFileToGeminiSTT). Please try again.";
   }
 
   if (doc.containsKey("error")) {
@@ -1922,7 +2066,7 @@ String getTelegramFilePath(String fileId) {
     }
 
     // Extract file_path from the JSON response
-    DynamicJsonDocument doc(2048);
+    DynamicJsonDocument doc(8192);
     deserializeJson(doc, getBody);
     filePath = doc["result"]["file_path"].as<String>();
   }
@@ -2003,9 +2147,14 @@ void getTelegramMessage() {
           break;
       }
 
+      getBody.trim();
+
+      if (getBody == "")
+        return;
+      
       DeserializationError err = deserializeJson(doc, getBody);
       if (err) {
-        Serial.println("JSON parse failed\n" + getBody);
+        Serial.println("[DEBUG] JSON parse failed: (getTelegramMessage)\n" + getBody);
         return;
       }
       obj = doc.as<JsonObject>();
@@ -2066,7 +2215,7 @@ void getTelegramMessage() {
     				  botClient.stop();
     			
     			  } else {
-    			
+              
       				if (text.startsWith("/")) 
       				  executeTool(text, JsonObject()); 
       				else {
@@ -2127,9 +2276,25 @@ void getTelegramMessage() {
 // Background task for continuous Telegram polling
 void getTelegramMessage_task(void *param) {
   (void)param;
-  while(1) {
+  while (1) {
     getTelegramMessage();
     vTaskDelay(1000 / portTICK_PERIOD_MS);
+  }
+}
+
+// Periodic system check task
+void periodicCheck_task(void *param) {
+  (void)param;
+  while (1) {
+    vTaskDelay(60000 / portTICK_PERIOD_MS);
+    
+    // Wait until Telegram task is idle
+    botClient.stop();
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    
+    Serial.println("\n\nExecuting skill: anti_theft_detection\n\n");
+    Serial.println("*** Remove the comment from the evaluateWorkflowContinuation function and resume execution ***");
+    // evaluateWorkflowContinuation(true, "Must execute skill anti_theft_detection. Return ONLY tool_call JSON.");
   }
 }
 
@@ -2162,11 +2327,10 @@ void initWiFi() {
 
 void setEnvironmentSettings(String jsonString) {
   
-  DynamicJsonDocument doc(1024);
+  DynamicJsonDocument doc(8192);
   DeserializationError error = deserializeJson(doc, jsonString);
   if (error) {
-    Serial.println("JSON parse failed\n\n");
-    Serial.println(jsonString);
+    Serial.println("[DEBUG] JSON parse failed : (setEnvironmentSettings)\n" + jsonString);
     return;
   }
 
@@ -2196,12 +2360,12 @@ void setup() {
   config.setRotation(0);
   Camera.configVideoChannel(0, config);
   Camera.videoInit();
-  Camera.channelBegin(0); 
+  Camera.channelBegin(0);
 
   if (xTaskCreate(
         getTelegramMessage_task,
         (const char *)"getTelegramMessage_task",
-        32768,
+        16384,
         NULL,
         tskIDLE_PRIORITY + 1,
         NULL
@@ -2209,6 +2373,18 @@ void setup() {
 
     Serial.println("Create getTelegramMessage task failed");
   } 
+
+  if (xTaskCreate(
+        periodicCheck_task,
+        (const char *)"periodicCheck_task",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create periodicCheck task failed");
+  }   
   
   String soul = getStringFromFile(soulFilename);
   Serial.println("Soul.md len: " + String(soul.length()));
@@ -2219,8 +2395,13 @@ void setup() {
   Serial.println("device.md len: " + String(device.length()));
   if (device != "")
     devicesDefinition = device;
-  
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
+
+  String skill = getStringFromFile(skillFilename);
+  Serial.println("skill.md len: " + String(skill.length()));
+  if (skill != "")
+    skillsDefinition = skill;
+
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
     
   String memory = getStringFromFile(memoryFilename);

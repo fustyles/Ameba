@@ -685,6 +685,11 @@ void getTelegramMessage() {
 
         if (getBody.length() > 0) break;
       }
+	  
+      getBody.trim();
+
+      if (getBody == "")
+        return;	  
 
       deserializeJson(doc, getBody);
       obj = doc.as<JsonObject>();
