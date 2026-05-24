@@ -15,7 +15,7 @@ Version
 ------------------------------------------------------------
 
 Prompt-Orchestrated Embedded Agent Edition
-Volatile Runtime Memory Version
+Hardcoded Configuration Runtime
 
 Build Date: 2026-05-24 18:00
 
@@ -38,8 +38,11 @@ It combines:
 - Prompt-driven JSON tool routing
 - GPIO digital / analog I/O control
 - Camera capture and image upload
-- Volatile conversation memory (RAM only)
+- In-memory conversation history
 - FreeRTOS concurrent task scheduling
+
+All credentials and configuration are hardcoded in firmware.
+Conversation history is retained in RAM and cleared on reboot.
 
 The runtime acts as a hybrid autonomous agent:
 
@@ -66,7 +69,7 @@ Tool Dispatcher
       ↓
 Hardware / Search / Vision Execution
       ↓
-Result injection into runtime memory
+Result injection into memory
       ↓
 Natural language reply
 
@@ -109,23 +112,10 @@ Supported Tools
 /search         Grounded web search
 /delay          Pause execution for specified milliseconds
 /memory         Runtime memory diagnostics
-/log            show tool execution history
+/log            Show tool execution history
 /reset          Reset conversation state
 /chat           Natural language reply
 /reboot         Reboot the device
-
-------------------------------------------------------------
-Conversation Memory
-------------------------------------------------------------
-
-Conversation history is stored in RAM only.
-
-- Preserved during runtime
-- Cleared on reboot
-- Cleared by /reset
-- Used as Gemini conversational context
-
-No SD card or filesystem persistence is required.
 
 ------------------------------------------------------------
 Hardware Safety
@@ -134,8 +124,8 @@ Hardware Safety
 Confirmed device mappings only.
 
 AMB82-mini
-- Green LED : GPIO 24
-- Blue LED  : GPIO 23
+- Green LED: GPIO 24
+- Blue LED : GPIO 23
 
 HUB 8735 Ultra
 - Green LED : GPIO 25
@@ -162,13 +152,12 @@ Software Stack
 Known Limitations
 ------------------------------------------------------------
 
-- Conversation history grows during runtime
-- Heap fragmentation risk from String-heavy operations
-- Large Gemini responses increase heap pressure
-- Vision image base64 encoding is CPU intensive
-- JSON parsing depends on strict response formatting
-- Recursive tool chaining requires safeguards
-- Conversation memory is lost after reboot
+- Conversation history lost on reboot (RAM only)
+- String-heavy heap fragmentation risk
+- Vision encoding is CPU intensive
+- Large JSON parsing impacts heap usage
+- Gemini response format handled by ArduinoJson validation layer
+- Recursive tool chaining controlled via reCheck flag and NONE sentinel
 
 ------------------------------------------------------------
 */
