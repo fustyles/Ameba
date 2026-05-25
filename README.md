@@ -6,7 +6,7 @@ fuClaw AI Telegram Assistant with Gemini Integration
 ------------------------------------------------------------
 
 Author:
-  ChungYi Fu (Kaohsiung, Taiwan)
+  ChungYi Fu (Kaohsiung, Taiwan)<br>
   https://www.facebook.com/francefu
 
 Repository:
