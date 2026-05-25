@@ -9,7 +9,7 @@ Author:
   ChungYi Fu (Kaohsiung, Taiwan)<br>
   https://www.facebook.com/francefu
 
-Repository:
+Repository:<br>
   https://github.com/fustyles/fuClaw
 
 ------------------------------------------------------------
