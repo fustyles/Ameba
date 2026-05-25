@@ -812,8 +812,3 @@ if (historicalMessages.length() > THRESHOLD) {
 - [Base64 編碼原理](https://en.wikipedia.org/wiki/Base64)
 - [Prompt Engineering 最佳實踐（Google）](https://ai.google.dev/gemini-api/docs/prompting-strategies)
 
----
-
-*fuClaw AIoT 代理人技術教學手冊｜補充章節（第二版）*
-*作者：傅仲儀（ChungYi Fu）｜高雄，台灣*
-*https://github.com/fustyles/fuClaw*
