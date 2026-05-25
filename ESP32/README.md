@@ -223,13 +223,13 @@ SD 卡根目錄/
 // Gemini 實際輸出（含 Markdown 標記）：
 ```json
 {"type":"tool_call","method":"/chat","params":{"reply":"好的，我來幫你開燈！"}}
-```
 
-// handleAgentResponse 預處理：<br>
-// message.replace("```json", "")  → 移除開頭標記<br>
-// message.replace("```", "")      → 移除結尾標記<br>
-// 處理後：{"type":"tool_call","method":"/chat","params":{"reply":"好的，我來幫你開燈！"}}<br>
-// → 可正常解析 ✅<br>
+// handleAgentResponse 預處理：
+// message.replace("```json", "")  → 移除開頭標記
+// message.replace("```", "")      → 移除結尾標記
+// 處理後：{"type":"tool_call","method":"/chat","params":{"reply":"好的，我來幫你開燈！"}}
+// → 可正常解析 ✅
+```
 ---
 
 ### 常見推理錯誤案例
