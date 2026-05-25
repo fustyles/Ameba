@@ -136,20 +136,20 @@ SD 卡根目錄/
     ├─ 初始化相機
     │
     ├── 建立任務 1 ─────────────────────────────────────────┐
-    │   getTelegramMessage_task()                           │
+    │   getTelegramMessage_task()                          │
     │   堆疊：16 KB                                         │
     │   優先權：tskIDLE_PRIORITY + 1                        │
-    │   行為：每 1000ms 輪詢 Telegram，處理訊息             │
+    │   行為：每 1000ms 輪詢 Telegram，處理訊息              │
     │   資源：botClient（WiFiSSLClient）                    │
     │                                                       │
     └── 建立任務 2 ─────────────────────────────────────────┤
-        periodicCheck_task()                                │
-        堆疊：6 KB                                          │
-        優先權：tskIDLE_PRIORITY + 1                        │
-        行為：每 60000ms 觸發防盜偵測技能                   │
-        執行前：botClient.stop() + vTaskDelay(2000)         │
-        原因：避免兩個任務同時使用網路資源造成封包衝突       │
-        └────────────────────────────────────────────────┘
+    │   periodicCheck_task()                               │
+    │   堆疊：6 KB                                          │
+    │   優先權：tskIDLE_PRIORITY + 1                        │
+    │   行為：每 60000ms 觸發防盜偵測技能                    │
+    │   執行前：botClient.stop() + vTaskDelay(2000)         │
+    │   原因：避免兩個任務同時使用網路資源造成封包衝突         │
+    └──────────────────────────────────────────────────────┘
 
 共享資源（Race Condition 注意事項）：
  - historicalMessages（String）：兩個任務均會讀寫
@@ -225,13 +225,11 @@ SD 卡根目錄/
 {"type":"tool_call","method":"/chat","params":{"reply":"好的，我來幫你開燈！"}}
 ```
 
-// handleAgentResponse 預處理：
-// message.replace("```json", "")  → 移除開頭標記
-// message.replace("```", "")      → 移除結尾標記
-// 處理後：{"type":"tool_call","method":"/chat","params":{"reply":"好的，我來幫你開燈！"}}
-// → 可正常解析 ✅
-```
-
+// handleAgentResponse 預處理：<br>
+// message.replace("```json", "")  → 移除開頭標記<br>
+// message.replace("```", "")      → 移除結尾標記<br>
+// 處理後：{"type":"tool_call","method":"/chat","params":{"reply":"好的，我來幫你開燈！"}}<br>
+// → 可正常解析 ✅<br>
 ---
 
 ### 常見推理錯誤案例
