@@ -16,7 +16,7 @@
 | 開發板（擇一） | Realtek AMB82-mini **或** HUB 8735 Ultra |
 | microSD 卡 | 建議 8 GB 以上（FAT32 格式化） |
 | USB 傳輸線 | Micro-USB（用於燒錄與序列埠監控） |
-| WiFi 網路 | 2.4 GHz，可連外網（Telegram / Gemini API） |
+| WiFi 網路 | 2.4 GHz 或 5 GHz，可連外網（Telegram / Gemini API） |
 | Telegram Bot Token | 向 @BotFather 申請（免費） |
 | Gemini API Key | 至 https://aistudio.google.com 申請（免費額度） |
 
