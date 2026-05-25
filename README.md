@@ -180,8 +180,6 @@ Known Limitations
 - Recursive tool chaining controlled via reCheck flag and NONE sentinel
 
 ------------------------------------------------------------
-
-------------------------------------------------------------
 Grok Evaluation
 ------------------------------------------------------------
 
