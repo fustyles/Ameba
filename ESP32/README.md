@@ -79,11 +79,11 @@ SD 卡根目錄/
 
 步驟 4　下載 fuClaw 原始碼
          https://github.com/fustyles/fuClaw
-         開啟 fuClaw.ino
+         開啟 AmebaPro2_TelegramBot_fuClaw_SD.ino
 
 步驟 5　選擇開發板與連接埠
          工具 → 開發板 → Realtek Ameba Boards → AMB82-MINI
-         工具 → 連接埠 → 選擇對應 COM/tty 埠
+         工具 → 連接埠 → 選擇對應 COM 埠
 
 步驟 6　上傳程式碼
          點選「→」上傳按鈕，等待編譯與燒錄完成
