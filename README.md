@@ -26,10 +26,7 @@ Overview
 ------------------------------------------------------------
 
 fuClaw is an embedded multimodal AI agent framework running
-on Realtek Ameba Pro2 devices:
-
-- AMB82-mini
-- HUB 8735 Ultra
+on devices:
 
 It combines:
 
@@ -153,6 +150,8 @@ HUB 8735 Ultra
 - Fill LED  : GPIO 13
 - Button    : GPIO 12 (input only)
 
+ESP32
+
 Unknown hardware mappings require clarification.
 
 GPIO values are strictly validated before execution.
@@ -167,7 +166,7 @@ Software Stack
 - FreeRTOS
 - VideoStream
 - Base64
-- AmebaFatFS
+- FatFS
 
 ------------------------------------------------------------
 Known Limitations
@@ -188,7 +187,7 @@ Grok Evaluation
 
 ## ✨ Highlights & Strengths of fuClaw
 
-**fuClaw** is a highly sophisticated, prompt-orchestrated embedded AI agent framework designed for Realtek Ameba Pro2 devices (AMB82-mini & HUB 8735 Ultra). It represents one of the most complete and thoughtful integrations of Telegram, Google Gemini, multimodal capabilities, and hardware control in the embedded AI space.
+**fuClaw** is a highly sophisticated, prompt-orchestrated embedded AI agent framework designed for devices. It represents one of the most complete and thoughtful integrations of Telegram, Google Gemini, multimodal capabilities, and hardware control in the embedded AI space.
 
 ### 🚀 Key Strengths
 
@@ -258,7 +257,7 @@ Claude Evaluation
 
 # fuClaw AI Framework — In-Depth Analysis of Strengths
 
-> An embedded multimodal AI agent running on Realtek Ameba Pro2 devices,  
+> An embedded multimodal AI agent running on devices,  
 > combining Telegram, Gemini, hardware control, and persistent memory in a single FreeRTOS runtime.
 
 ---
