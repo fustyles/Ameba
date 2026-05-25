@@ -74,8 +74,8 @@ SD 卡根目錄/
 
 步驟 3　安裝相依函式庫
          函式庫管理員搜尋並安裝：
-         - ArduinoJson（6.x）
-         - Base64（by Arturo Guadalupi）
+         - ArduinoJson（已內建）
+         - Base64（已內建）
 
 步驟 4　下載 fuClaw 原始碼
          https://github.com/fustyles/fuClaw
