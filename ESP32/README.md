@@ -1,9 +1,5 @@
 # fuClaw AIoT 代理人技術教學手冊
-## 補充章節（第二版增修）
-
-> 本文件為原版教學手冊的補充內容，對應第二版增修項目。
-> 建議與原版手冊合併閱讀。
-> 作者：傅仲儀（ChungYi Fu）｜高雄，台灣 ｜ https://github.com/fustyles/fuClaw
+> 作者：法蘭斯  ｜高雄，台灣 ｜ https://github.com/fustyles/fuClaw
 
 ---
 
@@ -126,68 +122,7 @@ SD 卡根目錄/
 
 ### Agent Pipeline 完整流程圖
 
-```
-┌─────────────────────────────────────────────────────┐
-│                   Telegram 使用者                    │
-│              （文字訊息 / 語音訊息）                  │
-└──────────────────────┬──────────────────────────────┘
-                       │ HTTPS 長輪詢
-┌──────────────────────▼──────────────────────────────┐
-│           getTelegramMessage_task()                  │
-│           每 1000ms 輪詢一次（FreeRTOS）              │
-│  ┌─ 文字訊息 ──────────────────────────────┐         │
-│  │  /help /still /memory /log /reset → executeTool() │
-│  │  一般文字 → geminiChatRequest()         │         │
-│  └─────────────────────────────────────────┘         │
-│  ┌─ 語音訊息 ──────────────────────────────┐         │
-│  │  getTelegramFilePath()                  │         │
-│  │  downloadTelegramFile()                 │         │
-│  │  sendAudioFileToGeminiSTT()             │         │
-│  │  → 轉為文字 → geminiChatRequest()       │         │
-│  └─────────────────────────────────────────┘         │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│              Gemini 推理引擎                          │
-│   輸入：系統提示詞 + 裝置定義 + 工具規範 + 對話歷史   │
-│   輸出：JSON tool_call 或自然語言或 "NONE"            │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│           handleAgentResponse()                      │
-│  ┌──────────────────────────────────────────────┐    │
-│  │  { ... }   → 單一 JSON → executeTool()       │    │
-│  │  [ ... ]   → JSON 陣列 → 循序 executeTool()  │    │
-│  │  "NONE"    → 工作流程完成，不動作             │    │
-│  │  純文字    → telegramSendMessage()            │    │
-│  │  JSON 錯誤 → 記錄 + 通知使用者重試           │    │
-│  └──────────────────────────────────────────────┘    │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│              工具調度器 executeTool()                 │
-│                                                      │
-│  /digitalwrite → toolPinOutput() → digitalWrite()   │
-│  /analogwrite  → toolPinOutput() → analogWrite()    │
-│  /digitalread  → toolPinInput()  → digitalRead()    │
-│  /analogread   → toolPinInput()  → analogRead()     │
-│  /still        → telegramSendCapturedImage()         │
-│  /vision       → geminiVisionRequest()               │
-│  /search       → geminiSearchRequest()               │
-│  /delay        → vTaskDelay()                        │
-│  /chat         → telegramSendMessage()               │
-│  /reset        → geminiChatReset()                   │
-│  /memory       → getMemoryInfo()                     │
-│  /reboot       → NVIC_SystemReset()                  │
-└──────────────────────┬──────────────────────────────┘
-                       │
-┌──────────────────────▼──────────────────────────────┐
-│           結果注入記憶 + 工作流程評估                  │
-│   historicalMessages += 執行結果                     │
-│   storeHistoricalMessagesToFile() → memory.md        │
-│   evaluateWorkflowContinuation() → Gemini 判斷是否繼續│
-└─────────────────────────────────────────────────────┘
-```
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/AmebaPro2_TelegramBot_Gemini_SD.png)  
 
 ---
 
