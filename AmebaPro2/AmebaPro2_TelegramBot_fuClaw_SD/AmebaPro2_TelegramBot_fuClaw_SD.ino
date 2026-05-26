@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-24 18:00
+Build Date: 2026-05-25 11:30
 
 ------------------------------------------------------------
 Overview
@@ -267,12 +267,6 @@ Examples:
 - motor
 - sensor
 
-These require clarification before tool execution.
-
-5. Function button (pin 12) is INPUT ONLY.
-
-It must NEVER be used as output.
-
 ==================================================
 TOOL EXECUTION RULES
 ==================================================
@@ -465,7 +459,14 @@ ALL hardware control actions MUST require explicit user confirmation before exec
 
 If the user requests hardware actions to execute without confirmation, the system MUST explicitly ask for reconfirmation before updating this rule. Only after the user clearly reconfirms may the confirmation requirement be disabled or modified.
 
-If the hardware action is triggered automatically by a skill execution (not directly requested by the user), confirmation is not required. Proceed with execution immediately.
+If the hardware action is triggered automatically by:
+- a skill execution
+- a scheduled task execution
+- a system-authorized autonomous workflow
+
+(and is not a direct live user request)
+confirmation is not required.
+Proceed with execution immediately.
 
 This applies to:
 
@@ -787,19 +788,20 @@ String skillsDefinition = R"(
 BUILT-IN SKILLS REGISTRY
 ==================================================
 
-Skill ID: anti_theft_detection
-Name: Anti-Theft Detection
+==================================================
+SKILL: anti_theft_detection
+==================================================
 
 Goal:
 Detect human presence and trigger alert workflow.
 
-==================================================
-SKILL EXECUTION (MACHINE FORMAT)
-==================================================
+--------------------------------------------------
+SKILL EXECUTION
+--------------------------------------------------
 
 MUST OUTPUT EXACT JSON ARRAY ONLY:
 
-Step 1: Determine whether a person is visible in the image.
+Step 1: Analyze image for human presence
 
 {
   "type": "tool_call",
@@ -807,13 +809,13 @@ Step 1: Determine whether a person is visible in the image.
   "params": {
     "query": "Determine whether a person is visible in the image.",
     "frames": true,
-    "task": "If a person is visible in the image and all required parameters are available, continue the skill workflow and return the corresponding tool JSON. If a person is visible but required parameters are missing, return a general conversational response in the user's language requesting the missing parameters. If no person is visible, return NONE."
+    "task": "If a person is detected, continue workflow. If no person is detected, return NONE."
   }
 }
 
-Step 2: If a person is visible in the image, send the cathed image and trigger the LED to blink 3 times. Please rewrite according to the following tool JSON example.
+Step 2: If person detected → trigger alert sequence
 
-[  
+[
   {
     "type": "tool_call",
     "method": "/still",
@@ -826,7 +828,7 @@ Step 2: If a person is visible in the image, send the cathed image and trigger t
     "type": "tool_call",
     "method": "/digitalwrite",
     "params": {
-      "pin": <device pin of blue LED>,
+      "pin": <blue_led_pin>,
       "pinmode": "digitalwrite",
       "value": 1
     }
@@ -842,7 +844,7 @@ Step 2: If a person is visible in the image, send the cathed image and trigger t
     "type": "tool_call",
     "method": "/digitalwrite",
     "params": {
-      "pin": <device pin of blue LED>,
+      "pin": <blue_led_pin>,
       "pinmode": "digitalwrite",
       "value": 0
     }
@@ -856,29 +858,109 @@ Step 2: If a person is visible in the image, send the cathed image and trigger t
   }
 ]
 
-==================================================
-EXECUTION RULES (STRICT)
-==================================================
-
-1. OUTPUT MUST BE VALID JSON ARRAY ONLY
-2. NO TEXT BEFORE OR AFTER JSON
-3. NO EXPLANATIONS
-4. NO MARKDOWN
-5. NO CODE BLOCKS
-6. NO PARTIAL JSON
-7. NO MULTIPLE ROOT OBJECTS
-
-==================================================
-EXTENSIBILITY RULE
-
-- Skills may expand
-- Executor must process sequentially
-- Each tool_call is atomic
-
-==================================================
+--------------------------------------------------
 FALLBACK
+--------------------------------------------------
 
-If uncertain → return general conversational reply.
+If uncertain → return natural conversational response.
+
+==================================================
+SKILL: time_scheduling_task
+==================================================
+
+Goal:
+Execute scheduled hardware actions at correct time using timezone-aware validation.
+
+--------------------------------------------------
+SKILL EXECUTION
+--------------------------------------------------
+
+MUST OUTPUT EXACT JSON ARRAY ONLY:
+
+--------------------------------------------------
+Step 0: Parse scheduled task
+--------------------------------------------------
+
+Extract from conversation:
+
+- execution time
+- hardware action
+
+If no valid time → treat as normal conversation
+
+--------------------------------------------------
+Step 1: Verify timezone
+--------------------------------------------------
+
+{
+  "type": "tool_call",
+  "method": "/chat",
+  "params": {
+    "reply": "Check whether timezone is known from conversation context."
+  }
+}
+
+IF timezone is UNKNOWN:
+→ ask user for city / region / timezone
+→ STOP (no tool calls)
+
+--------------------------------------------------
+Step 2: Get current time
+--------------------------------------------------
+
+{
+  "type": "tool_call",
+  "method": "/search",
+  "params": {
+    "query": "current local time in user timezone",
+    "task": "Compare current time with scheduled tasks in conversation history."
+  }
+}
+
+--------------------------------------------------
+Step 3: Decision logic
+--------------------------------------------------
+
+IF current_time < scheduled_time:
+RETURN EXACTLY:
+NONE
+
+IF current_time >= scheduled_time AND task not executed:
+RETURN ONLY valid tool_call JSON
+
+--------------------------------------------------
+CRITICAL RULES
+--------------------------------------------------
+
+1. Scheduled tasks override normal confirmation rules
+2. Do NOT ask user for current time
+3. Do NOT execute before scheduled time
+4. Do NOT simulate execution success
+5. Execution success only valid after tool response
+6. Time check MUST always include task context
+7. /search is ONLY for time retrieval, not decision making
+
+--------------------------------------------------
+TASK REGISTRATION RULE
+--------------------------------------------------
+
+When user gives schedule (e.g. "10:56 turn on green LED"):
+
+1. Store task in memory
+2. Confirm task recorded
+3. Inform scheduler must be enabled
+4. Do NOT execute immediately
+
+Example:
+"I've recorded your scheduled task. It will execute when system scheduler is active."
+
+--------------------------------------------------
+FALLBACK
+--------------------------------------------------
+
+If no scheduled task exists:
+Return natural conversational response only.
+
 )";
 
 // Serialized system prompt content used as the initial conversation context
@@ -1102,6 +1184,10 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
   return getBody;
 }
 
+void replayUserMessage(String text, String keyboard = "") {
+	telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+}
+
 // Convert role/content pair into Gemini-compatible JSON message object
 String buildGeminiMessage(String role, String message, bool comma) {
   
@@ -1173,6 +1259,7 @@ void storeHistoricalMessagesToFile() {
 void geminiChatReset() {
   
   historicalMessages = "";
+  executeToolHistory = "";
 
   systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);
@@ -1250,7 +1337,7 @@ String geminiChatRequest(String message, bool tools) {
     if (error) {
       Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
       responseText = "JSON parse failed (geminiChatRequest). Please try again.";
-    } 
+    }  
     else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
     } 
@@ -1334,6 +1421,8 @@ String geminiSearchRequest(String message, bool tools) {
     }
     
     client.stop();
+
+    body.trim();   
     
     int jsonStart = body.indexOf('{'); 
     if (jsonStart != -1) { 
@@ -1444,6 +1533,8 @@ String geminiVisionRequest(String message, bool frames) {
     }
     
     client.stop();
+
+    body.trim();    
 
     int jsonStart = body.indexOf('{'); 
     if (jsonStart != -1) { 
@@ -1668,7 +1759,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       
     } else if (command == "/reset") {
       geminiChatReset();
-      telegramSendMessage(telegrambotToken, telegrambotChatId, "New chat started.","");
+      replayUserMessage("New chat started.");
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", "New chat started.", 1);
@@ -1678,7 +1769,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
     } else if (command == "/memory") {
       String msg = getMemoryInfo();
-      telegramSendMessage(telegrambotToken, telegrambotChatId, msg, "");
+      replayUserMessage(msg);
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", msg, 1);
@@ -1690,11 +1781,11 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
     } else if (command == "/log") {
       Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
-      telegramSendMessage(telegrambotToken, telegrambotChatId, "Please check the serial monitor to view the tool execution log.", "");
+      replayUserMessage("Please check the serial monitor to view the tool execution log.");
 	
     } else if (command == "/chat") {
       String reply = params["reply"].as<String>();
-      telegramSendMessage(telegrambotToken, telegrambotChatId, reply, "");
+      replayUserMessage(reply);
 
     } else if (command == "/search") {
       String query = params["query"].as<String>();
@@ -1734,7 +1825,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       evaluateWorkflowContinuation(reCheck, task);
     }
   	else if (command == "/reboot") {
-  		telegramSendMessage(telegrambotToken, telegrambotChatId, "Rebooting the device, please wait...", "");
+  		replayUserMessage("Rebooting the device, please wait...");
   		
   		Serial.println("User requested reboot the device.");
   		delay(2000);
@@ -1820,7 +1911,7 @@ void handleAgentResponse(String message) {
   else {
     if (message.startsWith("[") || message.startsWith("{")) {
       Serial.println("[DEBUG] Json parse failed: (handleAgentResponse)\n" + message);
-      telegramSendMessage(telegrambotToken, telegrambotChatId, "Json parse failed (handleAgentResponse). Please type \"Continue\"", "");
+      replayUserMessage("Json parse failed (handleAgentResponse). Please type \"Continue\"");
 	  
     } else if (message != "NONE") {
       message = rawMessage;
@@ -1848,7 +1939,7 @@ void handleAgentResponse(String message) {
       message.replace("**", "");        
       message.replace("___", ""); 
       
-      telegramSendMessage(telegrambotToken, telegrambotChatId, message, "");
+      replayUserMessage(message);
     }
   }
 }
@@ -2204,7 +2295,7 @@ void getTelegramMessage() {
     			  
       				String keyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
       			
-      				telegramSendMessage(telegrambotToken, telegrambotChatId, command, keyboard);
+      				replayUserMessage(command, keyboard);
       
       				historicalMessages += buildGeminiMessage("user", "Command list", 1);
       				historicalMessages += buildGeminiMessage("model", command, 1);
@@ -2292,9 +2383,35 @@ void periodicCheck_task(void *param) {
     botClient.stop();
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     
-    Serial.println("\n\nExecuting skill: anti_theft_detection\n\n");
-    Serial.println("*** Remove the comment from the evaluateWorkflowContinuation function and resume execution ***");
+    Serial.println("\n\nExecuting Skill: anti_theft_detection\n\n");
+    Serial.println("*** Uncomment the evaluateWorkflowContinuation function call and resume execution ***");
     // evaluateWorkflowContinuation(true, "Must execute skill anti_theft_detection. Return ONLY tool_call JSON.");
+
+    // Wait until Telegram task is idle
+    botClient.stop();
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+        
+    Serial.println("\n\nExecuting Skill: time_scheduling_task\n\n");
+    Serial.println("*** Uncomment the evaluateWorkflowContinuation function call and resume execution ***");
+    /*
+    evaluateWorkflowContinuation(
+      true,
+      "Invoke skill: time_scheduling_task. This is a deterministic scheduling evaluation step. "
+      "You MUST first internally use /search to obtain current local time in the user's confirmed timezone. "
+      "Then compare current time with ALL scheduled tasks in conversation history. "
+      "Each task includes BOTH execution time AND hardware action. "
+    
+      "Output rules: "
+      "1. If NO task has reached execution time → return EXACTLY NONE. "
+      "2. If a task time is reached or exceeded AND not executed → return ONLY valid tool_call JSON for that task action. "
+      "3. NEVER output natural language. "
+      "4. NEVER claim success without tool execution result. "
+      "5. NEVER ask user for time. "
+      "6. NEVER infer timezone. "
+      "7. NEVER execute outside scheduled window."
+    );
+    */
+
   }
 }
 
