@@ -15,7 +15,7 @@ Version
 ------------------------------------------------------------
 
 Prompt-Orchestrated Embedded Agent Edition
-Persistent Filesystem Runtime
+Hardcoded Configuration Runtime
 
 Build Date: 2026-05-25 17:30
 
@@ -38,8 +38,11 @@ It combines:
 - Prompt-driven JSON tool routing
 - GPIO digital / analog I/O control
 - Camera capture and image upload
-- Persistent conversation memory
+- In-memory conversation history
 - FreeRTOS concurrent task scheduling
+
+All credentials and configuration are hardcoded in firmware.
+Conversation history is retained in RAM and cleared on reboot.
 
 The runtime acts as a hybrid autonomous agent:
 
@@ -115,27 +118,6 @@ Supported Tools
 /reboot         Reboot the device
 
 ------------------------------------------------------------
-Persistent Files
-------------------------------------------------------------
-
-env.md
-  WiFi / Telegram / Gemini credentials
-
-device.md
-  Devices definition
-
-skill.md
-  Skills definition
-
-soul.md
-  Custom assistant personality prompt
-
-memory.md
-  Conversation history persistence
-
-Conversation state is restored automatically on boot.
-
-------------------------------------------------------------
 Hardware Safety
 ------------------------------------------------------------
 
@@ -165,13 +147,12 @@ Software Stack
 - FreeRTOS
 - VideoStream
 - Base64
-- AmebaFatFS
 
 ------------------------------------------------------------
 Known Limitations
 ------------------------------------------------------------
 
-- Conversation history grows over time
+- Conversation history lost on reboot (RAM only)
 - String-heavy heap fragmentation risk
 - Vision encoding is CPU intensive
 - Large JSON parsing impacts heap usage
@@ -180,6 +161,7 @@ Known Limitations
 
 ------------------------------------------------------------
 */
+
 
 // WiFi credentials
 String wifiSsid = "xxxxxxxxxx";
@@ -995,40 +977,6 @@ WiFiSSLClient botClient;
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "AmebaFatFS.h"
-
-// FAT file system instance
-AmebaFatFS fs;
-
-// File object for SD card access
-File file;
-
-// Environment configuration file (WiFi / Telegram / Gemini API settings)
-String envFilename = "env.md";
-  
-/*
-{
-  "wifi_ssid": "",
-  "wifi_pass": "",
-  "telegramBot_token": "",
-  "telegramBot_chatID": "",
-  "gemini_apikey": "",
-  "timezone": ""   
-}
-*/
-
-// System personality prompt file (defines Gemini assistant behavior)
-String soulFilename = "soul.md";
-
-// Persistent conversation memory file (stores historical chat context)
-String memoryFilename = "memory.md";
-
-// Devices definition
-String deviceFilename = "device.md";
-
-// Skills definition
-String skillFilename = "skill.md";
-
 // Forward declarations
 void handleAgentResponse(String message);
 
@@ -1224,53 +1172,6 @@ String buildGeminiMessage(String role, String message, bool comma) {
   return jsonMessage;
 }
 
-// Load file context from SD card
-String getStringFromFile(String fileNname) {
-  String data = "";
-
-  fs.begin();
-  String path = String(fs.getRootPath()) + "/" + fileNname;
-
-  file = fs.open(path);
-
-  if (file) {
-    uint32_t len = file.size();
-    char *buf = (char*)malloc(len + 1);
-
-    if (buf) {
-      file.read(buf, len);
-      buf[len] = '\0';
-      data = String(buf);
-      free(buf);
-    }
-
-    file.close();
-  }
-
-  fs.end();
-  
-  return data;
-}
-
-// Store historical conversation messages to SD card
-void storeHistoricalMessagesToFile() {
-  fs.begin();
-  
-  String file_path = String(fs.getRootPath());
-  
-  if (fs.exists(file_path+"/" + memoryFilename))
-      fs.remove(file_path+"/" + memoryFilename); 
-      
-  file = fs.open(file_path+"/" + memoryFilename); 
-  
-  if (file) {
-    file.println(historicalMessages.c_str());
-    file.close();
-  }
-  
-  fs.end();
-}
-
 // Reset conversation memory to initial system prompt state
 void geminiChatReset() {
   
@@ -1280,14 +1181,11 @@ void geminiChatReset() {
   systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);
   
-  storeHistoricalMessagesToFile();
-  
 }
 
 // Send request to Gemini and return response text
 String geminiChatRequest(String message, bool tools) {
   historicalMessages += buildGeminiMessage("user", message, 1);
-  storeHistoricalMessagesToFile();
 
   String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
 
@@ -1376,7 +1274,6 @@ String geminiChatRequest(String message, bool tools) {
   }
 
   historicalMessages += buildGeminiMessage("model", responseText, 1);
-  storeHistoricalMessagesToFile();
 
   return responseText;
 }
@@ -1384,7 +1281,6 @@ String geminiChatRequest(String message, bool tools) {
 // Send Gemini request with Google Search tool enabled
 String geminiSearchRequest(String message, bool tools) {
   historicalMessages += buildGeminiMessage("user", message, 1);
-  storeHistoricalMessagesToFile();
 
   String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
 
@@ -1473,7 +1369,6 @@ String geminiSearchRequest(String message, bool tools) {
   }
 
   historicalMessages += buildGeminiMessage("model", responseText, 1);
-  storeHistoricalMessagesToFile();
 
   return responseText;
 }
@@ -1481,7 +1376,6 @@ String geminiSearchRequest(String message, bool tools) {
 // Capture camera frame and send it to Gemini Vision for multimodal analysis
 String geminiVisionRequest(String message, bool frames) {
   historicalMessages += buildGeminiMessage("user", message, 1);
-  storeHistoricalMessagesToFile();
 
   WiFiSSLClient client;
   String responseText = "";
@@ -1585,7 +1479,6 @@ String geminiVisionRequest(String message, bool frames) {
   }
 
   historicalMessages += buildGeminiMessage("model", responseText, 1);
-  storeHistoricalMessagesToFile();
 
   return responseText;
 }
@@ -1732,7 +1625,6 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();
 
       executeToolHistory += command + " ("+String(pin)+", "+pinmode+", "+String(value)+")\n";	  
 
@@ -1746,7 +1638,6 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();
 
 	    executeToolHistory += command + " ("+String(pin)+", "+pinmode+")\n";	  
 
@@ -1767,7 +1658,6 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();
 
       executeToolHistory += command + " ("+frames+", "+task+")\n";
 
@@ -1779,7 +1669,6 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", "New chat started.", 1);
-      storeHistoricalMessagesToFile();
 
       executeToolHistory += command + "\n";	  
 
@@ -1789,7 +1678,6 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", msg, 1);
-      storeHistoricalMessagesToFile();
 
       executeToolHistory += command + "\n";
 
@@ -2314,8 +2202,7 @@ void getTelegramMessage() {
       				replayUserMessage(command, keyboard);
       
       				historicalMessages += buildGeminiMessage("user", "Command list", 1);
-      				historicalMessages += buildGeminiMessage("model", command, 1);
-      				storeHistoricalMessagesToFile();      
+      				historicalMessages += buildGeminiMessage("model", command, 1);     
     			
     			  } else if (text=="null") {
     			
@@ -2614,11 +2501,6 @@ void setup() {
 
   // Indicator LED  
   pinMode(ledPin, OUTPUT);
-  
-  String env = getStringFromFile(envFilename);
-  Serial.println("env.md len: " + String(env.length())); 
-  if (env != "")
-    setEnvironmentSettings(env);
 
   initWiFi();
 
@@ -2663,29 +2545,10 @@ void setup() {
     Serial.println("Create task_time_scheduling failed");
   }    
   
-  String soul = getStringFromFile(soulFilename);
-  Serial.println("Soul.md len: " + String(soul.length()));
-  if (soul != "")
-    geminiRole = soul;
-
-  String device = getStringFromFile(deviceFilename);
-  Serial.println("device.md len: " + String(device.length()));
-  if (device != "")
-    devicesDefinition = device;
   devicesDefinition += "The device is located in timezone: " + timeZone;
-
-  String skill = getStringFromFile(skillFilename);
-  Serial.println("skill.md len: " + String(skill.length()));
-  if (skill != "")
-    skillsDefinition = skill;
 
   systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
-    
-  String memory = getStringFromFile(memoryFilename);
-  Serial.println("memory.md len: " + String(memory.length()));
-  if (memory != "")
-    historicalMessages = memory;
 
   rtcInitialTime();
 }
