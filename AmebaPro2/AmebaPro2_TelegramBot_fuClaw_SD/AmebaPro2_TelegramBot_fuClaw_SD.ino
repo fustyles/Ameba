@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-25 11:30
+Build Date: 2026-05-25 17:30
 
 ------------------------------------------------------------
 Overview
@@ -195,6 +195,8 @@ String geminiApiKey = "xxxxxxxxxx";
 String geminiModel = "gemini-3-flash-preview";
 int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit complete data, please increase the value.
 float geminiTemperature = 1.0;
+
+String timeZone = "Taiwan";
 
 // Maximum download buffer size for Telegram voice files (256 KB)
 #define MAX_FILE_SIZE 262144
@@ -865,7 +867,7 @@ FALLBACK
 If uncertain → return natural conversational response.
 
 ==================================================
-SKILL: time_scheduling_task
+SKILL: sklill_time_scheduling
 ==================================================
 
 Goal:
@@ -1010,7 +1012,8 @@ String envFilename = "env.md";
   "wifi_pass": "",
   "telegramBot_token": "",
   "telegramBot_chatID": "",
-  "gemini_apikey": "" 
+  "gemini_apikey": "",
+  "timezone": ""   
 }
 */
 
@@ -1043,6 +1046,19 @@ uint32_t imageAddress = 0;
 uint32_t imageLength = 0;
 
 #define CONFIG_INIC_IPC_HIGH_TP
+
+#include <stdio.h>
+#include <time.h>
+#include "rtc.h"
+struct tm *timeinfo;
+int currentTimeValue[6] = {0,0,0,0,0,0};
+String currentTime[3] = {"","",""};
+int rtcYear = 0;
+int rtcMonth = 0;
+int rtcDay = 0;
+int rtcHour = 0;
+int rtcMinute = 0;
+int rtcSecond = 0;
 
 // Send text message to Telegram bot
 void telegramSendMessage(String token, String chatid, String text, String keyboard) {
@@ -1476,7 +1492,12 @@ String geminiVisionRequest(String message, bool frames) {
       Camera.getImage(0, &imageAddress, &imageLength);
     else if (!frames && imageLength == 0) {
       client.stop();
-      return "Previous image does not exist";
+      
+      responseText = "Previous image does not exist";
+      historicalMessages += buildGeminiMessage("model", responseText, 1);
+      storeHistoricalMessagesToFile();
+
+      return responseText;
     }
     
     uint8_t *fbBuf = (uint8_t*)imageAddress;
@@ -2364,8 +2385,110 @@ void getTelegramMessage() {
 
 }
 
+// Read local RTC time and update time buffers
+boolean getLocalTime() {
+  long long seconds = rtc.Read();
+  timeinfo = localtime(&seconds);
+
+  // Store numeric time values
+  currentTimeValue[0] = timeinfo->tm_year + 1900;
+  currentTimeValue[1] = timeinfo->tm_mon + 1;
+  currentTimeValue[2] = timeinfo->tm_mday;
+  currentTimeValue[3] = timeinfo->tm_hour;
+  currentTimeValue[4] = timeinfo->tm_min;
+  currentTimeValue[5] = timeinfo->tm_sec;
+
+  // Format date string (YYYY/MM/DD)
+  currentTime[0] = String(timeinfo->tm_year + 1900) + "/" +
+                   ((timeinfo->tm_mon + 1) < 10 ? "0" : "") +
+                   String(timeinfo->tm_mon + 1) + "/" +
+                   (timeinfo->tm_mday < 10 ? "0" : "") +
+                   String(timeinfo->tm_mday);
+
+  // Format time string (HH:MM:SS)
+  currentTime[1] = (timeinfo->tm_hour < 10 ? "0" : "") +
+                   String(timeinfo->tm_hour) + ":" +
+                   (timeinfo->tm_min < 10 ? "0" : "") +
+                   String(timeinfo->tm_min) + ":" +
+                   (timeinfo->tm_sec < 10 ? "0" : "") +
+                   String(timeinfo->tm_sec);
+
+  // Combine date and time
+  currentTime[2] = currentTime[0] + " " + currentTime[1];
+
+  return true;
+}
+
+// Retrieve the current local date and time using Gemini web search.
+void googleSearchTime() {
+  
+  String prompt =
+    "Use /search to get the current local date and time in " + timeZone + ".\n\n"
+  
+    "Return ONLY valid JSON.\n"
+    "No markdown.\n"
+    "No explanation.\n"
+    "No extra text.\n\n"
+  
+    "JSON schema:\n"
+    "{\n"
+    "  \"rtcYear\": number,\n"
+    "  \"rtcMonth\": number,\n"
+    "  \"rtcDay\": number,\n"
+    "  \"rtcHour\": number,\n"
+    "  \"rtcMinute\": number,\n"
+    "  \"rtcSecond\": number\n"
+    "}\n\n"
+  
+    "Example:\n"
+    "{\n"
+    "  \"rtcYear\": 2026,\n"
+    "  \"rtcMonth\": 5,\n"
+    "  \"rtcDay\": 26,\n"
+    "  \"rtcHour\": 14,\n"
+    "  \"rtcMinute\": 30,\n"
+    "  \"rtcSecond\": 45\n"
+    "}";
+
+  String message = geminiSearchRequest(prompt, false);
+
+  message.trim();
+
+  if (message.startsWith("{") && message.endsWith("}")) {
+
+    DynamicJsonDocument doc(1024);
+    DeserializationError error = deserializeJson(doc, message);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed\n" + message);
+      return;
+    }
+
+    JsonObject obj = doc.as<JsonObject>();
+
+    rtcYear   = obj["rtcYear"]   | 0;
+    rtcMonth  = obj["rtcMonth"]  | 0;
+    rtcDay    = obj["rtcDay"]    | 0;
+    rtcHour   = obj["rtcHour"]   | 0;
+    rtcMinute = obj["rtcMinute"] | 0;
+    rtcSecond = obj["rtcSecond"] | 0;
+
+  } else {
+    Serial.println("[DEBUG] JSON parse failed : (googleSearchTime)\n" + message);
+  }
+}
+
+// Initialize the RTC using Gemini-synchronized local time.
+void rtcInitialTime() {
+  googleSearchTime();
+  
+  rtc.Init();
+  long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
+  rtc.Write(initTime); 
+}
+
 // Background task for continuous Telegram polling
-void getTelegramMessage_task(void *param) {
+void task_getTelegramMessage(void *param) {
   (void)param;
   while (1) {
     getTelegramMessage();
@@ -2374,10 +2497,10 @@ void getTelegramMessage_task(void *param) {
 }
 
 // Periodic system check task
-void periodicCheck_task(void *param) {
+void task_anti_theft_detection(void *param) {
   (void)param;
   while (1) {
-    vTaskDelay(60000 / portTICK_PERIOD_MS);
+    vTaskDelay(300000 / portTICK_PERIOD_MS);
     
     // Wait until Telegram task is idle
     botClient.stop();
@@ -2385,33 +2508,62 @@ void periodicCheck_task(void *param) {
     
     Serial.println("\n\nExecuting Skill: anti_theft_detection\n\n");
     Serial.println("*** Uncomment the evaluateWorkflowContinuation function call and resume execution ***");
-    // evaluateWorkflowContinuation(true, "Must execute skill anti_theft_detection. Return ONLY tool_call JSON.");
+/*    
+    evaluateWorkflowContinuation(true, "Must execute skill anti_theft_detection. Return ONLY tool_call JSON.");
+*/
+  }
+  
+}
+
+// Periodic system scheduling check task
+void task_time_scheduling(void *param) {
+  (void)param;
+
+  while (1) {
+    vTaskDelay(60000 / portTICK_PERIOD_MS);
 
     // Wait until Telegram task is idle
     botClient.stop();
     vTaskDelay(2000 / portTICK_PERIOD_MS);
-        
-    Serial.println("\n\nExecuting Skill: time_scheduling_task\n\n");
-    Serial.println("*** Uncomment the evaluateWorkflowContinuation function call and resume execution ***");
-    /*
+
+    if (rtcYear == 0) {
+      rtcInitialTime();
+    }
+
+    if (rtcYear == 0) {
+      Serial.println("[DEBUG] RTC time is not initialized.");
+      continue;
+    }
+
+    Serial.println("\n\nExecuting Skill: skill_time_scheduling\n\n");
+    Serial.println("*** Resume execution after uncommenting evaluateWorkflowContinuation() ***");
+/*
     evaluateWorkflowContinuation(
       true,
-      "Invoke skill: time_scheduling_task. This is a deterministic scheduling evaluation step. "
-      "You MUST first internally use /search to obtain current local time in the user's confirmed timezone. "
-      "Then compare current time with ALL scheduled tasks in conversation history. "
-      "Each task includes BOTH execution time AND hardware action. "
-    
-      "Output rules: "
-      "1. If NO task has reached execution time → return EXACTLY NONE. "
-      "2. If a task time is reached or exceeded AND not executed → return ONLY valid tool_call JSON for that task action. "
-      "3. NEVER output natural language. "
-      "4. NEVER claim success without tool execution result. "
-      "5. NEVER ask user for time. "
-      "6. NEVER infer timezone. "
-      "7. NEVER execute outside scheduled window."
-    );
-    */
 
+      "Invoke skill: skill_time_scheduling. "
+      "This is a deterministic scheduling evaluation step. "
+
+      "Current local time: " +
+      String(getLocalTime() ? currentTime[2] : "") +
+
+      ". You MUST first internally use /search to obtain the current local time "
+      "in the user's confirmed timezone if the time is unknown. "
+
+      "Then compare the current time with ALL scheduled tasks in the conversation history. "
+      "Each task includes BOTH an execution time and a hardware action. "
+
+      "Output rules: "
+      "1. If NO task has reached its execution time, return EXACTLY: NONE. "
+      "2. If a task's scheduled time has been reached or exceeded and it has not been executed, "
+      "return ONLY valid tool_call JSON for that task action. "
+      "3. NEVER output natural language. "
+      "4. NEVER claim success without a tool execution result. "
+      "5. NEVER ask the user for the time. "
+      "6. NEVER infer the timezone. "
+      "7. NEVER execute outside the scheduled window."
+    );
+*/
   }
 }
 
@@ -2457,7 +2609,8 @@ void setEnvironmentSettings(String jsonString) {
   telegrambotToken =  obj["telegramBot_token"].as<String>();
   telegrambotChatId =  obj["telegramBot_chatID"].as<String>();
   geminiApiKey =  obj["gemini_apikey"].as<String>();
- 
+  timeZone = obj["timezone"].as<String>();
+  
 }
 
 // Arduino setup
@@ -2480,28 +2633,40 @@ void setup() {
   Camera.channelBegin(0);
 
   if (xTaskCreate(
-        getTelegramMessage_task,
-        (const char *)"getTelegramMessage_task",
+        task_getTelegramMessage,
+        (const char *)"task_getTelegramMessage",
         16384,
         NULL,
         tskIDLE_PRIORITY + 1,
         NULL
       )!= pdPASS) {
 
-    Serial.println("Create getTelegramMessage task failed");
+    Serial.println("Create task_getTelegramMessage failed");
   } 
 
   if (xTaskCreate(
-        periodicCheck_task,
-        (const char *)"periodicCheck_task",
+        task_anti_theft_detection,
+        (const char *)"task_anti_theft_detection",
         6144,
         NULL,
         tskIDLE_PRIORITY + 1,
         NULL
       )!= pdPASS) {
 
-    Serial.println("Create periodicCheck task failed");
-  }   
+    Serial.println("Create task_anti_theft_detection failed");
+  } 
+
+  if (xTaskCreate(
+        task_time_scheduling,
+        (const char *)"task_time_scheduling",
+        6144,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_time_scheduling failed");
+  }    
   
   String soul = getStringFromFile(soulFilename);
   Serial.println("Soul.md len: " + String(soul.length()));
@@ -2512,6 +2677,7 @@ void setup() {
   Serial.println("device.md len: " + String(device.length()));
   if (device != "")
     devicesDefinition = device;
+  devicesDefinition += "The device is located in timezone: " + timeZone;
 
   String skill = getStringFromFile(skillFilename);
   Serial.println("skill.md len: " + String(skill.length()));
@@ -2526,6 +2692,7 @@ void setup() {
   if (memory != "")
     historicalMessages = memory;
 
+  rtcInitialTime();
 }
 
 // Main loop

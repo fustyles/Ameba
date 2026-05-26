@@ -3,5 +3,6 @@
 	"wifi_pass": "xxxxx",
 	"telegramBot_token": "xxxxx",
 	"telegramBot_chatID": "xxxxx",
-	"gemini_apikey": "xxxxx"	
+	"gemini_apikey": "xxxxx",
+	"timezone": "Taiwan"
 }
