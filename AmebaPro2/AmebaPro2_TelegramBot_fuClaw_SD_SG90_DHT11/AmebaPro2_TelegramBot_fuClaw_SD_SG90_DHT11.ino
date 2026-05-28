@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-28 18:00
+Build Date: 2026-05-28 20:00
 
 ------------------------------------------------------------
 Overview
@@ -104,7 +104,9 @@ Supported Tools
 /analogwrite    GPIO analog output
 /digitalread    GPIO digital input
 /analogread     GPIO analog input
-/still          Capture image
+/syncrtc        update the hardware RTC
+/getrtc         get the hardware RTC current time   
+/still          Capture image  
 /vision         Capture + multimodal analysis
 /search         Grounded web search
 /delay          Pause execution for specified milliseconds
@@ -119,7 +121,7 @@ Persistent Files
 ------------------------------------------------------------
 
 env.md
-  WiFi / Telegram / Gemini credentials
+  WiFi / Telegram / Gemini credentials / Time zone
 
 device.md
   Devices definition
@@ -2576,8 +2578,8 @@ void getTelegramMessage() {
     				  "Built-in commands:\n"
     				  "/help command list\n"
     				  "/still capture and send a camera image\n"
-              "/syncrtc update the hardware RTC\n" 
-              "/getrtc get the hardware RTC current time\n"                           
+    				  "/syncrtc update the hardware RTC\n" 
+    				  "/getrtc get the hardware RTC current time\n"                           
     				  "/memory show system memory usage\n"
     				  "/log show tool execution history\n"
     				  "/reset start a new conversation\n\n"

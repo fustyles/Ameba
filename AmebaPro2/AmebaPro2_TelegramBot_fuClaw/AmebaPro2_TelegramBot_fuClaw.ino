@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Hardcoded Configuration Runtime
 
-Build Date: 2026-05-28 19:30
+Build Date: 2026-05-28 20:00
 
 ------------------------------------------------------------
 Overview
@@ -107,6 +107,8 @@ Supported Tools
 /analogwrite    GPIO analog output
 /digitalread    GPIO digital input
 /analogread     GPIO analog input
+/syncrtc        update the hardware RTC
+/getrtc         get the hardware RTC current time   
 /still          Capture image
 /vision         Capture + multimodal analysis
 /search         Grounded web search
@@ -983,6 +985,7 @@ WiFiSSLClient botClient;
 
 // Forward declarations
 void handleAgentResponse(String message);
+String geminiChatRequest(String message, bool tools);
 
 #include "VideoStream.h"
 
@@ -1008,6 +1011,91 @@ String rtcFormatTime = "";
 bool rtcUpdateStatus = false;
 
 #define CONFIG_INIC_IPC_HIGH_TP
+
+
+// Initialize the RTC using Gemini-synchronized local time.
+void rtcInitialTime(String gmtTime) {
+  
+  String prompt =
+	  "Convert this GMT datetime to " + timeZone + ".\n"
+	  "GMT datetime: " + gmtTime + "\n\n"
+
+	  "Output requirements:\n"
+	  "- Return ONLY a raw JSON object.\n"
+	  "- Do NOT use markdown.\n"
+	  "- Do NOT use code fences.\n"
+	  "- Do NOT explain anything.\n"
+	  "- Do NOT add extra text.\n"
+	  "- First character must be {.\n"
+	  "- Last character must be }.\n\n"
+
+	  "Required JSON format:\n"
+	  "{\n"
+	  "\"rtcYear\":2026,\n"
+	  "\"rtcMonth\":5,\n"
+	  "\"rtcDay\":28,\n"
+	  "\"rtcHour\":11,\n"
+	  "\"rtcMinute\":35,\n"
+	  "\"rtcSecond\":0\n"
+	  "}";
+
+  String message = geminiChatRequest(prompt, false);
+
+  message.trim();
+
+  if (message.startsWith("{") && message.endsWith("}")) {
+
+    DynamicJsonDocument doc(1024);
+    DeserializationError error = deserializeJson(doc, message);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed\n" + message);
+      return;
+    }
+
+    JsonObject obj = doc.as<JsonObject>();
+
+    rtcYear   = obj["rtcYear"]   | 0;
+    rtcMonth  = obj["rtcMonth"]  | 0;
+    rtcDay    = obj["rtcDay"]    | 0;
+    rtcHour   = obj["rtcHour"]   | 0;
+    rtcMinute = obj["rtcMinute"] | 0;
+    rtcSecond = obj["rtcSecond"] | 0;
+
+    rtcUpdateStatus = true;
+
+  } else {
+    Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
+  }
+
+  rtc.Init();
+  long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
+  rtc.Write(initTime); 
+}
+
+String getRtcTimeString() {
+
+  long long epoch = rtc.Read();
+
+  time_t rawtime = (time_t)epoch;
+
+  struct tm *timeinfo = localtime(&rawtime);
+
+  char buffer[32];
+
+  sprintf(
+    buffer,
+    "%04d/%d/%d %02d:%02d:%02d",
+    timeinfo->tm_year + 1900,
+    timeinfo->tm_mon + 1,
+    timeinfo->tm_mday,
+    timeinfo->tm_hour,
+    timeinfo->tm_min,
+    timeinfo->tm_sec
+  );
+
+  return String(buffer);
+}
 
 // Send text message to Telegram bot
 void telegramSendMessage(String token, String chatid, String text, String keyboard) {
@@ -1635,7 +1723,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       evaluateWorkflowContinuation(reCheck);
     
-    } else if (command == "/digitalread" || command == "/analogread") {
+    } 
+	else if (command == "/digitalread" || command == "/analogread") {
       int pin = params["pin"].as<int>();
       String pinmode = params["pinmode"].as<String>();
 
@@ -1648,7 +1737,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       evaluateWorkflowContinuation(reCheck); 
       
-    } else if (command == "/still") {
+    } 
+	else if (command == "/still") {
       bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
       String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
       String tgResponse = telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
@@ -1668,7 +1758,26 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       evaluateWorkflowContinuation(reCheck, task);
       
-    } else if (command == "/reset") {
+    }
+    else if (command == "/syncrtc") {
+      rtcUpdateStatus = false;  
+      replyUserMessage("Updating RTC time shortly. Check the Serial Monitor for results.");
+
+      historicalMessages += buildGeminiMessage("user", command, 1);
+      historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly.", 1);
+
+      executeToolHistory += command + "\n";        
+    } 
+    else if (command == "/getrtc") {
+      String rtcTime = getRtcTimeString();
+      replyUserMessage(rtcTime);
+
+      historicalMessages += buildGeminiMessage("user", command, 1);
+      historicalMessages += buildGeminiMessage("model", rtcTime, 1);
+
+      executeToolHistory += command + "\n";        
+    }  	
+	else if (command == "/reset") {
       geminiChatReset();
       replyUserMessage("New chat started.");
 
@@ -1677,7 +1786,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       executeToolHistory += command + "\n";	  
 
-    } else if (command == "/memory") {
+    } 
+	else if (command == "/memory") {
       String msg = getMemoryInfo();
       replyUserMessage(msg);
 
@@ -1688,15 +1798,18 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       evaluateWorkflowContinuation(reCheck);          
 
-    } else if (command == "/log") {
+    } 
+	else if (command == "/log") {
       Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
       replyUserMessage("Please check the serial monitor to view the tool execution log.");
 	
-    } else if (command == "/chat") {
+    } 
+	else if (command == "/chat") {
       String reply = params["reply"].as<String>();
       replyUserMessage(reply);
 
-    } else if (command == "/search") {
+    } 
+	else if (command == "/search") {
       String query = params["query"].as<String>();
       String task = params["task"].as<String>();
 	  
@@ -1707,7 +1820,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       
       evaluateWorkflowContinuation(reCheck, task);
 
-    } else if (command == "/delay") {
+    } 
+	else if (command == "/delay") {
       long milliseconds = params["milliseconds"].as<long>();
       milliseconds = constrain(milliseconds, 0, 10000);
   
@@ -1721,7 +1835,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
   
       evaluateWorkflowContinuation(reCheck);
         
-    } else if (command == "/vision") {
+    } 
+	else if (command == "/vision") {
       String query = params.containsKey("query") ? params["query"].as<String>() : "Describe the image in detail in the user's language. Do not return bounding boxes or coordinates. Respond in natural language only.";
       bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
       String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
@@ -1945,90 +2060,6 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
   }
 
   return "No text returned from Gemini.";
-}
-
-// Initialize the RTC using Gemini-synchronized local time.
-void rtcInitialTime(String gmtTime) {
-  
-  String prompt =
-	  "Convert this GMT datetime to " + timeZone + ".\n"
-	  "GMT datetime: " + gmtTime + "\n\n"
-
-	  "Output requirements:\n"
-	  "- Return ONLY a raw JSON object.\n"
-	  "- Do NOT use markdown.\n"
-	  "- Do NOT use code fences.\n"
-	  "- Do NOT explain anything.\n"
-	  "- Do NOT add extra text.\n"
-	  "- First character must be {.\n"
-	  "- Last character must be }.\n\n"
-
-	  "Required JSON format:\n"
-	  "{\n"
-	  "\"rtcYear\":2026,\n"
-	  "\"rtcMonth\":5,\n"
-	  "\"rtcDay\":28,\n"
-	  "\"rtcHour\":11,\n"
-	  "\"rtcMinute\":35,\n"
-	  "\"rtcSecond\":0\n"
-	  "}";
-
-  String message = geminiChatRequest(prompt, false);
-
-  message.trim();
-
-  if (message.startsWith("{") && message.endsWith("}")) {
-
-    DynamicJsonDocument doc(1024);
-    DeserializationError error = deserializeJson(doc, message);
-
-    if (error) {
-      Serial.println("[DEBUG] JSON parse failed\n" + message);
-      return;
-    }
-
-    JsonObject obj = doc.as<JsonObject>();
-
-    rtcYear   = obj["rtcYear"]   | 0;
-    rtcMonth  = obj["rtcMonth"]  | 0;
-    rtcDay    = obj["rtcDay"]    | 0;
-    rtcHour   = obj["rtcHour"]   | 0;
-    rtcMinute = obj["rtcMinute"] | 0;
-    rtcSecond = obj["rtcSecond"] | 0;
-
-    rtcUpdateStatus = true;
-
-  } else {
-    Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
-  }
-
-  rtc.Init();
-  long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
-  rtc.Write(initTime); 
-}
-
-String getRtcTimeString() {
-
-  long long epoch = rtc.Read();
-
-  time_t rawtime = (time_t)epoch;
-
-  struct tm *timeinfo = localtime(&rawtime);
-
-  char buffer[32];
-
-  sprintf(
-    buffer,
-    "%04d/%d/%d %02d:%02d:%02d",
-    timeinfo->tm_year + 1900,
-    timeinfo->tm_mon + 1,
-    timeinfo->tm_mday,
-    timeinfo->tm_hour,
-    timeinfo->tm_min,
-    timeinfo->tm_sec
-  );
-
-  return String(buffer);
 }
 
 // ============================================================
@@ -2272,6 +2303,8 @@ void getTelegramMessage() {
     				  "Built-in commands:\n"
     				  "/help command list\n"
     				  "/still capture and send a camera image\n"
+    				  "/syncrtc update the hardware RTC\n" 
+    				  "/getrtc get the hardware RTC current time\n" 					  
     				  "/memory show system memory usage\n"
     				  "/log show tool execution history\n"
     				  "/reset start a new conversation\n\n"
@@ -2287,7 +2320,7 @@ void getTelegramMessage() {
     				  "Documentation:\n"
     				  "https://github.com/fustyles/fuClaw";
     			  
-      				String keyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
+      				String keyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
       			
       				replyUserMessage(command, keyboard);
       
