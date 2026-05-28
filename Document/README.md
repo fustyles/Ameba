@@ -84,6 +84,7 @@ SD 卡根目錄/
 
 步驟 5　選擇開發板與連接埠
          工具 → 開發板 → Realtek Ameba Boards → AMB82-MINI
+                開發板 → Realtek Ameba Boards (ideasHatch) → HUB-8735_ultra
          工具 → 連接埠 → 選擇對應 COM 埠
 
 步驟 6　上傳程式碼
