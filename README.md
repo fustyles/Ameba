@@ -539,10 +539,10 @@ Gemini 不使用原生的 function-calling API。
 ------------------------------------------------------------
 支援的工具
 ------------------------------------------------------------
-/digitalwrite GPIO   數位輸出<br>
-/analogwrite GPIO   類比輸出<br>
-/digitalread GPIO   數位輸入<br>
-/analogread GPIO   類比輸入<br>
+/digitalwrite GPIO 數位輸出<br>
+/analogwrite GPIO 類比輸出<br>
+/digitalread GPIO 數位輸入<br>
+/analogread GPIO 類比輸入<br>
 /still   擷取影像<br>
 /vision   擷取影像 + 多模態分析<br>
 /search   Grounded 網路搜尋<br>
