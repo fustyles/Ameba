@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Hardcoded Configuration Runtime
 
-Build Date: 2026-05-28 13:00
+Build Date: 2026-05-28 19:30
 
 ------------------------------------------------------------
 Overview
@@ -1973,7 +1973,7 @@ void rtcInitialTime(String gmtTime) {
 	  "\"rtcSecond\":0\n"
 	  "}";
 
-  String message = geminiSearchRequest(prompt, false);
+  String message = geminiChatRequest(prompt, false);
 
   message.trim();
 
@@ -2227,7 +2227,7 @@ void getTelegramMessage() {
       getTime.replace("Content-Type", "");
       getTime.trim();
       
-      if (getTime != "" && rtcYear == 0 & !rtcUpdateStatus) {
+      if ((getTime != "" && rtcYear == 0) || !rtcUpdateStatus) {
         Serial.println(getTime);
         rtcInitialTime(getTime);
       }
@@ -2493,8 +2493,11 @@ void setup() {
   config.setRotation(0);
   Camera.configVideoChannel(0, config);
   Camera.videoInit();
-  Camera.channelBegin(0);
+  Camera.channelBegin(0);  
 
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
+    
   if (xTaskCreate(
         task_getTelegramMessage,
         (const char *)"task_getTelegramMessage",
@@ -2533,11 +2536,8 @@ void setup() {
     Serial.println("Create task_time_scheduling failed");
   }   
 
-*/   
-
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
-    
+*/ 
+	
 }
 
 // Main loop

@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-28 13:00
+Build Date: 2026-05-28 19:30
 
 ------------------------------------------------------------
 Overview
@@ -2086,7 +2086,7 @@ void rtcInitialTime(String gmtTime) {
 	  "\"rtcSecond\":0\n"
 	  "}";
 
-  String message = geminiSearchRequest(prompt, false);
+  String message = geminiChatRequest(prompt, false);
 
   message.trim();
 
@@ -2340,7 +2340,7 @@ void getTelegramMessage() {
       getTime.replace("Content-Type", "");
       getTime.trim();
       
-      if (getTime != "" && rtcYear == 0 & !rtcUpdateStatus) {
+      if ((getTime != "" && rtcYear == 0) || !rtcUpdateStatus) {
         Serial.println(getTime);
         rtcInitialTime(getTime);
       }
@@ -2614,6 +2614,30 @@ void setup() {
   Camera.videoInit();
   Camera.channelBegin(0);
 
+  String soul = getStringFromFile(soulFilename);
+  Serial.println("Soul.md len: " + String(soul.length()));
+  if (soul != "")
+    geminiRole = soul;
+
+  String device = getStringFromFile(deviceFilename);
+  Serial.println("device.md len: " + String(device.length()));
+  if (device != "")
+    devicesDefinition = device;
+
+  String skill = getStringFromFile(skillFilename);
+  Serial.println("skill.md len: " + String(skill.length()));
+  if (skill != "")
+    skillsDefinition = skill;
+
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
+    
+  String memory = getStringFromFile(memoryFilename);
+  Serial.println("memory.md len: " + String(memory.length()));
+  if (memory != "")
+    historicalMessages = memory;
+ 
+
   if (xTaskCreate(
         task_getTelegramMessage,
         (const char *)"task_getTelegramMessage",
@@ -2653,30 +2677,7 @@ void setup() {
   }   
 
 */   
-  
-  String soul = getStringFromFile(soulFilename);
-  Serial.println("Soul.md len: " + String(soul.length()));
-  if (soul != "")
-    geminiRole = soul;
-
-  String device = getStringFromFile(deviceFilename);
-  Serial.println("device.md len: " + String(device.length()));
-  if (device != "")
-    devicesDefinition = device;
-
-  String skill = getStringFromFile(skillFilename);
-  Serial.println("skill.md len: " + String(skill.length()));
-  if (skill != "")
-    skillsDefinition = skill;
-
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
-    
-  String memory = getStringFromFile(memoryFilename);
-  Serial.println("memory.md len: " + String(memory.length()));
-  if (memory != "")
-    historicalMessages = memory;
-    
+   
 }
 
 // Main loop
