@@ -202,7 +202,7 @@ Grok Evaluation
 
 **3. Exceptional Customization & Persistence**
 - Modular prompt system using dedicated Markdown files:
-  - `env.md` — WiFi, Telegram, and Gemini credentials
+  - `env.md` — WiFi, Telegram, Gemini credentials and Time zone
   - `soul.md` — Custom assistant personality
   - `device.md` — Hardware device definitions and safety rules
   - `skill.md` — Extensible skill registry (e.g., anti-theft detection)
