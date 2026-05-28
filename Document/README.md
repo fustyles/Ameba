@@ -80,7 +80,7 @@ SD 卡根目錄/
 
 步驟 4　下載 fuClaw 原始碼
          https://github.com/fustyles/fuClaw
-         開啟 AmebaPro2_TelegramBot_fuClaw_SD.ino
+         開啟 AmebaPro2_TelegramBot_fuClaw_SD_SG90_DHT11.ino
 
 步驟 5　選擇開發板與連接埠
          工具 → 開發板 → Realtek Ameba Boards → AMB82-MINI
@@ -541,10 +541,10 @@ Gemini 回應
 
 ```markdown
 ==================================================
-已確認的硬體裝置
+已確認的硬體裝置 (依選用AMB82-mini或HUB 8735 Ultra設定對應腳位)
 ==================================================
 
-HUB 8735 Ultra（原廠）
+HUB 8735 Ultra
 - 綠色 LED：腳位 25
 - 藍色 LED：腳位 26
 - 補光 LED：腳位 13（類比輸出 0-255）
