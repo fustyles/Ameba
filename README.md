@@ -267,7 +267,7 @@ Claude Evaluation
 4. [Multimodal Integration with Clear Separation of Concerns](#4-multimodal-integration-with-clear-separation-of-concerns)
 5. [Voice Input via Gemini STT](#5-voice-input-via-gemini-stt)
 6. [Persistent Memory & State Recovery](#6-persistent-memory--state-recovery)
-7. [RTC Time Synchronization via Gemini Search](#7-rtc-time-synchronization-via-gemini-search)
+7. [RTC Time Synchronization via HTTP Header Parsing and Gemini Timezone Conversion](#7-rtc-time-synchronization-via-http-header-parsing-and-gemini-timezone-conversion)
 8. [FreeRTOS Multi-Task Architecture](#8-freertos-multi-task-architecture)
 9. [Workflow State Tracking & Self-Evaluation](#9-workflow-state-tracking--self-evaluation)
 10. [Extensible Sensor & Actuator Support](#10-extensible-sensor--actuator-support)
@@ -384,18 +384,18 @@ All five files are fully decoupled. Any one of them can be modified independentl
 
 ---
 
-## 7. RTC Time Synchronization via Gemini Search
+## 7. RTC Time Synchronization via HTTP Header Parsing and Gemini Timezone Conversion
 
-Time awareness on an embedded device without a network time protocol stack is a non-trivial problem. fuClaw solves it elegantly.
+Time awareness on an embedded device without an NTP library is a non-trivial problem. The new version of fuClaw solves it with an even more elegant approach: piggybacking on the HTTP `Date:` header that already exists in every Telegram long-polling response, obtaining GMT time at zero additional network cost.
 
-### Gemini-Synchronized Clock
-At boot, the system calls `googleSearchTime()`, which sends a prompt directly via `geminiSearchRequest()` — bypassing the tool-routing pipeline entirely — asking Gemini to return the current local time in the configured timezone as a strict JSON schema. Gemini performs a live web search and returns a structured JSON object with year, month, day, hour, minute, and second fields. The firmware parses this, calls `rtc.SetEpoch()` to compute the corresponding epoch timestamp, then writes it to the hardware RTC via `rtc.Write(initTime)`. The entire flow **requires no NTP library**, substituting traditional time-sync protocol with AI search capability.
+### HTTP Header Parasitic Time Extraction
+Inside the `getTelegramMessage()` polling loop, the firmware simultaneously extracts the `Date:` field from the HTTP response header into a `getTime` string while reading the message body. When `rtcYear == 0` (not yet initialized) and `rtcUpdateStatus` is `false` (not yet successfully synced), it immediately calls `rtcInitialTime(getTime)` with that GMT time string. **No extra network request is needed** — the time data rides entirely on the Telegram communication that was already necessary.
 
-### Timezone-Aware Scheduling
-The timezone string is statically concatenated into `devicesDefinition` during `setup()` initialization, making it part of the system prompt visible to Gemini. Scheduled task evaluation therefore has access to the correct local time context without any hardcoded timezone logic in the firmware itself. Changing the timezone requires only editing `env.md`.
+### Gemini Handles Timezone Conversion
+`rtcInitialTime()` receives the ready-made GMT time string and uses `geminiSearchRequest()` to ask Gemini to convert it to the local time for the configured `timeZone`. The prompt enforces a strict pure-JSON response (no Markdown, no explanation text, first character must be `{`). Once the response is successfully parsed, `rtcUpdateStatus` is set to `true` as a sync-complete flag, preventing repeated initialization. The firmware then calls `rtc.SetEpoch()` to compute the epoch timestamp and writes it to the hardware RTC via `rtc.Write(initTime)`.
 
-### Defensive RTC Initialization in Scheduled Tasks
-The `task_time_scheduling` background task checks `rtcYear == 0` before each evaluation cycle. If the RTC was not successfully initialized at boot (e.g., due to a transient network failure), the task calls `rtcInitialTime()` to retry synchronization. If synchronization still fails and `rtcYear` remains 0, the task executes `continue` to **skip the current scheduling cycle entirely** rather than performing time comparisons against an uninitialized clock. This "skip rather than misfire" strategy ensures scheduled tasks never trigger based on an unreliable clock state.
+### Scheduling Only Runs When RTC Is Ready
+The `task_time_scheduling` background task checks `rtcYear == 0` before each evaluation cycle. If the RTC has not been initialized, the task executes `continue` to **skip the current cycle entirely** — with no retry logic and no function calls. This "skip rather than misfire" strategy ensures scheduled tasks never trigger based on an unreliable clock state. Once the clock is ready, scheduling evaluation retrieves the current formatted local time string via `getRtcTimeString()` and injects it directly into the Gemini task prompt for comparison.
 
 ---
 
