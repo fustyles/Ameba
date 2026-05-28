@@ -19,7 +19,6 @@
 | WiFi 網路 | 2.4 GHz，可連外網（Telegram / Gemini API） |
 | Telegram Bot Token | 向 @BotFather 申請（免費） |
 | Gemini API Key | 至 https://aistudio.google.com 申請（免費額度） |
-
 ---
 
 ### 0.2 SD 卡檔案結構
@@ -49,7 +48,8 @@ SD 卡根目錄/
   "wifi_pass": "你的WiFi密碼",
   "telegramBot_token": "123456789:AAFxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "telegramBot_chatID": "987654321",
-  "gemini_apikey": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  "gemini_apikey": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "timezone": "Taiwan"
 }
 ```
 
