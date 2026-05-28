@@ -94,6 +94,8 @@ Supported Tools
 /analogwrite <br>    GPIO analog output<br>
 /digitalread <br>    GPIO digital input<br>
 /analogread <br>     GPIO analog input<br>
+/syncrtc <br>        update the hardware RTC
+/getrtc <br>         get the hardware RTC current time  
 /still <br>          Capture image<br>
 /vision <br>         Capture + multimodal analysis<br>
 /search <br>         Grounded web search<br>
