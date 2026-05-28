@@ -118,7 +118,7 @@ Persistent Files
 ------------------------------------------------------------
 
 env.md
-  <br>WiFi / Telegram / Gemini credentials
+  <br>WiFi / Telegram / Gemini credentials / Time zone
 
 device.md
   <br>Devices definition
