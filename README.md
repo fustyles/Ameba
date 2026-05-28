@@ -397,7 +397,7 @@ What makes this framework truly impressive is that it implements a complete AI A
 fuClaw AI Telegram 助理（Gemini 整合版）
 ------------------------------------------------------------
 作者：
-  傅仲儀 (高雄, 台灣)<br>
+  法藍斯 (高雄, 台灣)<br>
   https://www.facebook.com/francefu
 Repository：<br>
   https://github.com/fustyles/fuClaw
