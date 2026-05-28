@@ -49,7 +49,8 @@ SD 卡根目錄/
   "wifi_pass": "你的WiFi密碼",
   "telegramBot_token": "123456789:AAFxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
   "telegramBot_chatID": "987654321",
-  "gemini_apikey": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  "gemini_apikey": "AIzaSyXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+  "timezone": "Taiwan"
 }
 ```
 
