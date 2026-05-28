@@ -248,7 +248,6 @@ fuClaw is more than just a project — it's a carefully crafted system with its 
 
 A standout open-source project that bridges the gap between cloud AI and physical embedded devices.
 
-
 ------------------------------------------------------------
 Claude Evaluation
 ------------------------------------------------------------
@@ -266,9 +265,12 @@ Claude Evaluation
 2. [Atomic Execution & Longest Valid Prefix](#2-atomic-execution--longest-valid-prefix)
 3. [Hardware Safety Layers](#3-hardware-safety-layers)
 4. [Multimodal Integration with Clear Separation of Concerns](#4-multimodal-integration-with-clear-separation-of-concerns)
-5. [Persistent Memory & State Recovery](#5-persistent-memory--state-recovery)
-6. [FreeRTOS Dual-Task Architecture](#6-freertos-dual-task-architecture)
-7. [Workflow State Tracking & Self-Evaluation](#7-workflow-state-tracking--self-evaluation)
+5. [Voice Input via Gemini STT](#5-voice-input-via-gemini-stt)
+6. [Persistent Memory & State Recovery](#6-persistent-memory--state-recovery)
+7. [RTC Time Synchronization via Gemini Search](#7-rtc-time-synchronization-via-gemini-search)
+8. [FreeRTOS Multi-Task Architecture](#8-freertos-multi-task-architecture)
+9. [Workflow State Tracking & Self-Evaluation](#9-workflow-state-tracking--self-evaluation)
+10. [Extensible Sensor & Actuator Support](#10-extensible-sensor--actuator-support)
 
 ---
 
@@ -287,6 +289,9 @@ Tools can be added, modified, or removed entirely at the text level. Both `skill
 ### Clear Error Boundaries
 Every JSON output is validated through ArduinoJson before execution. Malformed responses are rejected outright — there is no ambiguous partial execution. The system enforces a strict separation between two output modes — **valid `tool_call` JSON** and **natural language reply** — and prohibits mixing them, making the entire control flow highly predictable.
 
+### Dual System Prompt Strategy
+The framework maintains two compiled system prompts: `systemContent` (full, with tool definitions) and `systemContentNoTools` (lightweight, without tool definitions). Search and STT requests use the lightweight version, reducing token overhead and avoiding unnecessary tool-call interference in contexts that don't require hardware control.
+
 ---
 
 ## 2. Atomic Execution & Longest Valid Prefix
@@ -301,6 +306,9 @@ Every `tool_call` does exactly **one thing**: one pin, one operation, one value.
 
 When Gemini generates a multi-step workflow, the system does not apply an all-or-nothing strategy. Instead it executes **as many valid steps as possible from the beginning**, stopping the moment it encounters the first invalid or incomplete instruction. This means that even when the AI produces partially incorrect output, the system can still act on the maximum valid portion rather than shutting down entirely. For resource-constrained embedded devices where retries are expensive, this is an exceptionally practical design.
 
+### `reCheck` Flag — Selective Continuation Evaluation
+In multi-tool array execution, only the **last tool** in the batch triggers `evaluateWorkflowContinuation()`. Intermediate tools pass `reCheck = false`, preventing redundant mid-sequence Gemini queries that would waste network resources and inflate conversation history unnecessarily.
+
 ---
 
 ## 3. Hardware Safety Layers
@@ -311,13 +319,13 @@ The GPIO control system is protected by multiple independent safety layers, each
 The system only allows control of devices explicitly defined in `device.md`. If a user says "turn on the light" but no pin mapping for "light" exists, Gemini is instructed to stop and ask for clarification rather than guess. This prevents AI hallucinations from causing direct hardware misfires.
 
 ### Hard Value Constraints
-The `constrain(value, 0, 255)` call inside `toolPinOutput()` acts as a last line of hardware defense. Even if Gemini outputs an out-of-range analog value, the firmware layer forces it within bounds before it ever reaches the hardware. Digital outputs are strictly validated to accept only `0` or `1`; any other value returns an error JSON response.
+The `constrain(value, 0, 255)` call inside `toolPinOutput()` acts as a last line of hardware defense. Even if Gemini outputs an out-of-range analog value, the firmware layer forces it within bounds before it ever reaches the hardware. Digital outputs are strictly validated to accept only `0` or `1`; any other value returns an error JSON response. The same constraint pattern is applied in `tool_servo()` — servo angles are clamped to the 0–180° range at the firmware level, independent of what the AI specifies.
 
 ### Input-Only Pin Protection
 The button pin (pin 12) is explicitly marked as **INPUT ONLY** in the system prompt, blocking any AI-level attempt to use it as an output before a tool call is ever produced.
 
 ### User Confirmation Requirement
-By default, all hardware actions require explicit user confirmation before execution. This maintains an appropriate balance between autonomous AI reasoning and human oversight — particularly important in scenarios where a Vision analysis or Search result would otherwise trigger a physical hardware action without any human in the loop.
+By default, all hardware actions require explicit user confirmation before execution. This maintains an appropriate balance between autonomous AI reasoning and human oversight — particularly important in scenarios where a Vision analysis or Search result would otherwise trigger a physical hardware action without any human in the loop. Skill-triggered and scheduled autonomous workflows are explicitly exempted from this rule, enabling fully unattended automation without compromising interactive safety.
 
 ---
 
@@ -335,12 +343,27 @@ The division between `/still` and `/vision` appears simple on the surface, but r
 ### Perception–Action Separation
 This design creates a clean **perception layer / action layer** architecture. The perception layer (Vision) is only responsible for observing and reporting; the action layer (Hardware tools) is only responsible for execution. Between them sits a reasoning and confirmation buffer. In AI-vision-triggered automation scenarios, this is critically important — it prevents the dangerous direct coupling of "see something → immediately do something."
 
-### Voice Input Integration
-Voice messages from Telegram are transcribed via Gemini STT and fed directly into the same processing pipeline as text input — no extra branching logic required. All multimodal inputs converge into a single unified reasoning and tool-routing flow, keeping the architecture remarkably clean.
+### Cached Frame Reuse
+Both `/still` and `/vision` support a `frames: false` parameter, allowing subsequent tools in a workflow to **reuse the previously captured frame** rather than triggering a new camera acquisition. This is a meaningful optimization on resource-constrained hardware where camera capture is expensive in both time and CPU cycles. A `/vision` analysis followed by `/still` forwarding the same frame to Telegram is a natural workflow that this design handles cleanly.
 
 ---
 
-## 5. Persistent Memory & State Recovery
+## 5. Voice Input via Gemini STT
+
+Voice message support is implemented end-to-end with careful attention to embedded memory constraints.
+
+### Binary-Safe Download Pipeline
+Voice files from Telegram are downloaded using **HTTP/1.0** deliberately — this disables chunked transfer encoding, ensuring the response body is a clean binary stream that can be read byte-by-byte into a heap buffer without complex chunk-boundary parsing logic. The `MAX_FILE_SIZE` guard (256 KB) prevents heap overflow from unexpectedly large audio files.
+
+### Inline Base64 Encoding for Gemini
+Rather than uploading audio to a file storage service, the OGG/Opus audio is Base64-encoded and sent **inline within the Gemini API JSON request** using the `inline_data` field. This eliminates the need for a separate file hosting step and keeps the entire voice-to-response pipeline within a single API call. Memory is carefully managed: the Base64 buffer is allocated, used to build the request, then immediately freed before the network call proceeds.
+
+### Unified Input Pipeline
+Voice messages, once transcribed, are routed through **the exact same processing pipeline as text input** — including slash-command detection and Gemini reasoning. There is no special-case branching for voice vs. text after transcription. This architectural cleanliness means all future improvements to the text pipeline automatically benefit voice input as well.
+
+---
+
+## 6. Persistent Memory & State Recovery
 
 The conversation memory persistence design solves a fundamental challenge on embedded devices: how to restore context after a reboot.
 
@@ -355,28 +378,50 @@ The conversation memory persistence design solves a fundamental challenge on emb
 | `device.md` | Hardware pin mappings |
 | `skill.md` | Skill workflow scripts |
 | `env.md` | Authentication credentials |
+| `memory.md` | Persistent conversation history |
 
-All four files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. This lets end users customize the AI's personality, extend device definitions, or add new skills without touching a single line of C++ code.
+All five files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. This lets end users customize the AI's personality, extend device definitions, or add new skills without touching a single line of C++ code. Credentials stored in `env.md` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations.
 
 ---
 
-## 6. FreeRTOS Dual-Task Architecture
+## 7. RTC Time Synchronization via Gemini Search
 
-The two-task design solves a concrete concurrency problem.
+Time awareness on an embedded device without a network time protocol stack is a non-trivial problem. fuClaw solves it elegantly.
+
+### Gemini-Synchronized Clock
+At boot, the system calls `googleSearchTime()`, which instructs Gemini to perform a live web search for the current local time in the configured timezone. Gemini returns a structured JSON object with year, month, day, hour, minute, and second fields. The firmware parses this directly into the hardware RTC via `rtc.SetEpoch()`. The result is a **network-synchronized hardware clock** achieved entirely through natural language AI tooling — no NTP library required.
+
+### Timezone-Aware Scheduling
+The timezone string is appended to `devicesDefinition` at runtime and becomes part of the system context visible to Gemini. Scheduled task evaluation therefore has access to the correct local time context without any hardcoded timezone logic in the firmware itself. Changing the timezone requires only editing `env.md`.
+
+### Lazy RTC Initialization in Scheduled Tasks
+The `task_time_scheduling` background task checks `rtcYear == 0` before each evaluation cycle. If the RTC was not successfully initialized at boot (e.g., due to a transient network failure), it transparently retries synchronization before attempting any scheduling logic. This graceful degradation prevents scheduled tasks from firing at incorrect times due to an uninitialized clock.
+
+---
+
+## 8. FreeRTOS Multi-Task Architecture
+
+The multi-task design solves concrete concurrency and scheduling problems across three independent execution concerns.
 
 ### Task Responsibilities
 
-- **`getTelegramMessage_task`** — Continuously polls for user input
-- **`periodicCheck_task`** — Executes scheduled automated skills (e.g., anti-theft detection)
+| Task | Stack | Purpose |
+|------|-------|---------|
+| `getTelegramMessage_task` | 16384 bytes | Continuous user input polling |
+| `task_anti_theft_detection` | 6144 bytes | Periodic vision-based intrusion detection (every 5 min) |
+| `task_time_scheduling` | 6144 bytes | Scheduled hardware action evaluation (every 1 min) |
 
-If these ran in the same thread, a scheduled task would block user input, and user interactions would disrupt the periodic schedule. Splitting them into two FreeRTOS tasks allows both to run in parallel — the system simultaneously stays responsive to user messages and executes background monitoring on schedule.
+If these ran in the same thread, a scheduled task would block user input, and user interactions would disrupt the periodic schedule. Splitting them into independent FreeRTOS tasks allows all three to run concurrently — the system simultaneously stays responsive to user messages and executes background monitoring and scheduling on their respective cadences.
 
 ### Resource Conflict Avoidance
-Before `periodicCheck_task` executes, it calls `botClient.stop()` and waits before proceeding. This prevents the two tasks from simultaneously using the network connection and causing resource conflicts — a detail that reflects real hands-on experience with embedded systems resource contention.
+Before either background task executes, it calls `botClient.stop()` and waits 2 seconds before proceeding. This prevents simultaneous use of the network stack by multiple tasks — a detail that reflects real hands-on experience with embedded systems resource contention. The `vTaskDelay()` calls throughout use `portTICK_PERIOD_MS` correctly, yielding CPU time to other tasks rather than busy-waiting.
+
+### Opt-In Background Tasks
+The anti-theft and scheduling tasks are **disabled by default** via comment blocks in `setup()`. This is a thoughtful choice: enabling autonomous background hardware control is a significant behavioral change that users should consciously opt into, rather than something that activates unexpectedly on first flash.
 
 ---
 
-## 7. Workflow State Tracking & Self-Evaluation
+## 9. Workflow State Tracking & Self-Evaluation
 
 `evaluateWorkflowContinuation()` is the core of the entire agent's autonomy.
 
@@ -386,11 +431,29 @@ After each tool execution, instead of silently waiting for the user's next comma
 ### Goal-Referenced Evaluation
 The `task` parameter design ensures this self-evaluation has a clear reference point. When Gemini assesses whether to continue, it compares against the **original user intent** — not just the result of the last execution step. This makes workflow completion detection more accurate and reduces unnecessary redundant actions.
 
+### NONE Sentinel Value
+When Gemini determines a workflow is complete, it returns the exact string `"NONE"`. The firmware treats this as a no-op — no message is sent to the user, no further processing occurs. This clean termination signal avoids the common failure mode of AI agents that generate verbose "task complete" confirmations for every automated step, which would be disruptive in a background monitoring context.
+
+---
+
+## 10. Extensible Sensor & Actuator Support
+
+The latest version significantly expands hardware support beyond basic GPIO, demonstrating that the prompt-driven tool architecture scales naturally to more complex peripherals.
+
+### Servo Motor Control (`/servo`)
+Servo control uses a reference-passed `AmebaServo` instance rather than a global singleton, making it straightforward to extend to multiple servo pins in the future. Angle clamping at the firmware layer (`constrain(angle, 0, 180)`) provides the same hardware safety guarantee as the existing GPIO tools. Undefined servo pins return a structured error JSON rather than silently failing, maintaining the system's consistent error contract.
+
+### DHT11 Temperature & Humidity Sensor (`/dht11`)
+The DHT11 integration handles the sensor's known failure mode — returning `NaN` on read errors — with an explicit `isnan()` check that produces a structured `dht11_read_failed` error response. This is fed back into the Gemini conversation history, allowing the AI to reason about sensor failures and respond naturally (e.g., "The sensor didn't respond — please check the wiring") rather than propagating silent errors downstream.
+
+### Consistent Tool Contract
+Both new tools follow the same JSON response contract as all existing tools: a `status` field of either `"success"` or `"error"`, a `method` field identifying the tool, and either result data or a `reason` field for failures. This consistency means `evaluateWorkflowContinuation()` can reason uniformly about any tool outcome, regardless of the underlying hardware type.
+
 ---
 
 ## Summary
 
-What makes this framework truly impressive is that it implements a complete AI Agent architecture — one that would ordinarily require a cloud server — on a device where memory is measured in kilobytes and there is no OS abstraction layer. Every design decision has a clear engineering rationale, and the system as a whole demonstrates that thoughtful prompt engineering and careful embedded systems design can produce something far greater than the sum of its parts.
+What makes this framework truly impressive is that it implements a complete AI Agent architecture — one that would ordinarily require a cloud server — on a device where memory is measured in kilobytes and there is no OS abstraction layer. The latest version deepens this achievement by adding voice input, hardware RTC synchronization, servo and environmental sensor support, and a multi-task scheduling architecture, all without compromising the core design principles of prompt-driven routing, atomic execution, and layered hardware safety. Every design decision has a clear engineering rationale, and the system as a whole demonstrates that thoughtful prompt engineering and careful embedded systems design can produce something far greater than the sum of its parts.
 
 
 ------------------------------------------------------------
