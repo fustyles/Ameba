@@ -1950,28 +1950,28 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
 // Initialize the RTC using Gemini-synchronized local time.
 void rtcInitialTime(String gmtTime) {
   
-String prompt =
-  "Convert this GMT datetime to " + timeZone + ".\n"
-  "GMT datetime: " + gmtTime + "\n\n"
+  String prompt =
+	  "Convert this GMT datetime to " + timeZone + ".\n"
+	  "GMT datetime: " + gmtTime + "\n\n"
 
-  "Output requirements:\n"
-  "- Return ONLY a raw JSON object.\n"
-  "- Do NOT use markdown.\n"
-  "- Do NOT use code fences.\n"
-  "- Do NOT explain anything.\n"
-  "- Do NOT add extra text.\n"
-  "- First character must be {.\n"
-  "- Last character must be }.\n\n"
+	  "Output requirements:\n"
+	  "- Return ONLY a raw JSON object.\n"
+	  "- Do NOT use markdown.\n"
+	  "- Do NOT use code fences.\n"
+	  "- Do NOT explain anything.\n"
+	  "- Do NOT add extra text.\n"
+	  "- First character must be {.\n"
+	  "- Last character must be }.\n\n"
 
-  "Required JSON format:\n"
-  "{\n"
-  "\"rtcYear\":2026,\n"
-  "\"rtcMonth\":5,\n"
-  "\"rtcDay\":28,\n"
-  "\"rtcHour\":11,\n"
-  "\"rtcMinute\":35,\n"
-  "\"rtcSecond\":0\n"
-  "}";
+	  "Required JSON format:\n"
+	  "{\n"
+	  "\"rtcYear\":2026,\n"
+	  "\"rtcMonth\":5,\n"
+	  "\"rtcDay\":28,\n"
+	  "\"rtcHour\":11,\n"
+	  "\"rtcMinute\":35,\n"
+	  "\"rtcSecond\":0\n"
+	  "}";
 
   String message = geminiSearchRequest(prompt, false);
 
