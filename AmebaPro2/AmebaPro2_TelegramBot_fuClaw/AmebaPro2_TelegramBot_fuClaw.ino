@@ -1149,7 +1149,7 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
   return getBody;
 }
 
-void replayUserMessage(String text, String keyboard = "") {
+void replyUserMessage(String text, String keyboard = "") {
 	telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 }
 
@@ -1670,7 +1670,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       
     } else if (command == "/reset") {
       geminiChatReset();
-      replayUserMessage("New chat started.");
+      replyUserMessage("New chat started.");
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", "New chat started.", 1);
@@ -1679,7 +1679,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
     } else if (command == "/memory") {
       String msg = getMemoryInfo();
-      replayUserMessage(msg);
+      replyUserMessage(msg);
 
       historicalMessages += buildGeminiMessage("user", command, 1);
       historicalMessages += buildGeminiMessage("model", msg, 1);
@@ -1690,11 +1690,11 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
     } else if (command == "/log") {
       Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
-      replayUserMessage("Please check the serial monitor to view the tool execution log.");
+      replyUserMessage("Please check the serial monitor to view the tool execution log.");
 	
     } else if (command == "/chat") {
       String reply = params["reply"].as<String>();
-      replayUserMessage(reply);
+      replyUserMessage(reply);
 
     } else if (command == "/search") {
       String query = params["query"].as<String>();
@@ -1734,7 +1734,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       evaluateWorkflowContinuation(reCheck, task);
     }
   	else if (command == "/reboot") {
-  		replayUserMessage("Rebooting the device, please wait...");
+  		replyUserMessage("Rebooting the device, please wait...");
   		
   		Serial.println("User requested reboot the device.");
   		delay(2000);
@@ -1820,7 +1820,7 @@ void handleAgentResponse(String message) {
   else {
     if (message.startsWith("[") || message.startsWith("{")) {
       Serial.println("[DEBUG] Json parse failed: (handleAgentResponse)\n" + message);
-      replayUserMessage("Json parse failed (handleAgentResponse). Please type \"Continue\"");
+      replyUserMessage("Json parse failed (handleAgentResponse). Please type \"Continue\"");
 	  
     } else if (message != "NONE") {
       message = rawMessage;
@@ -1848,7 +1848,7 @@ void handleAgentResponse(String message) {
       message.replace("**", "");        
       message.replace("___", ""); 
       
-      replayUserMessage(message);
+      replyUserMessage(message);
     }
   }
 }
@@ -2289,7 +2289,7 @@ void getTelegramMessage() {
     			  
       				String keyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
       			
-      				replayUserMessage(command, keyboard);
+      				replyUserMessage(command, keyboard);
       
       				historicalMessages += buildGeminiMessage("user", "Command list", 1);
       				historicalMessages += buildGeminiMessage("model", command, 1);
