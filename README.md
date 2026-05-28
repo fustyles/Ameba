@@ -528,28 +528,28 @@ Gemini 不使用原生的 function-calling API。
 ------------------------------------------------------------
 支援的工具
 ------------------------------------------------------------
-**/digitalwrite** — GPIO 數位輸出<br>
-**/analogwrite** — GPIO 類比輸出<br>
-**/digitalread** — GPIO 數位輸入<br>
-**/analogread** — GPIO 類比輸入<br>
-**/still** — 擷取影像<br>
-**/vision** — 擷取影像 + 多模態分析<br>
-**/search** — Grounded 網路搜尋<br>
-**/delay** — 暫停執行指定毫秒<br>
-**/memory** — 系統記憶體診斷<br>
-**/log** — 顯示工具執行歷史<br>
-**/reset** — 重置對話狀態<br>
-**/chat** — 自然語言回覆<br>
-**/reboot** — 重啟裝置
+`/digitalwrite` — GPIO 數位輸出<br>
+`/analogwrite` — GPIO 類比輸出<br>
+`/digitalread` — GPIO 數位輸入<br>
+`/analogread` — GPIO 類比輸入<br>
+`/still` — 擷取影像<br>
+`/vision` — 擷取影像 + 多模態分析<br>
+`/search` — Grounded 網路搜尋<br>
+`/delay` — 暫停執行指定毫秒<br>
+`/memory` — 系統記憶體診斷<br>
+`/log` — 顯示工具執行歷史<br>
+`/reset` — 重置對話狀態<br>
+`/chat` — 自然語言回覆<br>
+`/reboot` — 重啟裝置
 
 ------------------------------------------------------------
 持久化檔案
 ------------------------------------------------------------
-**env.md** — WiFi / Telegram / Gemini    金鑰 / 時區設定<br>
-**device.md** — 硬體裝置定義<br>
-**skill.md** — 技能定義<br>
-**soul.md** — 自訂助理人格提示詞<br>
-**memory.md** — 對話歷史持久化<br>
+`env.md` — WiFi / Telegram / Gemini 金鑰 / 時區設定<br>
+`device.md` — 硬體裝置定義<br>
+`skill.md` — 技能定義<br>
+`soul.md` — 自訂助理人格提示詞<br>
+`memory.md` — 對話歷史持久化<br>
 
 系統會在開機時自動恢復對話狀態。
 
