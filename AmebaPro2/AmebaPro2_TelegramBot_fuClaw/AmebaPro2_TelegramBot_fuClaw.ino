@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Hardcoded Configuration Runtime
 
-Build Date: 2026-05-25 17:30
+Build Date: 2026-05-28 13:00
 
 ------------------------------------------------------------
 Overview
@@ -849,11 +849,11 @@ FALLBACK
 If uncertain → return natural conversational response.
 
 ==================================================
-SKILL: sklill_time_scheduling
+SKILL: skill_time_scheduling
 ==================================================
 
 Goal:
-Execute scheduled hardware actions at correct time using timezone-aware validation.
+Execute scheduled hardware actions at correct time using device RTC local time.
 
 --------------------------------------------------
 SKILL EXECUTION
@@ -867,39 +867,36 @@ Step 0: Parse scheduled task
 
 Extract from conversation:
 
-- execution time
-- hardware action
+execution time
+hardware action
+execution state
 
-If no valid time → treat as normal conversation
-
---------------------------------------------------
-Step 1: Verify timezone
---------------------------------------------------
-
-{
-  "type": "tool_call",
-  "method": "/chat",
-  "params": {
-    "reply": "Check whether timezone is known from conversation context."
-  }
-}
-
-IF timezone is UNKNOWN:
-→ ask user for city / region / timezone
-→ STOP (no tool calls)
+If no valid scheduled task exists:
+RETURN EXACTLY:
+NONE
 
 --------------------------------------------------
-Step 2: Get current time
+Step 1: Use device RTC local time
 --------------------------------------------------
 
-{
-  "type": "tool_call",
-  "method": "/search",
-  "params": {
-    "query": "current local time in user timezone",
-    "task": "Compare current time with scheduled tasks in conversation history."
-  }
-}
+The device timezone is already provided by the runtime system.
+
+Current local RTC time is already provided by the runtime system.
+
+NEVER:
+
+ask user for timezone
+ask user for current time
+use /search for time retrieval
+
+--------------------------------------------------
+Step 2: Compare scheduled task
+--------------------------------------------------
+
+Compare:
+
+current RTC local time
+scheduled execution time
 
 --------------------------------------------------
 Step 3: Decision logic
@@ -912,17 +909,24 @@ NONE
 IF current_time >= scheduled_time AND task not executed:
 RETURN ONLY valid tool_call JSON
 
+IF task already executed:
+RETURN EXACTLY:
+NONE
+
 --------------------------------------------------
 CRITICAL RULES
 --------------------------------------------------
 
-1. Scheduled tasks override normal confirmation rules
-2. Do NOT ask user for current time
-3. Do NOT execute before scheduled time
-4. Do NOT simulate execution success
-5. Execution success only valid after tool response
-6. Time check MUST always include task context
-7. /search is ONLY for time retrieval, not decision making
+Scheduled tasks override normal confirmation rules
+Do NOT ask user for current time
+Do NOT ask user for timezone
+Do NOT execute before scheduled time
+Do NOT simulate execution success
+Execution success only valid after tool response
+Time check MUST always include task context
+NEVER use /search for scheduling
+ALWAYS use device RTC local time
+NEVER re-execute completed scheduled tasks
 
 --------------------------------------------------
 TASK REGISTRATION RULE
@@ -930,10 +934,10 @@ TASK REGISTRATION RULE
 
 When user gives schedule (e.g. "10:56 turn on green LED"):
 
-1. Store task in memory
-2. Confirm task recorded
-3. Inform scheduler must be enabled
-4. Do NOT execute immediately
+Store task in memory
+Confirm task recorded
+Inform scheduler must be enabled
+Do NOT execute immediately
 
 Example:
 "I've recorded your scheduled task. It will execute when system scheduler is active."
@@ -986,27 +990,24 @@ void handleAgentResponse(String message);
 VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
 //VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
 
-// WiFi AP channel
-char channel_ap[] = "2";
-
 // Captured image buffer address and length
 uint32_t imageAddress = 0;
 uint32_t imageLength = 0;
-
-#define CONFIG_INIC_IPC_HIGH_TP
 
 #include <stdio.h>
 #include <time.h>
 #include "rtc.h"
 struct tm *timeinfo;
-int currentTimeValue[6] = {0,0,0,0,0,0};
-String currentTime[3] = {"","",""};
 int rtcYear = 0;
 int rtcMonth = 0;
 int rtcDay = 0;
 int rtcHour = 0;
 int rtcMinute = 0;
 int rtcSecond = 0;
+String rtcFormatTime = "";
+bool rtcUpdateStatus = false;
+
+#define CONFIG_INIC_IPC_HIGH_TP
 
 // Send text message to Telegram bot
 void telegramSendMessage(String token, String chatid, String text, String keyboard) {
@@ -1389,7 +1390,6 @@ String geminiVisionRequest(String message, bool frames) {
       
       responseText = "Previous image does not exist";
       historicalMessages += buildGeminiMessage("model", responseText, 1);
-      storeHistoricalMessagesToFile();
 
       return responseText;
     }
@@ -1853,18 +1853,8 @@ void handleAgentResponse(String message) {
   }
 }
 
-/**
- * @brief Base64-encode an audio buffer and send it to Gemini for transcription.
- *
- * The audio is embedded directly in the JSON request body (inline_data),
- * so no separate file upload step is needed.
- *
- * @param fileinput  Pointer to raw audio bytes (OGG/Opus from Telegram)
- * @param fileSize   Number of valid bytes in the buffer
- * @param mimeType   MIME type string, e.g. "audio/ogg; codecs=opus"
- * @param prompt     Instruction text sent alongside the audio
- * @return           Transcribed text, or an error message string
- */
+// Base64-encode an audio buffer and send it to Gemini for transcription.
+
 String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
 
   int   encodedLen  = base64_enc_len(fileSize);
@@ -1957,19 +1947,96 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
   return "No text returned from Gemini.";
 }
 
+// Initialize the RTC using Gemini-synchronized local time.
+void rtcInitialTime(String gmtTime) {
+  
+String prompt =
+  "Convert this GMT datetime to " + timeZone + ".\n"
+  "GMT datetime: " + gmtTime + "\n\n"
+
+  "Output requirements:\n"
+  "- Return ONLY a raw JSON object.\n"
+  "- Do NOT use markdown.\n"
+  "- Do NOT use code fences.\n"
+  "- Do NOT explain anything.\n"
+  "- Do NOT add extra text.\n"
+  "- First character must be {.\n"
+  "- Last character must be }.\n\n"
+
+  "Required JSON format:\n"
+  "{\n"
+  "\"rtcYear\":2026,\n"
+  "\"rtcMonth\":5,\n"
+  "\"rtcDay\":28,\n"
+  "\"rtcHour\":11,\n"
+  "\"rtcMinute\":35,\n"
+  "\"rtcSecond\":0\n"
+  "}";
+
+  String message = geminiSearchRequest(prompt, false);
+
+  message.trim();
+
+  if (message.startsWith("{") && message.endsWith("}")) {
+
+    DynamicJsonDocument doc(1024);
+    DeserializationError error = deserializeJson(doc, message);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON parse failed\n" + message);
+      return;
+    }
+
+    JsonObject obj = doc.as<JsonObject>();
+
+    rtcYear   = obj["rtcYear"]   | 0;
+    rtcMonth  = obj["rtcMonth"]  | 0;
+    rtcDay    = obj["rtcDay"]    | 0;
+    rtcHour   = obj["rtcHour"]   | 0;
+    rtcMinute = obj["rtcMinute"] | 0;
+    rtcSecond = obj["rtcSecond"] | 0;
+
+    rtcUpdateStatus = true;
+
+  } else {
+    Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
+  }
+
+  rtc.Init();
+  long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
+  rtc.Write(initTime); 
+}
+
+String getRtcTimeString() {
+
+  long long epoch = rtc.Read();
+
+  time_t rawtime = (time_t)epoch;
+
+  struct tm *timeinfo = localtime(&rawtime);
+
+  char buffer[32];
+
+  sprintf(
+    buffer,
+    "%04d/%d/%d %02d:%02d:%02d",
+    timeinfo->tm_year + 1900,
+    timeinfo->tm_mon + 1,
+    timeinfo->tm_mday,
+    timeinfo->tm_hour,
+    timeinfo->tm_min,
+    timeinfo->tm_sec
+  );
+
+  return String(buffer);
+}
+
 // ============================================================
 //  Telegram: Download File by Path
 // ============================================================
 
-/**
- * @brief Download a file from Telegram's CDN into a heap-allocated buffer.
- *
- * Uses HTTP/1.0 to avoid chunked transfer encoding, then scans for the
- * blank line that separates HTTP headers from the binary body.
- *
- * @param filePath  Relative path returned by getTelegramFilePath()
- * @return          Pointer to allocated buffer (caller must free()), or NULL
- */
+// Download a file from Telegram's CDN into a heap-allocated buffer.
+
 uint8_t* downloadTelegramFile(String filePath) {
 
   uint8_t* voiceFile = (uint8_t*)malloc(MAX_FILE_SIZE);
@@ -2078,7 +2145,7 @@ String getTelegramFilePath(String fileId) {
 void getTelegramMessage() {
 
   const char* myDomain = "api.telegram.org";
-  String getAll="", getBody = "";
+  String getAll="", getTime = "", getBody = "";
 
   JsonObject obj;
   DynamicJsonDocument doc(8192);
@@ -2107,6 +2174,7 @@ void getTelegramMessage() {
     while (botClient.connected()) {
 
       getAll = "";
+      getTime = "";
       getBody = "";
 
       String request = "limit=1&offset=-1&allowed_updates=message";
@@ -2139,12 +2207,29 @@ void getTelegramMessage() {
 
           if (state)
             getBody += String(c);
+          else {
+            if (getTime.indexOf("Date:")!=-1)
+              getTime = "";
+            else if (getTime.indexOf("Content-Type")!=-1)
+              getTime += "";
+            else
+              getTime += String(c);
+
+          }
 
           startTime = millis();
         }
 
         if (getBody.length()>0)
           break;
+      }
+
+      getTime.replace("Content-Type", "");
+      getTime.trim();
+      
+      if (getTime != "" && rtcYear == 0 & !rtcUpdateStatus) {
+        Serial.println(getTime);
+        rtcInitialTime(getTime);
       }
 
       getBody.trim();
@@ -2207,7 +2292,7 @@ void getTelegramMessage() {
       				replayUserMessage(command, keyboard);
       
       				historicalMessages += buildGeminiMessage("user", "Command list", 1);
-      				historicalMessages += buildGeminiMessage("model", command, 1);     
+      				historicalMessages += buildGeminiMessage("model", command, 1);
     			
     			  } else if (text=="null") {
     			
@@ -2267,119 +2352,18 @@ void getTelegramMessage() {
       millis() - start < 10000) {
       delay(500);
     }
-
   }
-
-}
-
-// Read local RTC time and update time buffers
-boolean getLocalTime() {
-  long long seconds = rtc.Read();
-  timeinfo = localtime(&seconds);
-
-  // Store numeric time values
-  currentTimeValue[0] = timeinfo->tm_year + 1900;
-  currentTimeValue[1] = timeinfo->tm_mon + 1;
-  currentTimeValue[2] = timeinfo->tm_mday;
-  currentTimeValue[3] = timeinfo->tm_hour;
-  currentTimeValue[4] = timeinfo->tm_min;
-  currentTimeValue[5] = timeinfo->tm_sec;
-
-  // Format date string (YYYY/MM/DD)
-  currentTime[0] = String(timeinfo->tm_year + 1900) + "/" +
-                   ((timeinfo->tm_mon + 1) < 10 ? "0" : "") +
-                   String(timeinfo->tm_mon + 1) + "/" +
-                   (timeinfo->tm_mday < 10 ? "0" : "") +
-                   String(timeinfo->tm_mday);
-
-  // Format time string (HH:MM:SS)
-  currentTime[1] = (timeinfo->tm_hour < 10 ? "0" : "") +
-                   String(timeinfo->tm_hour) + ":" +
-                   (timeinfo->tm_min < 10 ? "0" : "") +
-                   String(timeinfo->tm_min) + ":" +
-                   (timeinfo->tm_sec < 10 ? "0" : "") +
-                   String(timeinfo->tm_sec);
-
-  // Combine date and time
-  currentTime[2] = currentTime[0] + " " + currentTime[1];
-
-  return true;
-}
-
-// Retrieve the current local date and time using Gemini web search.
-void googleSearchTime() {
-  
-  String prompt =
-    "Use /search to get the current local date and time in " + timeZone + ".\n\n"
-  
-    "Return ONLY valid JSON.\n"
-    "No markdown.\n"
-    "No explanation.\n"
-    "No extra text.\n\n"
-  
-    "JSON schema:\n"
-    "{\n"
-    "  \"rtcYear\": number,\n"
-    "  \"rtcMonth\": number,\n"
-    "  \"rtcDay\": number,\n"
-    "  \"rtcHour\": number,\n"
-    "  \"rtcMinute\": number,\n"
-    "  \"rtcSecond\": number\n"
-    "}\n\n"
-  
-    "Example:\n"
-    "{\n"
-    "  \"rtcYear\": 2026,\n"
-    "  \"rtcMonth\": 5,\n"
-    "  \"rtcDay\": 26,\n"
-    "  \"rtcHour\": 14,\n"
-    "  \"rtcMinute\": 30,\n"
-    "  \"rtcSecond\": 45\n"
-    "}";
-
-  String message = geminiSearchRequest(prompt, false);
-
-  message.trim();
-
-  if (message.startsWith("{") && message.endsWith("}")) {
-
-    DynamicJsonDocument doc(1024);
-    DeserializationError error = deserializeJson(doc, message);
-
-    if (error) {
-      Serial.println("[DEBUG] JSON parse failed\n" + message);
-      return;
-    }
-
-    JsonObject obj = doc.as<JsonObject>();
-
-    rtcYear   = obj["rtcYear"]   | 0;
-    rtcMonth  = obj["rtcMonth"]  | 0;
-    rtcDay    = obj["rtcDay"]    | 0;
-    rtcHour   = obj["rtcHour"]   | 0;
-    rtcMinute = obj["rtcMinute"] | 0;
-    rtcSecond = obj["rtcSecond"] | 0;
-
-  } else {
-    Serial.println("[DEBUG] JSON parse failed : (googleSearchTime)\n" + message);
-  }
-}
-
-// Initialize the RTC using Gemini-synchronized local time.
-void rtcInitialTime() {
-  googleSearchTime();
-  
-  rtc.Init();
-  long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
-  rtc.Write(initTime); 
 }
 
 // Background task for continuous Telegram polling
 void task_getTelegramMessage(void *param) {
   (void)param;
   while (1) {
+    
     getTelegramMessage();
+    
     vTaskDelay(1000 / portTICK_PERIOD_MS);
+    
   }
 }
 
@@ -2387,6 +2371,7 @@ void task_getTelegramMessage(void *param) {
 void task_anti_theft_detection(void *param) {
   (void)param;
   while (1) {
+    
     vTaskDelay(300000 / portTICK_PERIOD_MS);
     
     // Wait until Telegram task is idle
@@ -2394,10 +2379,9 @@ void task_anti_theft_detection(void *param) {
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     
     Serial.println("\n\nExecuting Skill: anti_theft_detection\n\n");
-    Serial.println("*** Uncomment the evaluateWorkflowContinuation function call and resume execution ***");
-/*    
+ 
     evaluateWorkflowContinuation(true, "Must execute skill anti_theft_detection. Return ONLY tool_call JSON.");
-*/
+
   }
   
 }
@@ -2405,8 +2389,8 @@ void task_anti_theft_detection(void *param) {
 // Periodic system scheduling check task
 void task_time_scheduling(void *param) {
   (void)param;
-
   while (1) {
+    
     vTaskDelay(60000 / portTICK_PERIOD_MS);
 
     // Wait until Telegram task is idle
@@ -2414,17 +2398,15 @@ void task_time_scheduling(void *param) {
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
     if (rtcYear == 0) {
-      rtcInitialTime();
-    }
-
-    if (rtcYear == 0) {
       Serial.println("[DEBUG] RTC time is not initialized.");
       continue;
     }
 
     Serial.println("\n\nExecuting Skill: skill_time_scheduling\n\n");
-    Serial.println("*** Resume execution after uncommenting evaluateWorkflowContinuation() ***");
-/*
+
+    Serial.println("Current Time: "+ getRtcTimeString());
+    rtcFormatTime = getRtcTimeString();
+    
     evaluateWorkflowContinuation(
       true,
 
@@ -2432,9 +2414,8 @@ void task_time_scheduling(void *param) {
       "This is a deterministic scheduling evaluation step. "
 
       "Current local time: " +
-      String(getLocalTime() ? currentTime[2] : "") +
+      rtcFormatTime +
 
-      ". You MUST first internally use /search to obtain the current local time "
       "in the user's confirmed timezone if the time is unknown. "
 
       "Then compare the current time with ALL scheduled tasks in the conversation history. "
@@ -2450,7 +2431,7 @@ void task_time_scheduling(void *param) {
       "6. NEVER infer the timezone. "
       "7. NEVER execute outside the scheduled window."
     );
-*/
+    
   }
 }
 
@@ -2496,7 +2477,7 @@ void setEnvironmentSettings(String jsonString) {
   telegrambotToken =  obj["telegramBot_token"].as<String>();
   telegrambotChatId =  obj["telegramBot_chatID"].as<String>();
   geminiApiKey =  obj["gemini_apikey"].as<String>();
-  timeZone = obj["timezone"].as<String>();
+  timeZone = obj["timezone"].as<String>();  
   
 }
 
@@ -2525,7 +2506,9 @@ void setup() {
 
     Serial.println("Create task_getTelegramMessage failed");
   } 
-
+  
+/*
+ 
   if (xTaskCreate(
         task_anti_theft_detection,
         (const char *)"task_anti_theft_detection",
@@ -2548,14 +2531,13 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_time_scheduling failed");
-  }    
-  
-  devicesDefinition += "The device is located in timezone: " + timeZone;
+  }   
+
+*/   
 
   systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
-
-  rtcInitialTime();
+    
 }
 
 // Main loop
