@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-28 20:00
+Build Date: 2026-05-29 01:30
 
 ------------------------------------------------------------
 Overview
@@ -190,6 +190,28 @@ String wifiPassword = "xxxxxxxxxx";
 // Telegram bot configuration
 String telegrambotToken = "xxxxxxxxxx";
 String telegrambotChatId = "xxxxxxxxxx";
+
+String systemCommand =
+  "Built-in commands:\n"
+  "/help command list\n"
+  "/still capture and send a camera image\n"
+  "/syncrtc update the hardware RTC\n" 
+  "/getrtc get the hardware RTC current time\n"                           
+  "/memory show system memory usage\n"
+  "/log show tool execution history\n"
+  "/reset start a new conversation\n\n"
+  "Hardware control supported:\n"
+  "- Digital output (0 or 1)\n"
+  "- Analog output (0–255)\n"
+  "- Digital input reading\n"
+  "- Analog input reading\n\n"
+  "System Status:\n<memory>"
+  "\n\nYou can chat with Gemini using natural language.\n"
+  "The system supports real-time search and vision-based analysis.\n\n"
+  "Documentation:\n"
+  "https://github.com/fustyles/fuClaw";
+
+String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
 
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
@@ -1069,9 +1091,6 @@ int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
 
 // Last Telegram message ID
 long lastMessageId = 0;
-
-// Whether to send help message on startup
-bool shouldSendHelp = false;
 
 #include <WiFi.h>
 
@@ -2133,6 +2152,19 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       evaluateWorkflowContinuation(reCheck);
   
     }	
+    else if (command == "/help" || command == "/start") {
+         
+      String mem = getMemoryInfo();
+      String command = systemCommand;
+      command.replace("<memory>", mem);
+      command = geminiChatRequest("Reply the following text in the user's language:\n\n" + command);
+      
+      replyUserMessage(command, telegrambotKeyboard);
+
+      historicalMessages += buildGeminiMessage("user", "Command list");
+      historicalMessages += buildGeminiMessage("model", command);
+      storeHistoricalMessagesToFile();
+    }      
     else {
       String response = geminiChatRequest(command);
       handleAgentResponse(response);
@@ -2559,62 +2591,28 @@ void getTelegramMessage() {
 
         if (id_last==0) {
           message_id = 0;
-
-          if (shouldSendHelp == true) { 
-    			  executeTool("/help", JsonObject());
-    			  return; 
-    		  }
 		  
         } else {	
 		
           if (obj["result"][0]["message"].containsKey("text")) {
     			  text = obj["result"][0]["message"]["text"].as<String>();
     			
-    			  if (text=="help"||text=="/help"||text=="/start") {
-    			
-    				String mem = getMemoryInfo();
-    				
-    				String command =
-    				  "Built-in commands:\n"
-    				  "/help command list\n"
-    				  "/still capture and send a camera image\n"
-    				  "/syncrtc update the hardware RTC\n" 
-    				  "/getrtc get the hardware RTC current time\n"                           
-    				  "/memory show system memory usage\n"
-    				  "/log show tool execution history\n"
-    				  "/reset start a new conversation\n\n"
-    				  "Hardware control supported:\n"
-    				  "- Digital output (0 or 1)\n"
-    				  "- Analog output (0–255)\n"
-    				  "- Digital input reading\n"
-    				  "- Analog input reading\n\n"
-    				  "System Status:\n"
-    				  + mem +
-    				  "\n\nYou can chat with Gemini using natural language.\n"
-    				  "The system supports real-time search and vision-based analysis.\n\n"
-    				  "Documentation:\n"
-    				  "https://github.com/fustyles/fuClaw";
-    			  
-      				String keyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
-      			
-      				replyUserMessage(command, keyboard);
-      
-      				historicalMessages += buildGeminiMessage("user", "Command list");
-      				historicalMessages += buildGeminiMessage("model", command);
-      				storeHistoricalMessagesToFile();      
-    			
-    			  } else if (text=="null") {
-    			
+    			  if (text == "help") {
+              executeTool("/help", JsonObject());
+              
+            } 
+            else if (text=="null") {
     				  botClient.stop();
     			
-    			  } else {
-              
+    			  } 
+    			  else {
       				if (text.startsWith("/")) 
       				  executeTool(text, JsonObject()); 
       				else {
       				  text = geminiChatRequest(text);
       				  handleAgentResponse(text);
       				} 
+              
     			  }
     		  }
     		  else if (doc["result"][0]["message"].containsKey("voice")) {
@@ -2641,7 +2639,8 @@ void getTelegramMessage() {
                 } 
             }
 
-            if (voiceFile) free(voiceFile);   // Always release the voice buffer
+            if (voiceFile) 
+              free(voiceFile);   // Always release the voice buffer
             
           }
         }
