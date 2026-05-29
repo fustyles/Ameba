@@ -1060,6 +1060,7 @@ String deviceFilename = "device.md";
 String skillFilename = "skill.md";
 
 // Forward declarations
+String getRtcTimeString();
 void replyUserMessage(String text, String keyboard);
 void handleAgentResponse(String message);
 String geminiChatRequest(String message, bool tools);
@@ -1145,11 +1146,15 @@ void rtcInitialTime(String gmtTime) {
 
   } else {
     Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
+
+    replyUserMessage("RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.", "");
   }
 
   rtc.Init();
   long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
-  rtc.Write(initTime); 
+  rtc.Write(initTime);
+
+  replyUserMessage("RTC START: " + getRtcTimeString(), "");
 }
 
 String getRtcTimeString() {
@@ -1898,8 +1903,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       
     } 
     else if (command == "/syncrtc") {
-      rtcUpdateStatus = false;  
-      replyUserMessage("Updating RTC time shortly. Check the Serial Monitor for results.");
+      rtcUpdateStatus = false;
 
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly.");

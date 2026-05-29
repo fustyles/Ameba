@@ -1,3 +1,4 @@
+
 ==================================================
 CONFIRMED HARDWARE DEVICES
 ==================================================
@@ -45,7 +46,10 @@ External Modules
   - 0 = fully closed
   - 180 = fully open
   
-DHT11 Temperature & Humidity Sensor: Pin 20
+- DHT11 Temperature & Humidity Sensor
+  - Pin mapping: depends on development board
+		AMB82-mini: PIN 8
+		HUB 8735 Ultra: PIN 20
   - Measures: temperature (°C) and relative humidity (%)
   - Read mode: single trigger, returns two integer values
   - Temperature range: 0–50 °C
