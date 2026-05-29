@@ -99,6 +99,7 @@ SD 卡根目錄/
          - "env.md len: xxx"（憑證載入）
          - "Connecting to [WiFi名稱]"
          - "Connection successful"（Telegram 連線）
+         - 設定 RTC 實時時鐘        
          - LED 閃爍 3 次（就緒訊號）
 
 步驟 9　Telegram 測試
@@ -116,6 +117,7 @@ SD 卡根目錄/
 | env.md len: 0 | SD 卡未插好或格式錯誤 | 重新格式化 FAT32，確認接觸良好 |
 | WiFi 連線失敗 | SSID/密碼錯誤 | 檢查 env.md JSON 格式，注意雙引號 |
 | Telegram 無回應 | Token 或 ChatID 錯誤 | 使用瀏覽器測試 getUpdates API |
+| RTC 初始化失敗 | memory.md資料異常 | 移除不合法字元或清空資料 |
 | LED 不閃爍 | ledPin 腳位不符 | 確認程式碼中 ledPin 與實際板子型號相符 |
 
 ---
@@ -463,7 +465,7 @@ Gemini 回應
          用 /memory 觀察 historicalMessages.length()
          超過 50,000 字元時手動執行 /reset
          
-策略 3 - 自動截斷（進階，需修改程式碼）：
+策略 3 - 自動截斷（進階，需修改程式碼）
 
 ```
 
@@ -480,7 +482,7 @@ Gemini 回應
 
 復原步驟：
 1. 取出 SD 卡，用電腦開啟 memory.md
-2. 如果內容異常或截斷，直接清空 memory.md（保留空白檔案）
+2. 如果內容異常或截斷，直接清空 memory.md（保留空白檔案）或使用 memory.md.bak 檔還原
 3. 重新插入 SD 卡並開機
 4. 系統將以空白對話歷史重新啟動
 
