@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-29 01:30
+Build Date: 2026-05-29 09:30
 
 ------------------------------------------------------------
 Overview
@@ -668,7 +668,7 @@ Capture image from device camera:
   "method":"/still",
   "params": {
     "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
-    "task": "<what to do after analysis>"    
+    "task": "<what to do after analysis, If none, return NONE.>"    
   }
 }
 
@@ -678,9 +678,9 @@ Device camera vision analysis:
   "type": "tool_call",
   "method": "/vision",
   "params": {
-    "query": "<what to analyze in image>",
+    "query": "what to analyze in the image",
     "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
-    "task": "<what to do after analysis>"
+    "task": "what to do after analysis, If none, return NONE."
   }
 }
 
@@ -691,7 +691,7 @@ Recent information query:
   "method":"/search",
   "params":{
     "query":"<what to search>",
-    "task":"<what to do after search result>"
+    "task":"<what to do after search result, leave empty if none>"
   }
 }
 
@@ -804,11 +804,13 @@ SEARCH FOLLOW-UP RULES
 After /search returns:
 
 1. Analyze search result
-2. Check whether requested condition is satisfied
-3. Never assume hardware action already happened
-4. Never claim execution unless tool_call actually returned
-5. If a hardware action is required, it MUST go through user confirmation.
-6. Only after confirmation → tool_call JSON
+2. query MUST use the SAME language as the user input 
+3. task MUST use the SAME language as the user input
+4. Check whether requested condition is satisfied
+5. Never assume hardware action already happened
+6. Never claim execution unless tool_call actually returned
+7. If a hardware action is required, it MUST go through user confirmation.
+8. Only after confirmation → tool_call JSON
 
 ==================================================
 VISION FOLLOW-UP RULES
@@ -835,6 +837,8 @@ IMAGE TOOL ROUTING RULES
 /vision:
 - Capture image from device camera and analyze it
 - Use previously cached image and analyze it if frames is false
+- query MUST use the SAME language as the user input 
+- task MUST use the SAME language as the user input
 - MUST return observation result only
 - MUST NOT directly trigger hardware actions
 
@@ -1477,14 +1481,11 @@ void geminiChatReset() {
   systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
   
-  storeHistoricalMessagesToFile();
-  
 }
 
 // Send request to Gemini and return response text
 String geminiChatRequest(String message, bool tools = true) {
   historicalMessages += buildGeminiMessage("user", message);
-  storeHistoricalMessagesToFile();
 
   String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
 
@@ -1573,15 +1574,14 @@ String geminiChatRequest(String message, bool tools = true) {
   }
 
   historicalMessages += buildGeminiMessage("model", responseText);
-  storeHistoricalMessagesToFile();
 
   return responseText;
+  
 }
 
 // Send Gemini request with Google Search tool enabled
 String geminiSearchRequest(String message, bool tools = true) {
   historicalMessages += buildGeminiMessage("user", message);
-  storeHistoricalMessagesToFile();
 
   String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
 
@@ -1670,7 +1670,6 @@ String geminiSearchRequest(String message, bool tools = true) {
   }
 
   historicalMessages += buildGeminiMessage("model", responseText);
-  storeHistoricalMessagesToFile();
 
   return responseText;
 }
@@ -1678,7 +1677,6 @@ String geminiSearchRequest(String message, bool tools = true) {
 // Capture camera frame and send it to Gemini Vision for multimodal analysis
 String geminiVisionRequest(String message, bool frames = true) {
   historicalMessages += buildGeminiMessage("user", message);
-  storeHistoricalMessagesToFile();
 
   WiFiSSLClient client;
   String responseText = "";
@@ -1692,7 +1690,6 @@ String geminiVisionRequest(String message, bool frames = true) {
       
       responseText = "Previous image does not exist";
       historicalMessages += buildGeminiMessage("model", responseText);
-      storeHistoricalMessagesToFile();
 
       return responseText;
     }
@@ -1787,7 +1784,6 @@ String geminiVisionRequest(String message, bool frames = true) {
   }
 
   historicalMessages += buildGeminiMessage("model", responseText);
-  storeHistoricalMessagesToFile();
 
   return responseText;
 }
@@ -1973,9 +1969,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", response);
-      storeHistoricalMessagesToFile();
 
-      executeToolHistory += command + " ("+String(pin)+", "+pinmode+", "+String(value)+")\n";	  
+      executeToolHistory += command + " [ "+String(pin)+" | "+pinmode+" | "+String(value)+" ]\n";	  
 
       evaluateWorkflowContinuation(reCheck);
     
@@ -1988,9 +1983,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", response);
-      storeHistoricalMessagesToFile();
 
-	    executeToolHistory += command + " ("+String(pin)+", "+pinmode+")\n";	  
+	    executeToolHistory += command + " [ "+String(pin)+" | "+pinmode+" ]\n";	  
 
       evaluateWorkflowContinuation(reCheck); 
       
@@ -2010,9 +2004,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", response);
-      storeHistoricalMessagesToFile();
 
-      executeToolHistory += command + " ("+frames+", "+task+")\n";
+      executeToolHistory += command + " [ "+frames+" | "+task+" ]\n";
 
       evaluateWorkflowContinuation(reCheck, task);
       
@@ -2023,7 +2016,6 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly.");
-      storeHistoricalMessagesToFile();
 
       executeToolHistory += command + "\n";        
     } 
@@ -2033,7 +2025,6 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", rtcTime);
-      storeHistoricalMessagesToFile();
 
       executeToolHistory += command + "\n";        
     }      
@@ -2043,7 +2034,6 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", "New chat started.");
-      storeHistoricalMessagesToFile();
 
       executeToolHistory += command + "\n";	  
 
@@ -2054,7 +2044,6 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", msg);
-      storeHistoricalMessagesToFile();
 
       executeToolHistory += command + "\n";
 
@@ -2078,7 +2067,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       String response = geminiSearchRequest(query, false);
       handleAgentResponse(response);
 	  
-      executeToolHistory += command + " ("+query+", "+task+")\n";
+      executeToolHistory += command + " [ "+query+" | "+task+" ]\n";
       
       evaluateWorkflowContinuation(reCheck, task);
 
@@ -2093,7 +2082,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
           vTaskDelay(10 / portTICK_PERIOD_MS);
       }
   
-      executeToolHistory += command + " (" + String(milliseconds) + ")\n";
+      executeToolHistory += command + " [ " + String(milliseconds) + " ]\n";
   
       evaluateWorkflowContinuation(reCheck);
         
@@ -2106,7 +2095,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       String response = geminiVisionRequest(query, frames);
       handleAgentResponse(response);
 	  
-      executeToolHistory += command + " ("+query+", "+frames+", "+task+")\n";
+      executeToolHistory += command + " [ "+query+" | "+frames+" | "+task+" ]\n";
       
       evaluateWorkflowContinuation(reCheck, task);
     }
@@ -2134,9 +2123,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
         historicalMessages += buildGeminiMessage("user", command);
         historicalMessages += buildGeminiMessage("model", response);
-        storeHistoricalMessagesToFile();
 
-        executeToolHistory += command + " (pin=" + String(pin) + ", angle=" + String(angle) + ")\n";
+        executeToolHistory += command + " [ " + String(pin) + " | " + String(angle) + " ]\n";
         evaluateWorkflowContinuation(reCheck);
     }    
     else if (command == "/dht11") {
@@ -2146,9 +2134,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
   
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", response);
-      storeHistoricalMessagesToFile();
   
-      executeToolHistory += command + "," + String(pin) + ", " + response  + ")\n";
+      executeToolHistory += command + " [ " + String(pin) + " | " + response  + " ]\n";
       evaluateWorkflowContinuation(reCheck);
   
     }	
@@ -2163,7 +2150,6 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", "Command list");
       historicalMessages += buildGeminiMessage("model", command);
-      storeHistoricalMessagesToFile();
     }      
     else {
       String response = geminiChatRequest(command);
@@ -2614,6 +2600,9 @@ void getTelegramMessage() {
       				} 
               
     			  }
+
+           storeHistoricalMessagesToFile();
+           
     		  }
     		  else if (doc["result"][0]["message"].containsKey("voice")) {
 
@@ -2641,6 +2630,8 @@ void getTelegramMessage() {
 
             if (voiceFile) 
               free(voiceFile);   // Always release the voice buffer
+
+            storeHistoricalMessagesToFile();
             
           }
         }
@@ -2689,6 +2680,8 @@ void task_anti_theft_detection(void *param) {
     Serial.println("\n\nExecuting Skill: anti_theft_detection\n\n");
  
     evaluateWorkflowContinuation(true, "Must execute skill anti_theft_detection. Return ONLY tool_call JSON.");
+
+    storeHistoricalMessagesToFile();
 
   }
   
@@ -2739,6 +2732,8 @@ void task_time_scheduling(void *param) {
       "6. NEVER infer the timezone. "
       "7. NEVER execute outside the scheduled window."
     );
+
+    storeHistoricalMessagesToFile();
     
   }
 }
@@ -2846,7 +2841,7 @@ void setup() {
 
     Serial.println("Create task_getTelegramMessage failed");
   } 
-  
+
 /*
  
   if (xTaskCreate(
@@ -2874,6 +2869,15 @@ void setup() {
   }   
 
 */  
+
+  if (WiFi.status() == WL_CONNECTED) {
+    for (int i=0 ; i<3 ; i++) {
+      digitalWrite(ledPin, 1);
+      delay(300);
+      digitalWrite(ledPin, 0);
+      delay(300);      
+    }
+  }
   
 }
 
