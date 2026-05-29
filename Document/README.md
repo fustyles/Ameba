@@ -492,7 +492,7 @@ Gemini 回應
 1. 取出 SD 卡，用電腦開啟 memory.md
 2. 如果內容異常或截斷，直接清空 memory.md（保留空白檔案）或使用 memory.md.bak 檔還原
 3. 重新插入 SD 卡並開機
-4. 系統將以空白對話歷史重新啟動
+4. 系統將以空白對話或前一次對話歷史重新啟動
 
 預防措施（程式設計角度）：
 - 目前的 storeHistoricalMessagesToFile() 採用「先備份，後刪除再建立」策略
