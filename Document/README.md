@@ -414,26 +414,28 @@ setup() 載入 memory.md
 geminiChatRequest() 呼叫
      │
      ├→ historicalMessages += 使用者訊息（buildGeminiMessage）
-     ├→ storeHistoricalMessagesToFile() ← 即時寫入 SD 卡
      │
      ▼
 Gemini 回應
      │
      ├→ historicalMessages += Gemini 回應（buildGeminiMessage）
-     ├→ storeHistoricalMessagesToFile() ← 再次即時寫入
      │
      ▼
 工具執行（若有）
      │
      ├→ historicalMessages += 工具名稱（user role）
      ├→ historicalMessages += 執行結果（model role）
-     ├→ storeHistoricalMessagesToFile() ← 三次寫入
      │
      ▼
+對話紀錄寫入 SD 卡
+     │  
+     ├→ storeHistoricalMessagesToFile()
+     │
+     ▼     
 斷電 / 異常重啟
      │
      └→ 下次開機時 memory.md 完整還原對話狀態
-          （最後一次寫入後的所有歷史均保留）
+          （最後一次寫入後的所有歷史均保留，並有備份bak檔可在檔案毀損時還原使用）
 ```
 
 ---
@@ -462,13 +464,7 @@ Gemini 回應
          超過 50,000 字元時手動執行 /reset
          
 策略 3 - 自動截斷（進階，需修改程式碼）：
-         // 在 geminiChatRequest 開頭加入：
-         if (historicalMessages.length() > 50000) {
-             // 找到第二個 ", {" 的位置，截斷最舊的訊息
-             int cutPoint = historicalMessages.indexOf(", {", 10);
-             if (cutPoint > 0)
-                 historicalMessages = historicalMessages.substring(cutPoint);
-         }
+
 ```
 
 ---
@@ -489,13 +485,9 @@ Gemini 回應
 4. 系統將以空白對話歷史重新啟動
 
 預防措施（程式設計角度）：
-- 目前的 storeHistoricalMessagesToFile() 採用「先刪除再建立」策略
-  → 刪除後、建立前的瞬間若斷電，memory.md 將不存在
-  → 系統以空白歷史啟動，不會崩潰，但對話記憶遺失
-  
-進階防護（建議）：
-- 採用「寫入暫存檔 → 驗證 → 重命名」的原子替換策略
-  write memory.tmp → validate → rename to memory.md
+- 目前的 storeHistoricalMessagesToFile() 採用「先備份，後刪除再建立」策略
+  → memory.md 若毀損，可使用memory.md.bak還原
+
 ```
 
 ---
