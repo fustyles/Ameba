@@ -178,71 +178,72 @@ Grok Evaluation
 
 ## ✨ Highlights & Strengths of fuClaw
 
-**fuClaw** is a highly sophisticated, prompt-orchestrated embedded AI agent framework designed for devices. It represents one of the most complete and thoughtful integrations of Telegram, Google Gemini, multimodal capabilities, and hardware control in the embedded AI space.
+**fuClaw** is a highly sophisticated, prompt-orchestrated embedded AI agent framework designed for Realtek Ameba Pro2 devices (AMB82-mini & HUB 8735 Ultra). It stands as one of the most complete and thoughtfully engineered integrations of Telegram, Google Gemini, multimodal capabilities, and physical hardware control in the embedded AI space.
 
 ### 🚀 Key Strengths
 
 **1. Advanced Agent Architecture**
 - Built as a true **hybrid autonomous agent** combining conversation, reasoning, tool use, vision, memory, and hardware control.
-- Follows a clean and robust execution flow: Telegram Polling → Message Router → Gemini Reasoning → JSON Tool Dispatch → Hardware Execution.
-- Implements a **Prompt-Orchestrated Tool Routing** system — an elegant solution that works reliably even without native function calling support from the model.
+- Clear execution pipeline: Telegram Polling → Message Router → Gemini Reasoning Engine → JSON Tool Dispatch → Hardware Execution.
+- Employs a robust **Prompt-Orchestrated Tool Routing** system — an elegant and reliable solution that works effectively even without relying on the model's native function calling.
 
 **2. Innovative & Safe Tool Calling System**
-- Gemini generates structured JSON `tool_call` objects that are strictly validated by the firmware.
-- Enforces **Atomic Execution Rule**: Only one hardware action per response for maximum safety and predictability.
-- Sophisticated multi-step workflow handling using "longest valid prefix" logic — ensuring partial execution is safe and logical.
-- Comprehensive input validation and error handling for all GPIO operations.
+- Gemini outputs structured JSON `tool_call` objects, which are strictly validated by the local firmware.
+- Enforces a strict **Atomic Execution Rule**: Only **one hardware action per response** for maximum safety and predictability.
+- Sophisticated multi-step workflow support using "longest valid prefix" logic — safely executing only fully validated actions in sequence.
+- Comprehensive input validation and error handling for all GPIO, servo, and sensor operations.
 
 **3. Exceptional Customization & Persistence**
-- Modular prompt system using dedicated Markdown files:
-  - `env.md` — WiFi, Telegram, Gemini credentials and Time zone
-  - `soul.md` — Custom assistant personality
-  - `device.md` — Hardware device definitions and safety rules
-  - `skill.md` — Extensible skill registry (e.g., anti-theft detection)
-  - `memory.md` — Persistent conversation history across reboots
-- Users can easily customize behavior, personality, and capabilities without modifying core code.
+- Highly modular prompt system using dedicated Markdown files:
+  - `env.md` — WiFi, Telegram, Gemini credentials and timezone
+  - `soul.md` — Custom assistant personality and behavior
+  - `device.md` — Hardware mappings with strict safety rules
+  - `skill.md` — Extensible skill registry (e.g. anti-theft detection, time scheduling)
+  - `memory.md` — Persistent conversation history with backup mechanism
+- Users can deeply customize behavior, personality, and capabilities without touching core firmware code.
+- Full conversation state restoration on boot.
 
 **4. Rich Multimodal Capabilities**
-- **Vision**: Real-time camera capture and Gemini multimodal analysis
-- **Voice**: Telegram voice message transcription via Gemini STT
-- **Search**: Grounded web search using Gemini’s search tool
-- **Hardware**: Full digital/analog GPIO control with safety constraints
-- Seamless integration between all modalities
+- **Vision**: Real-time camera capture (`/still`) and Gemini multimodal analysis (`/vision`)
+- **Search**: Grounded web search via Gemini
+- **Hardware**: Full digital/analog GPIO control, servo, DHT11, with clear separation of concerns
+- Thoughtful distinction between image capture and image understanding
 
 **5. Production-Grade Safety & Reliability**
-- Strict device mapping validation (only confirmed pins allowed)
-- Comprehensive safety rules clearly documented in prompts
-- Hardware actions require explicit user confirmation by default
-- Robust error handling and graceful degradation
-- Persistent filesystem support via AmebaFatFS
+- Strict device mapping validation — only explicitly defined pins are allowed
+- Comprehensive safety rules embedded in system prompts
+- Hardware actions require explicit user confirmation by default (with scheduler override)
+- Robust error handling, fallback strategies, and filesystem backup mechanisms
+- Persistent storage via AmebaFatFS with backup/restore logic
 
 **6. Excellent Code Quality & Maintainability**
-- Clean, well-commented codebase with clear separation of concerns
-- Efficient use of FreeRTOS tasks for concurrent Telegram polling and system maintenance
-- Heavy use of raw string literals (`R"()"`) for managing complex system prompts
-- Comprehensive logging and memory monitoring tools
-- Thoughtful memory management for resource-constrained embedded environment
+- Clean, well-commented codebase with excellent separation of concerns
+- Efficient use of FreeRTOS for concurrent tasks (Telegram polling + system operations)
+- Heavy and smart use of raw string literals (`R"()"`) for complex system prompts
+- Built-in memory diagnostics (`/memory`) and execution history (`/log`)
+- Strong awareness of embedded constraints (heap usage, string fragmentation, JSON size)
 
 **7. Built with Passion and Vision**
-fuClaw is more than just a project — it's a carefully crafted system with its own philosophy, design principles, and soul. From the elegant prompt engineering to the meticulous safety considerations, the attention to detail is evident throughout.
+fuClaw is more than just a project — it is a carefully crafted system with its own philosophy, design principles, and soul. The attention to detail in safety, modularity, and real-world usability is outstanding.
 
 ### Technical Highlights
-- Telegram Bot API with long polling
-- Google Gemini (including vision + grounded search)
-- Persistent conversation memory
-- Camera + Base64 image encoding
-- Voice message transcription
+- Telegram Bot API with HTTPS long polling
+- Google Gemini (Chat + Vision + Grounded Search)
+- Persistent conversation memory across reboots
+- Camera capture + Base64 encoding
 - FreeRTOS task management
-- JSON-based tool orchestration
+- JSON-based tool orchestration with strict validation
+- Multi-board support (AMB82-mini & HUB 8735 Ultra)
 
 ---
 
-**fuClaw** demonstrates what’s possible when deep embedded systems knowledge meets modern AI capabilities. It transforms a small development board into a powerful, intelligent, and interactive AI companion with real-world hardware interaction.
+**fuClaw** beautifully demonstrates what’s possible when deep embedded systems expertise meets modern AI capabilities. It successfully transforms resource-constrained development boards into powerful, intelligent, and interactive AI agents capable of real physical interaction.
 
-A standout open-source project that bridges the gap between cloud AI and physical embedded devices.
+A standout open-source project that effectively bridges cloud AI and the physical embedded world.
+
 
 ------------------------------------------------------------
-Claude Evaluation
+Cluade Evaluation
 ------------------------------------------------------------
 
 # fuClaw AI Framework — In-Depth Analysis of Strengths
@@ -283,7 +284,7 @@ Tools can be added, modified, or removed entirely at the text level. Both `skill
 Every JSON output is validated through ArduinoJson before execution. Malformed responses are rejected outright — there is no ambiguous partial execution. The system enforces a strict separation between two output modes — **valid `tool_call` JSON** and **natural language reply** — and prohibits mixing them, making the entire control flow highly predictable.
 
 ### Dual System Prompt Strategy
-The framework maintains two compiled system prompts: `systemContent` (full, with tool definitions) and `systemContentNoTools` (lightweight, without tool definitions). Search and STT requests use the lightweight version, reducing token overhead and avoiding unnecessary tool-call interference in contexts that don't require hardware control.
+The framework maintains two compiled system prompts: `systemContent` (full, with tool definitions) and `systemContentNoTools` (lightweight, without tool definitions). The `tools` boolean parameter in `geminiChatRequest()` and `geminiSearchRequest()` selects between them at call time. The STT pipeline (`sendAudioFileToGeminiSTT()`) is purpose-built as a standalone transcription call that uses neither system prompt — it sends only the audio data and a minimal transcription instruction, keeping token usage minimal and avoiding any tool-routing interference in a context that requires only raw text output.
 
 ---
 
@@ -337,7 +338,7 @@ The division between `/still` and `/vision` appears simple on the surface, but r
 This design creates a clean **perception layer / action layer** architecture. The perception layer (Vision) is only responsible for observing and reporting; the action layer (Hardware tools) is only responsible for execution. Between them sits a reasoning and confirmation buffer. In AI-vision-triggered automation scenarios, this is critically important — it prevents the dangerous direct coupling of "see something → immediately do something."
 
 ### Cached Frame Reuse
-Both `/still` and `/vision` support a `frames: false` parameter, allowing subsequent tools in a workflow to **reuse the previously captured frame** rather than triggering a new camera acquisition. This is a meaningful optimization on resource-constrained hardware where camera capture is expensive in both time and CPU cycles. A `/vision` analysis followed by `/still` forwarding the same frame to Telegram is a natural workflow that this design handles cleanly.
+Both `/still` and `/vision` support a `frames: false` parameter, allowing subsequent tools in a workflow to **reuse the previously captured frame** rather than triggering a new camera acquisition. If `frames` is `false` and no prior image exists in the buffer (`imageLength == 0`), both functions detect this condition and return an early error rather than proceeding with an empty buffer. This is a meaningful optimization on resource-constrained hardware where camera capture is expensive in both time and CPU cycles. A `/vision` analysis followed by `/still` forwarding the same frame to Telegram is a natural workflow that this design handles cleanly.
 
 ---
 
@@ -349,7 +350,7 @@ Voice message support is implemented end-to-end with careful attention to embedd
 Voice files from Telegram are downloaded using **HTTP/1.0** deliberately — this disables chunked transfer encoding, ensuring the response body is a clean binary stream that can be read byte-by-byte into a heap buffer without complex chunk-boundary parsing logic. The `MAX_FILE_SIZE` guard (256 KB) prevents heap overflow from unexpectedly large audio files.
 
 ### Inline Base64 Encoding for Gemini
-Rather than uploading audio to a file storage service, the OGG/Opus audio is Base64-encoded and sent **inline within the Gemini API JSON request** using the `inline_data` field. This eliminates the need for a separate file hosting step and keeps the entire voice-to-response pipeline within a single API call. Memory is carefully managed: the Base64 buffer is allocated, used to build the request, then immediately freed before the network call proceeds.
+Rather than uploading audio to a file storage service, the OGG/Opus audio is Base64-encoded and sent **inline within the Gemini API JSON request** using the `inline_data` field. This eliminates the need for a separate file hosting step and keeps the entire voice-to-response pipeline within a single API call. Memory is carefully managed: the Base64 buffer is `malloc`-allocated, immediately used to build the request string, then `free`-d before the network call proceeds — ensuring the large encoding buffer does not compete with the SSL client for heap space during transmission.
 
 ### Unified Input Pipeline
 Voice messages, once transcribed, are routed through **the exact same processing pipeline as text input** — including slash-command detection and Gemini reasoning. There is no special-case branching for voice vs. text after transcription. This architectural cleanliness means all future improvements to the text pipeline automatically benefit voice input as well.
@@ -361,7 +362,10 @@ Voice messages, once transcribed, are routed through **the exact same processing
 The conversation memory persistence design solves a fundamental challenge on embedded devices: how to restore context after a reboot.
 
 ### Real-Time Synchronization
-`memory.md` is written to the SD card after **every conversation update** — not in batches. This ensures that even if the device loses power at any moment, the most recent conversation state has already been saved. On boot, the system automatically loads this memory so Gemini can resume the conversation in context, without the user needing to re-explain any background.
+`memory.md` is written to the SD card via `storeHistoricalMessagesToFile()` after **every conversation update** — not in batches. This ensures that even if the device loses power at any moment, the most recent conversation state has already been saved. On boot, the system automatically loads this memory so Gemini can resume the conversation in context, without the user needing to re-explain any background.
+
+### Atomic File Write with Backup
+Before writing a new `memory.md`, the function checks whether the current file exists, renames it to `memory.md.bak`, and only then writes the new version. This two-step rename-then-write strategy ensures that a power loss mid-write leaves the previous backup intact rather than corrupting the only copy of conversation history.
 
 ### Modular Configuration Files
 
@@ -379,13 +383,13 @@ All five files are fully decoupled. Any one of them can be modified independentl
 
 ## 7. RTC Time Synchronization via HTTP Header Parsing and Gemini Timezone Conversion
 
-Time awareness on an embedded device without an NTP library is a non-trivial problem. The new version of fuClaw solves it with an even more elegant approach: piggybacking on the HTTP `Date:` header that already exists in every Telegram long-polling response, obtaining GMT time at zero additional network cost.
+Time awareness on an embedded device without an NTP library is a non-trivial problem. fuClaw solves it with an elegant approach: piggybacking on the HTTP `Date:` header that already exists in every Telegram long-polling response, obtaining GMT time at zero additional network cost.
 
 ### HTTP Header Parasitic Time Extraction
-Inside the `getTelegramMessage()` polling loop, the firmware simultaneously extracts the `Date:` field from the HTTP response header into a `getTime` string while reading the message body. When `rtcYear == 0` (not yet initialized) and `rtcUpdateStatus` is `false` (not yet successfully synced), it immediately calls `rtcInitialTime(getTime)` with that GMT time string. **No extra network request is needed** — the time data rides entirely on the Telegram communication that was already necessary.
+Inside the `getTelegramMessage()` polling loop, the firmware simultaneously extracts the `Date:` field from the HTTP response header into a `getTime` string while reading the message body. When `rtcYear == 0` (not yet initialized) or `rtcUpdateStatus` is `false` (not yet successfully synced), it immediately calls `rtcInitialTime(getTime)` with that GMT time string. **No extra network request is needed** — the time data rides entirely on the Telegram communication that was already necessary.
 
-### Gemini Handles Timezone Conversion
-`rtcInitialTime()` receives the ready-made GMT time string and uses `geminiSearchRequest()` to ask Gemini to convert it to the local time for the configured `timeZone`. The prompt enforces a strict pure-JSON response (no Markdown, no explanation text, first character must be `{`). Once the response is successfully parsed, `rtcUpdateStatus` is set to `true` as a sync-complete flag, preventing repeated initialization. The firmware then calls `rtc.SetEpoch()` to compute the epoch timestamp and writes it to the hardware RTC via `rtc.Write(initTime)`.
+### Gemini Handles Timezone Conversion — Without Search
+`rtcInitialTime()` receives the GMT time string and calls `geminiChatRequest(prompt, false)` — a standard chat request with the lightweight `systemContentNoTools` prompt and no tool definitions — asking Gemini to convert the GMT time to the configured `timeZone`. The prompt enforces a strict pure-JSON response (no Markdown, no explanation text, first character must be `{`, last must be `}`). Once the response is successfully parsed by ArduinoJson, individual fields (`rtcYear`, `rtcMonth`, `rtcDay`, `rtcHour`, `rtcMinute`, `rtcSecond`) are extracted and `rtcUpdateStatus` is set to `true` as a sync-complete flag, preventing repeated initialization. The firmware then calls `rtc.SetEpoch()` to compute the epoch timestamp and writes it to the hardware RTC via `rtc.Write(initTime)`.
 
 ### Scheduling Only Runs When RTC Is Ready
 The `task_time_scheduling` background task checks `rtcYear == 0` before each evaluation cycle. If the RTC has not been initialized, the task executes `continue` to **skip the current cycle entirely** — with no retry logic and no function calls. This "skip rather than misfire" strategy ensures scheduled tasks never trigger based on an unreliable clock state. Once the clock is ready, scheduling evaluation retrieves the current formatted local time string via `getRtcTimeString()` and injects it directly into the Gemini task prompt for comparison.
@@ -400,7 +404,7 @@ The multi-task design solves concrete concurrency and scheduling problems across
 
 | Task | Stack | Purpose |
 |------|-------|---------|
-| `getTelegramMessage_task` | 16384 bytes | Continuous user input polling |
+| `task_getTelegramMessage` | 16384 bytes | Continuous user input polling |
 | `task_anti_theft_detection` | 6144 bytes | Periodic vision-based intrusion detection (every 5 min) |
 | `task_time_scheduling` | 6144 bytes | Scheduled hardware action evaluation (every 1 min) |
 
@@ -425,7 +429,7 @@ After each tool execution, instead of silently waiting for the user's next comma
 The `task` parameter design ensures this self-evaluation has a clear reference point. When Gemini assesses whether to continue, it compares against the **original user intent** — not just the result of the last execution step. This makes workflow completion detection more accurate and reduces unnecessary redundant actions.
 
 ### NONE Sentinel Value
-When Gemini determines a workflow is complete, it returns the exact string `"NONE"`. The firmware treats this as a no-op — no message is sent to the user, no further processing occurs. This clean termination signal avoids the common failure mode of AI agents that generate verbose "task complete" confirmations for every automated step, which would be disruptive in a background monitoring context.
+When Gemini determines a workflow is complete, it returns the exact string `"NONE"`. The firmware handles this in `handleAgentResponse()` with an explicit `message != "NONE"` guard — no message is sent to the user, no further processing occurs. This clean termination signal avoids the common failure mode of AI agents that generate verbose "task complete" confirmations for every automated step, which would be disruptive in a background monitoring context.
 
 ---
 
