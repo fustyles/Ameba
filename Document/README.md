@@ -28,7 +28,7 @@
 
 ```
 SD 卡根目錄/
- ├── env.md       ← WiFi、Telegram、Gemini 憑證、時區（必填）
+ ├── env.json     ← WiFi、Telegram、Gemini 憑證、時區（必填）
  ├── soul.md      ← AI 個性提示詞（可選，留空使用預設）
  ├── device.md    ← 硬體裝置定義（可選，留空使用預設）
  ├── skill.md     ← 技能 SOP 定義（可選，留空使用預設）
@@ -39,9 +39,9 @@ SD 卡根目錄/
 
 ---
 
-### 0.3 env.md 最小可用範例
+### 0.3 env.json 最小可用範例
 
-將以下內容貼入 env.md，並填入您的真實資料：
+將以下內容貼入 env.json，並填入您的真實資料：
 
 ```json
 {
@@ -96,7 +96,7 @@ SD 卡根目錄/
 步驟 8　開機與驗證
          打開「序列埠監視器」（115200 baud）
          觀察啟動日誌，應看到：
-         - "env.md len: xxx"（憑證載入）
+         - "env.json len: xxx"（憑證載入）
          - "Connecting to [WiFi名稱]"
          - "Connection successful"（Telegram 連線）
          - 設定 RTC 實時時鐘        
@@ -114,8 +114,8 @@ SD 卡根目錄/
 | 症狀 | 最可能原因 | 快速解法 |
 |------|-----------|---------|
 | 序列埠無輸出 | 鮑率設定錯誤 | 確認設為 115200 |
-| env.md len: 0 | SD 卡未插好或格式錯誤 | 重新格式化 FAT32，確認接觸良好 |
-| WiFi 連線失敗 | SSID/密碼錯誤 | 檢查 env.md JSON 格式，注意雙引號 |
+| env.json len: 0 | SD 卡未插好或格式錯誤 | 重新格式化 FAT32，確認接觸良好 |
+| WiFi 連線失敗 | SSID/密碼錯誤 | 檢查 env.json JSON 格式，注意雙引號 |
 | Telegram 無回應 | Token 或 ChatID 錯誤 | 使用瀏覽器測試 getUpdates API |
 | RTC 初始化失敗 | memory.md資料異常 | 移除不合法字元或清空資料 |
 | LED 不閃爍 | ledPin 腳位不符 | 確認程式碼中 ledPin 與實際板子型號相符 |

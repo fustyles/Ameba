@@ -120,7 +120,7 @@ Supported Tools
 Persistent Files
 ------------------------------------------------------------
 
-env.md
+env.json
   WiFi / Telegram / Gemini credentials / Time zone
 
 device.md
@@ -1115,7 +1115,7 @@ AmebaFatFS fs;
 File file;
 
 // Environment configuration file (WiFi / Telegram / Gemini API settings)
-String envFilename = "env.md";
+String envFilename = "env.json";
   
 /*
 {
@@ -2820,7 +2820,7 @@ void setup() {
   pinMode(ledPin, OUTPUT);
   
   String env = getStringFromFile(envFilename);
-  Serial.println("env.md len: " + String(env.length())); 
+  Serial.println("env.json len: " + String(env.length())); 
   if (env != "")
     setEnvironmentSettings(env);
 

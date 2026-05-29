@@ -120,7 +120,7 @@ Gemini 不使用原生的 function-calling API。
 持久化檔案
 ------------------------------------------------------------
 
-env.md
+env.json
 WiFi / Telegram / Gemini 憑證 / 時區
 
 device.md
@@ -1152,7 +1152,7 @@ File file;
 //   "gemini_apikey": "",
 //   "timezone": ""
 // }
-String envFilename = "env.md";
+String envFilename = "env.json";
 
 // 系統人格提示檔（定義 Gemini 助理的行為風格）
 String soulFilename = "soul.md";
@@ -2964,7 +2964,7 @@ void initWiFi() {
 }
 
 // 從 JSON 字串解析並套用環境設定
-// 對應 env.md 的 JSON 格式，覆蓋預設的全域憑證變數
+// 對應 env.json 的 JSON 格式，覆蓋預設的全域憑證變數
 void setEnvironmentSettings(String jsonString) {
 
   DynamicJsonDocument doc(8192);
@@ -2993,7 +2993,7 @@ void setup() {
 
   // 1. 從 SD 卡載入環境設定（WiFi/Telegram/Gemini 憑證）
   String env = getStringFromFile(envFilename);
-  Serial.println("env.md len: " + String(env.length()));
+  Serial.println("env.json len: " + String(env.length()));
   if (env != "")
     setEnvironmentSettings(env);
 

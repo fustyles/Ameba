@@ -110,7 +110,7 @@ Supported Tools
 Persistent Files
 ------------------------------------------------------------
 
-env.md
+env.json
   <br>WiFi / Telegram / Gemini credentials / Time zone
 
 device.md
@@ -195,7 +195,7 @@ Grok Evaluation
 
 **3. Exceptional Customization & Persistence**
 - Highly modular prompt system using dedicated Markdown files:
-  - `env.md` — WiFi, Telegram, Gemini credentials and timezone
+  - `env.json` — WiFi, Telegram, Gemini credentials and timezone
   - `soul.md` — Custom assistant personality and behavior
   - `device.md` — Hardware mappings with strict safety rules
   - `skill.md` — Extensible skill registry (e.g. anti-theft detection, time scheduling)
@@ -374,10 +374,10 @@ Before writing a new `memory.md`, the function checks whether the current file e
 | `soul.md` | AI personality definition |
 | `device.md` | Hardware pin mappings |
 | `skill.md` | Skill workflow scripts |
-| `env.md` | Authentication credentials |
+| `env.json` | Authentication credentials |
 | `memory.md` | Persistent conversation history |
 
-All five files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. This lets end users customize the AI's personality, extend device definitions, or add new skills without touching a single line of C++ code. Credentials stored in `env.md` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations.
+All five files are fully decoupled. Any one of them can be modified independently without reflashing the firmware. This lets end users customize the AI's personality, extend device definitions, or add new skills without touching a single line of C++ code. Credentials stored in `env.json` are loaded first at boot, allowing the same firmware binary to be deployed across multiple devices with different configurations.
 
 ---
 
@@ -553,7 +553,7 @@ Gemini 不使用原生的 function-calling API。
 ------------------------------------------------------------
 持久化檔案
 ------------------------------------------------------------
-`env.md` — WiFi / Telegram / Gemini 金鑰 / 時區設定<br>
+`env.json` — WiFi / Telegram / Gemini 金鑰 / 時區設定<br>
 `device.md` — 硬體裝置定義<br>
 `skill.md` — 技能定義<br>
 `soul.md` — 自訂助理人格提示詞<br>
@@ -625,7 +625,7 @@ Grok Evaluation
 
 **3. 極佳的自訂性與持久化設計**
 - 使用獨立的 Markdown 檔案構成模組化提示詞系統：
-  - `env.md` — WiFi、Telegram、Gemini 金鑰與時區設定
+  - `env.json` — WiFi、Telegram、Gemini 金鑰與時區設定
   - `soul.md` — 自訂助理人格與行為風格
   - `device.md` — 硬體裝置定義與安全規則
   - `skill.md` — 可擴展的技能註冊表（例如防盜偵測、定時排程）
@@ -803,10 +803,10 @@ OGG/Opus 音訊被 Base64 編碼後，使用 `inline_data` 欄位**內嵌於 Gem
 | `soul.md` | AI 人格定義 |
 | `device.md` | 硬體腳位映射 |
 | `skill.md` | 技能工作流腳本 |
-| `env.md` | 驗證憑證 |
+| `env.json` | 驗證憑證 |
 | `memory.md` | 持久化對話歷史 |
 
-五個檔案完全解耦。任何一個都可以獨立修改，無需重新燒錄韌體。這讓終端使用者無需接觸任何 C++ 程式碼，就能自訂 AI 人格、擴展裝置定義或新增技能。`env.md` 中儲存的憑證在開機時最先載入，使同一份韌體二進位檔能夠部署到具有不同設定的多台裝置上。
+五個檔案完全解耦。任何一個都可以獨立修改，無需重新燒錄韌體。這讓終端使用者無需接觸任何 C++ 程式碼，就能自訂 AI 人格、擴展裝置定義或新增技能。`env.json` 中儲存的憑證在開機時最先載入，使同一份韌體二進位檔能夠部署到具有不同設定的多台裝置上。
 
 ---
 
