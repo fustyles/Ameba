@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-29 09:30
+Build Date: 2026-05-29 10:30
 
 ------------------------------------------------------------
 Overview
@@ -1141,6 +1141,7 @@ String deviceFilename = "device.md";
 String skillFilename = "skill.md";
 
 // Forward declarations
+void replyUserMessage(String text, String keyboard);
 void handleAgentResponse(String message);
 String geminiChatRequest(String message, bool tools);
 
@@ -1214,6 +1215,9 @@ void rtcInitialTime(String gmtTime) {
 
     if (error) {
       Serial.println("[DEBUG] JSON parse failed\n" + message);
+      
+      replyUserMessage("RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.", "");
+      
       return;
     }
 
@@ -1453,18 +1457,29 @@ String getStringFromFile(String fileNname) {
   return data;
 }
 
-// Store historical conversation messages to SD card
+// Backup existing historical messages file and save updated messages to SD card
 void storeHistoricalMessagesToFile() {
+  
   fs.begin();
   
   String file_path = String(fs.getRootPath());
+  String currentFile = file_path + "/" + memoryFilename; 
+  String backupFile = currentFile + ".bak";  
   
-  if (fs.exists(file_path+"/" + memoryFilename))
-      fs.remove(file_path+"/" + memoryFilename); 
+  if (fs.exists(currentFile)) {
+    
+    if (fs.exists(backupFile)) {
       
-  file = fs.open(file_path+"/" + memoryFilename); 
+      fs.remove(backupFile);
+    }
+    
+    fs.rename(currentFile, backupFile);
+  }
+      
+  file = fs.open(currentFile); 
   
   if (file) {
+    
     file.println(historicalMessages.c_str());
     file.close();
   }
@@ -2017,7 +2032,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly.");
 
-      executeToolHistory += command + "\n";        
+      executeToolHistory += command + "\n";
+
     } 
     else if (command == "/getrtc") {
       String rtcTime = getRtcTimeString();
@@ -2026,7 +2042,8 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("user", command);
       historicalMessages += buildGeminiMessage("model", rtcTime);
 
-      executeToolHistory += command + "\n";        
+      executeToolHistory += command + "\n";
+              
     }      
     else if (command == "/reset") {
       geminiChatReset();
@@ -2053,7 +2070,9 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     else if (command == "/log") {
       Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
       replyUserMessage("Please check the serial monitor to view the tool execution log.");
-	
+
+      executeToolHistory += command + "\n";
+      
     } 
     else if (command == "/chat") {
       String reply = params["reply"].as<String>();
@@ -2101,11 +2120,11 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     }
   	else if (command == "/reboot") {
   		replyUserMessage("Rebooting the device, please wait...");
+
+      executeToolHistory += command + "\n";
   		
   		Serial.println("User requested reboot the device.");
   		delay(2000);
-		
-      executeToolHistory += command + "\n";
   		
   		NVIC_SystemReset();
   	}	
@@ -2125,7 +2144,9 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
         historicalMessages += buildGeminiMessage("model", response);
 
         executeToolHistory += command + " [ " + String(pin) + " | " + String(angle) + " ]\n";
+        
         evaluateWorkflowContinuation(reCheck);
+        
     }    
     else if (command == "/dht11") {
       int pin = params["pin"].as<int>();
@@ -2136,6 +2157,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       historicalMessages += buildGeminiMessage("model", response);
   
       executeToolHistory += command + " [ " + String(pin) + " | " + response  + " ]\n";
+      
       evaluateWorkflowContinuation(reCheck);
   
     }	
@@ -2150,10 +2172,12 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       historicalMessages += buildGeminiMessage("user", "Command list");
       historicalMessages += buildGeminiMessage("model", command);
+      
     }      
     else {
       String response = geminiChatRequest(command);
       handleAgentResponse(response);
+      
     }	
 }
 
