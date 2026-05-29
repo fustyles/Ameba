@@ -1,5 +1,5 @@
 # fuClaw AIoT 代理人技術教學手冊
-> 作者：法蘭斯  ｜高雄，台灣 ｜ https://github.com/fustyles/fuClaw
+> 作者：法蘭斯  ｜高雄，台灣<br>https://github.com/fustyles/fuClaw
 
 ---
 
