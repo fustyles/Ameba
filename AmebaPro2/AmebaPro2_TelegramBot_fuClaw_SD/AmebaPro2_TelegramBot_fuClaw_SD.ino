@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-28 19:30
+Build Date: 2026-05-29 10:30
 
 ------------------------------------------------------------
 Overview
@@ -106,7 +106,7 @@ Supported Tools
 /analogread     GPIO analog input
 /syncrtc        update the hardware RTC
 /getrtc         get the hardware RTC current time   
-/still          Capture image
+/still          Capture image  
 /vision         Capture + multimodal analysis
 /search         Grounded web search
 /delay          Pause execution for specified milliseconds
@@ -191,6 +191,28 @@ String wifiPassword = "xxxxxxxxxx";
 String telegrambotToken = "xxxxxxxxxx";
 String telegrambotChatId = "xxxxxxxxxx";
 
+String systemCommand =
+  "Built-in commands:\n"
+  "/help command list\n"
+  "/still capture and send a camera image\n"
+  "/syncrtc update the hardware RTC\n" 
+  "/getrtc get the hardware RTC current time\n"                           
+  "/memory show system memory usage\n"
+  "/log show tool execution history\n"
+  "/reset start a new conversation\n\n"
+  "Hardware control supported:\n"
+  "- Digital output (0 or 1)\n"
+  "- Analog output (0–255)\n"
+  "- Digital input reading\n"
+  "- Analog input reading\n\n"
+  "System Status:\n<memory>"
+  "\n\nYou can chat with Gemini using natural language.\n"
+  "The system supports real-time search and vision-based analysis.\n\n"
+  "Documentation:\n"
+  "https://github.com/fustyles/fuClaw";
+
+String telegrambotKeyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
+
 // Gemini API configuration
 String geminiApiKey = "xxxxxxxxxx";
 
@@ -227,20 +249,21 @@ AMB82-mini
 HUB 8735 Ultra
 - Green indicator LED: pin 25
 - Blue indicator LED: pin 26
+
 - Fill light LED: pin 13
   - analog output range: 0–255
   - recommended safe startup brightness: 5
+
 - Function button: pin 12
   - digital input only
   - active-low
   - pressed = 0
   - released = 1
 
-No other hardware mappings are confirmed.
+External Modules
 
-==================================================
-DEVICE SAFETY RULES
-==================================================
+
+No other hardware mappings are confirmed.
 
 )";
 
@@ -614,7 +637,7 @@ Capture image from device camera:
   "method":"/still",
   "params": {
     "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
-    "task": "<what to do after analysis>"    
+    "task": "<what to do after analysis, If none, return NONE.>"    
   }
 }
 
@@ -624,9 +647,9 @@ Device camera vision analysis:
   "type": "tool_call",
   "method": "/vision",
   "params": {
-    "query": "<what to analyze in image>",
+    "query": "what to analyze in the image",
     "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
-    "task": "<what to do after analysis>"
+    "task": "what to do after analysis, If none, return NONE."
   }
 }
 
@@ -637,7 +660,7 @@ Recent information query:
   "method":"/search",
   "params":{
     "query":"<what to search>",
-    "task":"<what to do after search result>"
+    "task":"<what to do after search result, leave empty if none>"
   }
 }
 
@@ -700,11 +723,13 @@ SEARCH FOLLOW-UP RULES
 After /search returns:
 
 1. Analyze search result
-2. Check whether requested condition is satisfied
-3. Never assume hardware action already happened
-4. Never claim execution unless tool_call actually returned
-5. If a hardware action is required, it MUST go through user confirmation.
-6. Only after confirmation → tool_call JSON
+2. query MUST use the SAME language as the user input 
+3. task MUST use the SAME language as the user input
+4. Check whether requested condition is satisfied
+5. Never assume hardware action already happened
+6. Never claim execution unless tool_call actually returned
+7. If a hardware action is required, it MUST go through user confirmation.
+8. Only after confirmation → tool_call JSON
 
 ==================================================
 VISION FOLLOW-UP RULES
@@ -731,6 +756,8 @@ IMAGE TOOL ROUTING RULES
 /vision:
 - Capture image from device camera and analyze it
 - Use previously cached image and analyze it if frames is false
+- query MUST use the SAME language as the user input 
+- task MUST use the SAME language as the user input
 - MUST return observation result only
 - MUST NOT directly trigger hardware actions
 
@@ -988,9 +1015,6 @@ int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
 // Last Telegram message ID
 long lastMessageId = 0;
 
-// Whether to send help message on startup
-bool shouldSendHelp = false;
-
 #include <WiFi.h>
 
 // SSL client for secure Telegram polling
@@ -1036,6 +1060,7 @@ String deviceFilename = "device.md";
 String skillFilename = "skill.md";
 
 // Forward declarations
+void replyUserMessage(String text, String keyboard);
 void handleAgentResponse(String message);
 String geminiChatRequest(String message, bool tools);
 
@@ -1101,6 +1126,9 @@ void rtcInitialTime(String gmtTime) {
 
     if (error) {
       Serial.println("[DEBUG] JSON parse failed\n" + message);
+      
+      replyUserMessage("RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.", "");
+      
       return;
     }
 
@@ -1289,11 +1317,11 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
 }
 
 void replyUserMessage(String text, String keyboard = "") {
-	telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+  telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 }
 
 // Convert role/content pair into Gemini-compatible JSON message object
-String buildGeminiMessage(String role, String message, bool comma) {
+String buildGeminiMessage(String role, String message, bool comma = true) {
   
   message.trim();
   message.replace("\"", "\\\"");
@@ -1340,18 +1368,29 @@ String getStringFromFile(String fileNname) {
   return data;
 }
 
-// Store historical conversation messages to SD card
+// Backup existing historical messages file and save updated messages to SD card
 void storeHistoricalMessagesToFile() {
+  
   fs.begin();
   
   String file_path = String(fs.getRootPath());
+  String currentFile = file_path + "/" + memoryFilename; 
+  String backupFile = currentFile + ".bak";  
   
-  if (fs.exists(file_path+"/" + memoryFilename))
-      fs.remove(file_path+"/" + memoryFilename); 
+  if (fs.exists(currentFile)) {
+    
+    if (fs.exists(backupFile)) {
       
-  file = fs.open(file_path+"/" + memoryFilename); 
+      fs.remove(backupFile);
+    }
+    
+    fs.rename(currentFile, backupFile);
+  }
+      
+  file = fs.open(currentFile); 
   
   if (file) {
+    
     file.println(historicalMessages.c_str());
     file.close();
   }
@@ -1365,17 +1404,14 @@ void geminiChatReset() {
   historicalMessages = "";
   executeToolHistory = "";
 
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);
-  
-  storeHistoricalMessagesToFile();
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
   
 }
 
 // Send request to Gemini and return response text
-String geminiChatRequest(String message, bool tools) {
-  historicalMessages += buildGeminiMessage("user", message, 1);
-  storeHistoricalMessagesToFile();
+String geminiChatRequest(String message, bool tools = true) {
+  historicalMessages += buildGeminiMessage("user", message);
 
   String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
 
@@ -1463,16 +1499,15 @@ String geminiChatRequest(String message, bool tools) {
     responseText = "Gemini did not respond. Please try again.";
   }
 
-  historicalMessages += buildGeminiMessage("model", responseText, 1);
-  storeHistoricalMessagesToFile();
+  historicalMessages += buildGeminiMessage("model", responseText);
 
   return responseText;
+  
 }
 
 // Send Gemini request with Google Search tool enabled
-String geminiSearchRequest(String message, bool tools) {
-  historicalMessages += buildGeminiMessage("user", message, 1);
-  storeHistoricalMessagesToFile();
+String geminiSearchRequest(String message, bool tools = true) {
+  historicalMessages += buildGeminiMessage("user", message);
 
   String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
 
@@ -1560,16 +1595,14 @@ String geminiSearchRequest(String message, bool tools) {
     responseText = "Gemini Search did not respond. Please try again.";
   }
 
-  historicalMessages += buildGeminiMessage("model", responseText, 1);
-  storeHistoricalMessagesToFile();
+  historicalMessages += buildGeminiMessage("model", responseText);
 
   return responseText;
 }
 
 // Capture camera frame and send it to Gemini Vision for multimodal analysis
-String geminiVisionRequest(String message, bool frames) {
-  historicalMessages += buildGeminiMessage("user", message, 1);
-  storeHistoricalMessagesToFile();
+String geminiVisionRequest(String message, bool frames = true) {
+  historicalMessages += buildGeminiMessage("user", message);
 
   WiFiSSLClient client;
   String responseText = "";
@@ -1582,8 +1615,7 @@ String geminiVisionRequest(String message, bool frames) {
       client.stop();
       
       responseText = "Previous image does not exist";
-      historicalMessages += buildGeminiMessage("model", responseText, 1);
-      storeHistoricalMessagesToFile();
+      historicalMessages += buildGeminiMessage("model", responseText);
 
       return responseText;
     }
@@ -1677,8 +1709,7 @@ String geminiVisionRequest(String message, bool frames) {
     responseText = "Gemini Vision did not respond. Please try again.";
   }
 
-  historicalMessages += buildGeminiMessage("model", responseText, 1);
-  storeHistoricalMessagesToFile();
+  historicalMessages += buildGeminiMessage("model", responseText);
 
   return responseText;
 }
@@ -1809,7 +1840,7 @@ void evaluateWorkflowContinuation(bool reCheck, String task = "") {
         "Do not include explanation or extra text.";
 
     handleAgentResponse(
-        geminiChatRequest(prompt, 1)
+        geminiChatRequest(prompt)
     );
 }
 
@@ -1823,11 +1854,10 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       
       String response = toolPinOutput(pin, pinmode, value);
     
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();
+      historicalMessages += buildGeminiMessage("user", command);
+      historicalMessages += buildGeminiMessage("model", response);
 
-      executeToolHistory += command + " ("+String(pin)+", "+pinmode+", "+String(value)+")\n";	  
+      executeToolHistory += command + " [ "+String(pin)+" | "+pinmode+" | "+String(value)+" ]\n";   
 
       evaluateWorkflowContinuation(reCheck);
     
@@ -1838,11 +1868,10 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       String response = toolPinInput(pin, pinmode);
 
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();
+      historicalMessages += buildGeminiMessage("user", command);
+      historicalMessages += buildGeminiMessage("model", response);
 
-	    executeToolHistory += command + " ("+String(pin)+", "+pinmode+")\n";	  
+      executeToolHistory += command + " [ "+String(pin)+" | "+pinmode+" ]\n";   
 
       evaluateWorkflowContinuation(reCheck); 
       
@@ -1860,53 +1889,50 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
         "\"method\":\"still\","
         "\"result\":\"" + tgResponse + "\"}";
     
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();
+      historicalMessages += buildGeminiMessage("user", command);
+      historicalMessages += buildGeminiMessage("model", response);
 
-      executeToolHistory += command + " ("+frames+", "+task+")\n";
+      executeToolHistory += command + " [ "+frames+" | "+task+" ]\n";
 
       evaluateWorkflowContinuation(reCheck, task);
       
-    }
+    } 
     else if (command == "/syncrtc") {
       rtcUpdateStatus = false;  
       replyUserMessage("Updating RTC time shortly. Check the Serial Monitor for results.");
 
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly.", 1);
-      storeHistoricalMessagesToFile();
+      historicalMessages += buildGeminiMessage("user", command);
+      historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly.");
 
-      executeToolHistory += command + "\n";        
+      executeToolHistory += command + "\n";
+
     } 
     else if (command == "/getrtc") {
       String rtcTime = getRtcTimeString();
       replyUserMessage(rtcTime);
 
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", rtcTime, 1);
-      storeHistoricalMessagesToFile();
+      historicalMessages += buildGeminiMessage("user", command);
+      historicalMessages += buildGeminiMessage("model", rtcTime);
 
-      executeToolHistory += command + "\n";        
-    }       
+      executeToolHistory += command + "\n";
+              
+    }      
     else if (command == "/reset") {
       geminiChatReset();
       replyUserMessage("New chat started.");
 
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", "New chat started.", 1);
-      storeHistoricalMessagesToFile();
+      historicalMessages += buildGeminiMessage("user", command);
+      historicalMessages += buildGeminiMessage("model", "New chat started.");
 
-      executeToolHistory += command + "\n";	  
+      executeToolHistory += command + "\n";   
 
     } 
     else if (command == "/memory") {
       String msg = getMemoryInfo();
       replyUserMessage(msg);
 
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", msg, 1);
-      storeHistoricalMessagesToFile();
+      historicalMessages += buildGeminiMessage("user", command);
+      historicalMessages += buildGeminiMessage("model", msg);
 
       executeToolHistory += command + "\n";
 
@@ -1916,7 +1942,9 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     else if (command == "/log") {
       Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
       replyUserMessage("Please check the serial monitor to view the tool execution log.");
-	
+
+      executeToolHistory += command + "\n";
+      
     } 
     else if (command == "/chat") {
       String reply = params["reply"].as<String>();
@@ -1926,11 +1954,11 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
     else if (command == "/search") {
       String query = params["query"].as<String>();
       String task = params["task"].as<String>();
-	  
-      String response = geminiSearchRequest(query, 0);
+    
+      String response = geminiSearchRequest(query, false);
       handleAgentResponse(response);
-	  
-      executeToolHistory += command + " ("+query+", "+task+")\n";
+    
+      executeToolHistory += command + " [ "+query+" | "+task+" ]\n";
       
       evaluateWorkflowContinuation(reCheck, task);
 
@@ -1945,7 +1973,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
           vTaskDelay(10 / portTICK_PERIOD_MS);
       }
   
-      executeToolHistory += command + " (" + String(milliseconds) + ")\n";
+      executeToolHistory += command + " [ " + String(milliseconds) + " ]\n";
   
       evaluateWorkflowContinuation(reCheck);
         
@@ -1954,28 +1982,42 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       String query = params.containsKey("query") ? params["query"].as<String>() : "Describe the image in detail in the user's language. Do not return bounding boxes or coordinates. Respond in natural language only.";
       bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
       String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
-	  
+    
       String response = geminiVisionRequest(query, frames);
       handleAgentResponse(response);
-	  
-      executeToolHistory += command + " ("+query+", "+frames+", "+task+")\n";
+    
+      executeToolHistory += command + " [ "+query+" | "+frames+" | "+task+" ]\n";
       
       evaluateWorkflowContinuation(reCheck, task);
     }
-  	else if (command == "/reboot") {
-  		replyUserMessage("Rebooting the device, please wait...");
-  		
-  		Serial.println("User requested reboot the device.");
-  		delay(2000);
-		
+    else if (command == "/reboot") {
+      replyUserMessage("Rebooting the device, please wait...");
+
       executeToolHistory += command + "\n";
-  		
-  		NVIC_SystemReset();
-  	}	
+      
+      Serial.println("User requested reboot the device.");
+      delay(2000);
+      
+      NVIC_SystemReset();
+    } 
+    else if (command == "/help" || command == "/start") {
+         
+      String mem = getMemoryInfo();
+      String command = systemCommand;
+      command.replace("<memory>", mem);
+      command = geminiChatRequest("Reply the following text in the user's language:\n\n" + command);
+      
+      replyUserMessage(command, telegrambotKeyboard);
+
+      historicalMessages += buildGeminiMessage("user", "Command list");
+      historicalMessages += buildGeminiMessage("model", command);
+      
+    }      
     else {
-      String response = geminiChatRequest(command, 1);
+      String response = geminiChatRequest(command);
       handleAgentResponse(response);
-    }	
+      
+    } 
 }
 
 // Invalid JSON is rejected and logged to Serial.
@@ -2050,7 +2092,7 @@ void handleAgentResponse(String message) {
     if (message.startsWith("[") || message.startsWith("{")) {
       Serial.println("[DEBUG] Json parse failed: (handleAgentResponse)\n" + message);
       replyUserMessage("Json parse failed (handleAgentResponse). Please type \"Continue\"");
-	  
+    
     } else if (message != "NONE") {
       message = rawMessage;
   
@@ -2398,65 +2440,34 @@ void getTelegramMessage() {
 
         if (id_last==0) {
           message_id = 0;
-
-          if (shouldSendHelp == true) { 
-    			  executeTool("/help", JsonObject());
-    			  return; 
-    		  }
-		  
-        } else {	
-		
-          if (obj["result"][0]["message"].containsKey("text")) {
-    			  text = obj["result"][0]["message"]["text"].as<String>();
-    			
-    			  if (text=="help"||text=="/help"||text=="/start") {
-    			
-    				String mem = getMemoryInfo();
-    				
-    				String command =
-    				  "Built-in commands:\n"
-    				  "/help command list\n"
-    				  "/still capture and send a camera image\n"
-              "/syncrtc update the hardware RTC\n" 
-              "/getrtc get the hardware RTC current time\n"               
-    				  "/memory show system memory usage\n"
-    				  "/log show tool execution history\n"
-    				  "/reset start a new conversation\n\n"
-    				  "Hardware control supported:\n"
-    				  "- Digital output (0 or 1)\n"
-    				  "- Analog output (0–255)\n"
-    				  "- Digital input reading\n"
-    				  "- Analog input reading\n\n"
-    				  "System Status:\n"
-    				  + mem +
-    				  "\n\nYou can chat with Gemini using natural language.\n"
-    				  "The system supports real-time search and vision-based analysis.\n\n"
-    				  "Documentation:\n"
-    				  "https://github.com/fustyles/fuClaw";
-    			  
-              String keyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/syncrtc\"},{\"text\":\"/getrtc\"}],[{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
-      			
-      				replyUserMessage(command, keyboard);
       
-      				historicalMessages += buildGeminiMessage("user", "Command list", 1);
-      				historicalMessages += buildGeminiMessage("model", command, 1);
-      				storeHistoricalMessagesToFile();      
-    			
-    			  } else if (text=="null") {
-    			
-    				  botClient.stop();
-    			
-    			  } else {
+        } else {  
+    
+          if (obj["result"][0]["message"].containsKey("text")) {
+            text = obj["result"][0]["message"]["text"].as<String>();
+          
+            if (text == "help") {
+              executeTool("/help", JsonObject());
               
-      				if (text.startsWith("/")) 
-      				  executeTool(text, JsonObject()); 
-      				else {
-      				  text = geminiChatRequest(text, 1);
-      				  handleAgentResponse(text);
-      				} 
-    			  }
-    		  }
-    		  else if (doc["result"][0]["message"].containsKey("voice")) {
+            } 
+            else if (text=="null") {
+              botClient.stop();
+          
+            } 
+            else {
+              if (text.startsWith("/")) 
+                executeTool(text, JsonObject()); 
+              else {
+                text = geminiChatRequest(text);
+                handleAgentResponse(text);
+              } 
+              
+            }
+
+           storeHistoricalMessagesToFile();
+           
+          }
+          else if (doc["result"][0]["message"].containsKey("voice")) {
 
             voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
 
@@ -2475,12 +2486,15 @@ void getTelegramMessage() {
                 if (text.startsWith("/")) 
                   executeTool(text, JsonObject()); 
                 else {
-                  text = geminiChatRequest(text, 1);
+                  text = geminiChatRequest(text);
                   handleAgentResponse(text);
                 } 
             }
 
-            if (voiceFile) free(voiceFile);   // Always release the voice buffer
+            if (voiceFile) 
+              free(voiceFile);   // Always release the voice buffer
+
+            storeHistoricalMessagesToFile();
             
           }
         }
@@ -2529,6 +2543,8 @@ void task_anti_theft_detection(void *param) {
     Serial.println("\n\nExecuting Skill: anti_theft_detection\n\n");
  
     evaluateWorkflowContinuation(true, "Must execute skill anti_theft_detection. Return ONLY tool_call JSON.");
+
+    storeHistoricalMessagesToFile();
 
   }
   
@@ -2579,6 +2595,8 @@ void task_time_scheduling(void *param) {
       "6. NEVER infer the timezone. "
       "7. NEVER execute outside the scheduled window."
     );
+
+    storeHistoricalMessagesToFile();
     
   }
 }
@@ -2646,8 +2664,8 @@ void setup() {
   config.setRotation(0);
   Camera.configVideoChannel(0, config);
   Camera.videoInit();
-  Camera.channelBegin(0);
-
+  Camera.channelBegin(0); 
+  
   String soul = getStringFromFile(soulFilename);
   Serial.println("Soul.md len: " + String(soul.length()));
   if (soul != "")
@@ -2663,14 +2681,13 @@ void setup() {
   if (skill != "")
     skillsDefinition = skill;
 
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK");  
     
   String memory = getStringFromFile(memoryFilename);
   Serial.println("memory.md len: " + String(memory.length()));
   if (memory != "")
     historicalMessages = memory;
- 
 
   if (xTaskCreate(
         task_getTelegramMessage,
@@ -2683,7 +2700,7 @@ void setup() {
 
     Serial.println("Create task_getTelegramMessage failed");
   } 
-  
+
 /*
  
   if (xTaskCreate(
@@ -2710,8 +2727,17 @@ void setup() {
     Serial.println("Create task_time_scheduling failed");
   }   
 
-*/   
-   
+*/  
+
+  if (WiFi.status() == WL_CONNECTED) {
+    for (int i=0 ; i<3 ; i++) {
+      digitalWrite(ledPin, 1);
+      delay(300);
+      digitalWrite(ledPin, 0);
+      delay(300);      
+    }
+  }
+  
 }
 
 // Main loop
