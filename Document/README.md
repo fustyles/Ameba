@@ -811,7 +811,7 @@ if (historicalMessages.length() > THRESHOLD) {
 
 進階問題 2：
   geminiVisionRequest() 中的 Base64 編碼使用了全域的 imageAddress/imageLength，
-  若 getTelegramMessage_task 和 periodicCheck_task 同時觸發視覺分析，
+  若 task_getTelegramMessage 和 task_anti_theft_detection 同時觸發視覺分析，
   會發生什麼 Race Condition？如何用 Mutex 修復？
 
 進階問題 3：
