@@ -140,19 +140,27 @@ SD 卡根目錄/
     ├─ 初始化相機
     │
     ├── 建立任務 1 ─────────────────────────────────────────┐
-    │   getTelegramMessage_task()                          │
+    │   task_getTelegramMessage()                          │
     │   堆疊：16 KB                                         │
     │   優先權：tskIDLE_PRIORITY + 1                        │
     │   行為：每 1000ms 輪詢 Telegram，處理訊息              │
     │   資源：botClient（WiFiSSLClient）                    │
     │                                                       │
     └── 建立任務 2 ─────────────────────────────────────────┤
-    │   periodicCheck_task()                               │
+    │   task_anti_theft_detection()                               │
     │   堆疊：6 KB                                          │
     │   優先權：tskIDLE_PRIORITY + 1                        │
-    │   行為：每 60000ms 觸發防盜偵測技能                    │
+    │   行為：每 30000ms 觸發防盜偵測技能                    │
     │   執行前：botClient.stop() + vTaskDelay(2000)         │
-    │   原因：避免兩個任務同時使用網路資源造成封包衝突         │
+    │   原因：避免三個任務同時使用網路資源造成封包衝突         │
+    │                                                       │
+    └── 建立任務 3 ─────────────────────────────────────────┤
+    │   task_time_scheduling()                               │
+    │   堆疊：6 KB                                          │
+    │   優先權：tskIDLE_PRIORITY + 1                        │
+    │   行為：每 60000ms 觸發時間排程技能                    │
+    │   執行前：botClient.stop() + vTaskDelay(2000)         │
+    │   原因：避免三個任務同時使用網路資源造成封包衝突         │
     └──────────────────────────────────────────────────────┘
 
 共享資源（Race Condition 注意事項）：
