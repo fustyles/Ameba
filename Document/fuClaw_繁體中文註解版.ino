@@ -1,30 +1,30 @@
 /*
 ------------------------------------------------------------
-fuClaw AI Telegram 智慧助理（整合 Gemini）
+fuClaw AI Telegram 助理（整合 Gemini）
 ------------------------------------------------------------
 
 作者：
-  ChungYi Fu（台灣高雄）
-  https://www.facebook.com/francefu
+ChungYi Fu（台灣高雄）
+https://www.facebook.com/francefu
 
-原始碼庫：
-  https://github.com/fustyles/fuClaw
+程式碼倉庫：
+https://github.com/fustyles/fuClaw
 
 ------------------------------------------------------------
-版本資訊
+版本說明
 ------------------------------------------------------------
 
-提示詞驅動嵌入式代理版本
+提示驅動嵌入式代理版本
 持久化檔案系統執行環境
 
-建置日期：2026-05-28 13:00
+建置日期：2026-05-29 10:30
 
 ------------------------------------------------------------
-專案概述
+概覽
 ------------------------------------------------------------
 
-fuClaw 是一套運行於 Realtek Ameba Pro2 系列裝置的
-嵌入式多模態 AI 代理框架，支援硬體平台如下：
+fuClaw 是一個運行於 Realtek Ameba Pro2 裝置的
+嵌入式多模態 AI 代理框架，支援以下開發板：
 
 - AMB82-mini
 - HUB 8735 Ultra
@@ -33,107 +33,115 @@ fuClaw 是一套運行於 Realtek Ameba Pro2 系列裝置的
 
 - Telegram Bot API（HTTPS 長輪詢）
 - Google Gemini generateContent API
-- Gemini 結合 Google 搜尋的即時資訊查詢
+- Gemini 網路搜尋 grounding
 - Gemini 多模態視覺推理
-- 提示詞驅動的 JSON 工具路由機制
+- 提示驅動的 JSON 工具路由
 - GPIO 數位 / 類比 I/O 控制
-- 相機拍照與圖片上傳
+- 攝影機拍照與影像上傳
 - 持久化對話記憶
-- FreeRTOS 多工並發排程
+- FreeRTOS 並發任務排程
 
-執行環境兼具以下能力，構成混合式自主代理：
-對話 + 推理 + 工具 + 視覺 + 記憶 + 硬體控制
+執行環境作為混合自主代理運作：
+
+對話 + 推理 + 工具 + 視覺 + 記憶 + 硬體
 
 ------------------------------------------------------------
 執行架構
 ------------------------------------------------------------
 
 Telegram 使用者
-      ↓
-Telegram 長輪詢任務
-      ↓
+↓
+Telegram 輪詢任務
+↓
 訊息路由器
-      ↓
+↓
 Gemini 推理引擎
-（對話 / 搜尋 / 視覺 / 工作流程）
-      ↓
+（對話 / 搜尋 / 視覺 / 工作流）
+↓
 JSON tool_call 輸出
-      ↓
-ArduinoJson 驗證層
-      ↓
-工具派發器
-      ↓
-硬體 / 搜尋 / 視覺執行
-      ↓
+↓
+ArduinoJson 驗證
+↓
+工具分派器
+↓
+硬體 / 搜尋 / 視覺 執行
+↓
 結果注入記憶
-      ↓
+↓
 自然語言回覆
 
 ------------------------------------------------------------
-執行模型說明
+執行模型
 ------------------------------------------------------------
 
-本系統為「提示詞驅動工具路由」架構。
-Gemini 不使用原生函數呼叫 API，而是：
+本系統為提示驅動的工具路由系統。
 
-- 由 Gemini 輸出結構化 JSON tool_call 回應
-- 本地韌體負責驗證所有工具呼叫的合法性
-- 非法 JSON 一律拒絕執行
-- 執行順序嚴格線性（不支援並發工具呼叫）
-- 硬體動作絕不模擬，必須實際執行
+Gemini 不使用原生的 function-calling API。
 
-原子執行原則：
-每次回應僅允許執行 ONE 個硬體動作：
+而是：
+
+- Gemini 輸出結構化的 JSON tool_call 回應
+- 本地韌體驗證所有工具呼叫
+- 無效 JSON 一律拒絕執行
+- 執行嚴格循序進行
+- 硬體動作絕不模擬
+
+原子執行規則：
+
+每個回應只能執行一個硬體動作：
+
 - 一個腳位
-- 一種操作
+- 一個操作
 - 一個數值
 
-多步驟工作流程以逐步方式依序執行。
+多步驟工作流逐步執行。
 
 ------------------------------------------------------------
-支援工具列表
+支援工具
 ------------------------------------------------------------
 
-/digitalwrite   GPIO 數位輸出
-/analogwrite    GPIO 類比輸出
-/digitalread    GPIO 數位輸入
-/analogread     GPIO 類比輸入
-/still          拍攝靜態影像
-/vision         拍攝影像並進行多模態分析
-/search         結合 Google 的即時網路搜尋
-/delay          暫停執行指定毫秒數
-/memory         執行環境記憶體診斷
-/log            顯示工具執行歷史記錄
-/reset          重置對話狀態
-/chat           自然語言回覆
-/reboot         重新啟動裝置
+/digitalwrite  GPIO 數位輸出
+/analogwrite   GPIO 類比輸出
+/digitalread   GPIO 數位輸入
+/analogread    GPIO 類比輸入
+/syncrtc       更新硬體 RTC
+/getrtc        取得硬體 RTC 目前時間
+/still         擷取影像
+/vision        擷取影像並進行多模態分析
+/search        Grounded 網路搜尋
+/delay         暫停執行指定毫秒數
+/memory        執行環境記憶體診斷
+/log           顯示工具執行歷史
+/reset         重置對話狀態
+/chat          自然語言回覆
+/reboot        重新啟動裝置
 
 ------------------------------------------------------------
-持久化檔案說明
+持久化檔案
 ------------------------------------------------------------
 
 env.md
-  WiFi / Telegram / Gemini 憑證設定
+WiFi / Telegram / Gemini 憑證 / 時區
 
 device.md
-  裝置定義（硬體腳位對應）
+裝置定義
 
 skill.md
-  技能定義（自動化工作流程）
+技能定義
 
 soul.md
-  自訂助理個性提示詞
+自訂助理人格提示
 
 memory.md
-  對話歷史持久化存儲
+對話歷史持久化
 
-裝置啟動時自動從 SD 卡還原對話狀態。
+開機時自動恢復對話狀態。
 
 ------------------------------------------------------------
 硬體安全說明
 ------------------------------------------------------------
 
-僅允許操作已確認的裝置對應腳位。
+僅允許已確認的裝置映射。
 
 AMB82-mini
 - 綠色 LED：GPIO 24
@@ -143,79 +151,101 @@ HUB 8735 Ultra
 - 綠色 LED：GPIO 25
 - 藍色 LED：GPIO 26
 - 補光 LED：GPIO 13
-- 功能按鈕：GPIO 12（僅限輸入）
+- 按鈕：GPIO 12（僅限輸入）
 
-未知硬體對應必須向使用者確認後方可操作。
-GPIO 數值在執行前均須嚴格驗證。
+未知硬體映射需先向使用者確認。
+
+GPIO 數值在執行前嚴格驗證。
 
 ------------------------------------------------------------
-使用的軟體函式庫
+軟體堆疊
 ------------------------------------------------------------
 
-- WiFi.h         無線網路連線
-- WiFiSSLClient  SSL 加密客戶端
-- ArduinoJson    JSON 解析與序列化
-- FreeRTOS       即時作業系統多工排程
-- VideoStream    相機影像串流
-- Base64         Base64 編碼（影像 / 音訊傳輸用）
-- AmebaFatFS     SD 卡檔案系統存取
+- WiFi.h
+- WiFiSSLClient
+- ArduinoJson
+- FreeRTOS
+- VideoStream
+- Base64
+- AmebaFatFS
 
 ------------------------------------------------------------
 已知限制
 ------------------------------------------------------------
 
-- 對話歷史隨使用時間持續增長，可能耗盡記憶體
-- 大量字串操作可能導致堆積記憶體碎片化
-- 視覺編碼（Base64）佔用大量 CPU 運算資源
-- 大型 JSON 解析會對堆積記憶體造成壓力
-- Gemini 回應格式須透過 ArduinoJson 驗證層處理
-- 遞迴工具鏈呼叫由 reCheck 旗標與 NONE 哨兵值控制
+- 對話歷史隨時間增長
+- 大量字串操作導致堆積碎片化風險
+- 視覺編碼 CPU 負擔重
+- 大型 JSON 解析影響堆積使用量
+- Gemini 回應格式由 ArduinoJson 驗證層處理
+- 遞迴工具鏈透過 reCheck 旗標與 NONE 哨兵值控制
 
 ------------------------------------------------------------
 */
 
-// ============================================================
-// WiFi 網路憑證
-// ============================================================
-String wifiSsid = "xxxxxxxxxx";       // WiFi 名稱（SSID）
-String wifiPassword = "xxxxxxxxxx";   // WiFi 密碼
+// WiFi 憑證
+String wifiSsid = "xxxxxxxxxx";
+String wifiPassword = "xxxxxxxxxx";
 
-// ============================================================
 // Telegram Bot 設定
-// ============================================================
-String telegrambotToken = "xxxxxxxxxx";   // Bot Token（從 @BotFather 取得）
-String telegrambotChatId = "xxxxxxxxxx";  // 授權的聊天 ID（僅此 ID 可操控裝置）
+String telegrambotToken = "xxxxxxxxxx";
+String telegrambotChatId = "xxxxxxxxxx";
 
-// ============================================================
+// /help 指令回覆的固定文字模板，<memory> 為記憶體資訊佔位符，執行時替換
+String systemCommand =
+"Built-in commands:\n"
+"/help command list\n"
+"/still capture and send a camera image\n"
+"/syncrtc update the hardware RTC\n"
+"/getrtc get the hardware RTC current time\n"
+"/memory show system memory usage\n"
+"/log show tool execution history\n"
+"/reset start a new conversation\n\n"
+"Hardware control supported:\n"
+"- Digital output (0 or 1)\n"
+"- Analog output (0–255)\n"
+"- Digital input reading\n"
+"- Analog input reading\n\n"
+"System Status:\n<memory>"
+"\n\nYou can chat with Gemini using natural language.\n"
+"The system supports real-time search and vision-based analysis.\n\n"
+"Documentation:\n"
+"https://github.com/fustyles/fuClaw";
+
+// Telegram 自訂鍵盤佈局（JSON 格式），顯示常用指令快速按鈕
+String telegrambotKeyboard =
+"{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/syncrtc\"},{\
+\"text\":\"/getrtc\"}],[{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"
+}]],\"one_time_keyboard\":false}";
+
 // Gemini API 設定
-// ============================================================
 String geminiApiKey = "xxxxxxxxxx";
 
-String geminiModel = "gemini-3-flash-preview";   // 使用的 Gemini 模型名稱
-int geminiMaxOutputTokens = 8192;  // 最大輸出 token 數；若 AI 無法完整回傳資料，請調高此值
-float geminiTemperature = 1.0;     // 生成溫度（0.0~2.0），數值越高創意性越強
+// 使用的 Gemini 模型名稱
+String geminiModel = "gemini-3-flash-preview";
+// 最大輸出 token 數；若 AI 無法完整回傳資料，請增加此數值
+int geminiMaxOutputTokens = 8192;
+// 生成溫度：數值越高回應越有創意，越低越保守穩定
+float geminiTemperature = 1.0;
 
-String timeZone = "Taiwan";  // 裝置所在時區（用於 RTC 時間轉換）
+// 裝置所在時區，供 Gemini 進行 RTC 時間轉換使用
+String timeZone = "Taiwan";
 
-// 從 Telegram 下載語音檔案的最大緩衝大小（256 KB）
-// 超過此大小的語音訊息將無法處理
+// Telegram 語音檔案下載緩衝區上限（256 KB），防止堆積溢位
 #define MAX_FILE_SIZE 262144
 
-// 實際從 Telegram 下載的語音檔案位元組數
+// 實際從 Telegram 下載的位元組數
 size_t downloadedFileSize = 0;
 
-// ============================================================
-// Gemini 助理人格提示詞
-// 注意：內容必須符合 JSON 安全格式（避免非法跳脫字元或不支援符號）
-// ============================================================
+// Gemini 助理的系統角色提示，定義助理行為與回覆風格
+// 必須符合 JSON 安全格式（避免無效跳脫字元或不支援符號）
 String geminiRole = R"(
-You are a professional assistant with a lively, natural, and friendly personality, responding according to the user's language.
-)"; 
+You are a professional assistant with a lively, natural, and friendly personality, 
+responding according to the user's language.
+)";
 
-// ============================================================
-// 已確認硬體裝置定義
-// 僅列出已確認的裝置腳位，AI 不得擅自推測未知腳位
-// ============================================================
+// 已確認硬體裝置的腳位定義，供 Gemini 進行工具路由時參照
+// 未在此定義的裝置一律禁止控制，必須向使用者確認後才能操作
 String devicesDefinition = R"(
 
 ==================================================
@@ -233,56 +263,56 @@ HUB 8735 Ultra
 - Blue indicator LED: pin 26
 
 - Fill light LED: pin 13
-  - analog output range: 0–255
-  - recommended safe startup brightness: 5
+- analog output range: 0–255
+- recommended safe startup brightness: 5
 
 - Function button: pin 12
-  - digital input only
-  - active-low
-  - pressed = 0
-  - released = 1
+- digital input only
+- active-low
+- pressed = 0
+- released = 1
 
 External Modules
 
 - Emergency button: pin 1
-  - digital input only
-  - active-high
-  - pressed = 1
-  - released = 0
-  
+- digital input only
+- active-high
+- pressed = 1
+- released = 0
+
 - Light sensor module: pin 2
-  - analog input
-  - range: 0–1023  
+- analog input
+- range: 0–1023 
 
 - Warning light: pin 11
-  - PWM output
-  - range: 0–255
-  - default startup value: 255
+- PWM output
+- range: 0–255
+- default startup value: 255
 
 - Window actuator (SG90 servo): pin 12
-  - servo angle control
-  - range: 0–180
-  - 0 = fully closed
-  - 180 = fully open
-  
+- servo angle control
+- range: 0–180
+- 0 = fully closed
+- 180 = fully open
+
 - DHT11 Temperature & Humidity Sensor
-  - Pin mapping: depends on development board
-		AMB82-mini: PIN 8
-		HUB 8735 Ultra: PIN 20
-  - Measures: temperature (°C) and relative humidity (%)
-  - Read mode: single trigger, returns two integer values
-  - Temperature range: 0–50 °C
-  - Humidity range: 20–90 % RH
-  - Physical Rules: Values are integers. Sensor requires ~1 s between reads.
+- Pin mapping: depends on development board
+AMB82-mini: PIN 8
+HUB 8735 Ultra: PIN 20
+- Measures: temperature (°C) and relative humidity (%)
+- Read mode: single trigger, returns two integer values
+- Temperature range: 0–50 °C
+- Humidity range: 20–90 % RH
+- Physical Rules: Values are integers. Sensor requires ~1 s between reads.
 
 
 No other hardware mappings are confirmed.
 
 )";
 
-// ============================================================
-// 裝置控制安全規則（傳遞給 AI 的約束條件）
-// ============================================================
+// 硬體裝置操作規則提示：
+// 防止 AI 猜測未知腳位映射、確保工具呼叫格式正確、
+// 定義多步驟工作流的最長有效前綴執行策略
 String devicesRule = R"(
 
 1. ONLY confirmed devices may be directly controlled.
@@ -291,13 +321,13 @@ String devicesRule = R"(
 
 3. If a requested device is not explicitly listed above:
 
-   STOP immediately and ask the user for clarification.
+STOP immediately and ask the user for clarification.
 
-   Required clarification:
-   - device type
-   - GPIO pin number
-   - supported control mode
-     (digitalwrite / analogwrite / digitalread / analogread)
+Required clarification:
+- device type
+- GPIO pin number
+- supported control mode
+(digitalwrite / analogwrite / digitalread / analogread)
 
 4. Generic device names are UNKNOWN unless explicitly mapped.
 
@@ -383,10 +413,10 @@ A tool_call is COMPLETE only if:
 
 4. The moment a tool_call is found to be incomplete, invalid, or ambiguous:
 
-   - STOP processing immediately
-   - DO NOT include this tool_call
-   - DO NOT include any tool_calls after it
-   - DISCARD all subsequent planned actions
+- STOP processing immediately
+- DO NOT include this tool_call
+- DO NOT include any tool_calls after it
+- DISCARD all subsequent planned actions
 
 This means the output array must always be a
 "longest valid prefix of complete tool_calls".
@@ -405,14 +435,14 @@ Turn off green LED, then blue LED
 Correct output:
 
 [
-  { complete tool_call #1 },
-  { complete tool_call #2 }
+{ complete tool_call #1 },
+{ complete tool_call #2 }
 ]
 
 If second is incomplete:
 
 [
-  { complete tool_call #1 }
+{ complete tool_call #1 }
 ]
 
 All later tool_calls are discarded.
@@ -463,10 +493,9 @@ Always respond using the user's language.
 
 )";
 
-// ============================================================
-// 工具定義（工具路由規則與 JSON Schema）
-// 此區段定義 AI 可呼叫的所有工具格式
-// ============================================================
+// 工具路由定義提示：
+// 包含所有可用工具的 JSON 格式規範、回應契約（success/error）、
+// 確認機制、視覺工具使用規則與工作流執行順序
 String toolsDefinition = R"(
 
 ==================================================
@@ -504,7 +533,9 @@ GLOBAL DEVICE CONTROL POLICY
 
 ALL hardware control actions MUST require explicit user confirmation before execution.
 
-If the user requests hardware actions to execute without confirmation, the system MUST explicitly ask for reconfirmation before updating this rule. Only after the user clearly reconfirms may the confirmation requirement be disabled or modified.
+If the user requests hardware actions to execute without confirmation, the system 
+MUST explicitly ask for reconfirmation before updating this rule. Only after the user 
+clearly reconfirms may the confirmation requirement be disabled or modified.
 
 If the hardware action is triggered automatically by:
 - a skill execution
@@ -532,30 +563,30 @@ Digital output control
 Request:
 
 {
-  "type":"tool_call",
-  "method":"/digitalwrite",
-  "params":{
-    "pin":"<device pin>",
-    "pinmode":"digitalwrite",
-    "value":"0 or 1"
-  }
+"type":"tool_call",
+"method":"/digitalwrite",
+"params":{
+"pin":"<device pin>",
+"pinmode":"digitalwrite",
+"value":"0 or 1"
+}
 }
 
 Success response:
 
 {
-  "status":"success",
-  "method":"digitalwrite",
-  "pin":24,
-  "value":1
+"status":"success",
+"method":"digitalwrite",
+"pin":24,
+"value":1
 }
 
 Error response:
 
 {
-  "status":"error",
-  "reason":"invalid_digital_value",
-  "pin":24
+"status":"error",
+"reason":"invalid_digital_value",
+"pin":24
 }
 
 Analog output control
@@ -563,30 +594,30 @@ Analog output control
 Request:
 
 {
-  "type":"tool_call",
-  "method":"/analogwrite",
-  "params":{
-    "pin":"<device pin>",
-    "pinmode":"analogwrite",
-    "value":"0-255"
-  }
+"type":"tool_call",
+"method":"/analogwrite",
+"params":{
+"pin":"<device pin>",
+"pinmode":"analogwrite",
+"value":"0-255"
+}
 }
 
 Success response:
 
 {
-  "status":"success",
-  "method":"analogwrite",
-  "pin":13,
-  "value":128
+"status":"success",
+"method":"analogwrite",
+"pin":13,
+"value":128
 }
 
 Error response:
 
 {
-  "status":"error",
-  "reason":"invalid_output_mode",
-  "pin":13
+"status":"error",
+"reason":"invalid_output_mode",
+"pin":13
 }
 
 Digital input read
@@ -594,29 +625,29 @@ Digital input read
 Request:
 
 {
-  "type":"tool_call",
-  "method":"/digitalread",
-  "params":{
-    "pin":"<device pin>",
-    "pinmode":"digitalread"
-  }
+"type":"tool_call",
+"method":"/digitalread",
+"params":{
+"pin":"<device pin>",
+"pinmode":"digitalread"
+}
 }
 
 Success response:
 
 {
-  "status":"success",
-  "method":"digitalread",
-  "pin":12,
-  "value":0
+"status":"success",
+"method":"digitalread",
+"pin":12,
+"value":0
 }
 
 Error response:
 
 {
-  "status":"error",
-  "reason":"invalid_input_mode",
-  "pin":12
+"status":"error",
+"reason":"invalid_input_mode",
+"pin":12
 }
 
 Analog input read
@@ -624,166 +655,168 @@ Analog input read
 Request:
 
 {
-  "type":"tool_call",
-  "method":"/analogread",
-  "params":{
-    "pin":"<device pin>",
-    "pinmode":"analogread"
-  }
+"type":"tool_call",
+"method":"/analogread",
+"params":{
+"pin":"<device pin>",
+"pinmode":"analogread"
+}
 }
 
 Success response:
 
 {
-  "status":"success",
-  "method":"analogread",
-  "pin":34,
-  "value":723
+"status":"success",
+"method":"analogread",
+"pin":34,
+"value":723
 }
 
 Error response:
 
 {
-  "status":"error",
-  "reason":"invalid_input_mode",
-  "pin":34
+"status":"error",
+"reason":"invalid_input_mode",
+"pin":34
 }
 
 
 Capture image from device camera:
-   
+
 {
-  "type":"tool_call",
-  "method":"/still",
-  "params": {
-    "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
-    "task": "<what to do after analysis>"    
-  }
+"type":"tool_call",
+"method":"/still",
+"params": {
+"frames": "<true = capture current frame, false = use the previously captured 
+frame; if none exists, fall back to true>",
+"task": "<what to do after analysis, If none, return NONE.>" 
+}
 }
 
 Device camera vision analysis:
 
 {
-  "type": "tool_call",
-  "method": "/vision",
-  "params": {
-    "query": "<what to analyze in image>",
-    "frames": "<true = capture current frame, false = use the previously captured frame; if none exists, fall back to true>",
-    "task": "<what to do after analysis>"
-  }
+"type": "tool_call",
+"method": "/vision",
+"params": {
+"query": "what to analyze in the image",
+"frames": "<true = capture current frame, false = use the previously captured 
+frame; if none exists, fall back to true>",
+"task": "what to do after analysis, If none, return NONE."
+}
 }
 
 Recent information query:
 
 {
-  "type":"tool_call",
-  "method":"/search",
-  "params":{
-    "query":"<what to search>",
-    "task":"<what to do after search result>"
-  }
+"type":"tool_call",
+"method":"/search",
+"params":{
+"query":"<what to search>",
+"task":"<what to do after search result, leave empty if none>"
+}
 }
 
 Pause execution for a specified duration (0–10000 ms maximum):
 
 {
-  "type":"tool_call",
-  "method":"/delay",
-  "params":{
-    "milliseconds":"<integer 0-10000>"
-  }
+"type":"tool_call",
+"method":"/delay",
+"params":{
+"milliseconds":"<integer 0-10000>"
+}
 }
 
 Memory status:
 
 {
-  "type":"tool_call",
-  "method":"/memory",
-  "params":{}
+"type":"tool_call",
+"method":"/memory",
+"params":{}
 }
 
 Show tool execution history:
 
 {
-  "type":"tool_call",
-  "method":"/log",
-  "params":{}
+"type":"tool_call",
+"method":"/log",
+"params":{}
 }
 
 Reset conversation:
 
 {
-  "type":"tool_call",
-  "method":"/reset",
-  "params":{}
+"type":"tool_call",
+"method":"/reset",
+"params":{}
 }
 
 Normal conversational reply:
 
 {
-  "type":"tool_call",
-  "method":"/chat",
-  "params":{
-    "reply":"<natural reply>"
-  }
+"type":"tool_call",
+"method":"/chat",
+"params":{
+"reply":"<natural reply>"
+}
 }
 
 Reboot the device:
 
 {
-  "type":"tool_call",
-  "method":"/reboot",
-  "params":{}
+"type":"tool_call",
+"method":"/reboot",
+"params":{}
 }
 
 Servo motor control:
 {
-  "type": "tool_call",
-  "method": "/servo",
-  "params": {
-    "pin": "<Device pin number. If the user does not specify a pin, ask first.>",
-    "angle": "<Desired absolute angle from 0 to 180>"
-  }
+"type": "tool_call",
+"method": "/servo",
+"params": {
+"pin": "<Device pin number. If the user does not specify a pin, ask first.>",
+"angle": "<Desired absolute angle from 0 to 180>"
+}
 }
 
 Success response:
 {
-  "status": "success",
-  "method": "servo",
-  "pin": 2,
-  "angle": 90
+"status": "success",
+"method": "servo",
+"pin": 2,
+"angle": 90
 }
 
 Error response:
 {
-  "status": "error",
-  "reason": "undefined_servo_pin",
-  "pin": 3
+"status": "error",
+"reason": "undefined_servo_pin",
+"pin": 3
 }
 
 Reading the DHT11 temperature and humidity sensor:
 {
-  "type": "tool_call",
-  "method": "/dht11",
-  "params": {
-    "pin": "<Device pin number. If the user does not specify a pin, ask first.>"
-  }
+"type": "tool_call",
+"method": "/dht11",
+"params": {
+"pin": "<Device pin number. If the user does not specify a pin, ask first.>"
+}
 }
 
 Success response:
 {
-  "status": "success",
-  "method": "dht11",
-  "pin": 20,
-  "temperature": 26,
-  "humidity": 65
+"status": "success",
+"method": "dht11",
+"pin": 20,
+"temperature": 26,
+"humidity": 65
 }
 
 Error response:
 {
-  "status": "error",
-  "reason": "dht11_read_failed",
-  "pin": 20
+"status": "error",
+"reason": "dht11_read_failed",
+"pin": 20
 }
 
 ==================================================
@@ -793,11 +826,13 @@ SEARCH FOLLOW-UP RULES
 After /search returns:
 
 1. Analyze search result
-2. Check whether requested condition is satisfied
-3. Never assume hardware action already happened
-4. Never claim execution unless tool_call actually returned
-5. If a hardware action is required, it MUST go through user confirmation.
-6. Only after confirmation → tool_call JSON
+2. query MUST use the SAME language as the user input 
+3. task MUST use the SAME language as the user input
+4. Check whether requested condition is satisfied
+5. Never assume hardware action already happened
+6. Never claim execution unless tool_call actually returned
+7. If a hardware action is required, it MUST go through user confirmation.
+8. Only after confirmation → tool_call JSON
 
 ==================================================
 VISION FOLLOW-UP RULES
@@ -824,6 +859,8 @@ IMAGE TOOL ROUTING RULES
 /vision:
 - Capture image from device camera and analyze it
 - Use previously cached image and analyze it if frames is false
+- query MUST use the SAME language as the user input 
+- task MUST use the SAME language as the user input
 - MUST return observation result only
 - MUST NOT directly trigger hardware actions
 
@@ -879,9 +916,9 @@ Return natural conversational reply only.
 
 )";
 
-// ============================================================
-// 內建技能定義（自動化工作流程腳本）
-// ============================================================
+// 技能腳本定義：
+// 以純文字形式定義自動化工作流（如防盜偵測、時間排程），
+// 可透過替換 skill.md 檔案擴充，無需修改韌體程式碼
 String skillsDefinition = R"(
 
 ==================================================
@@ -904,58 +941,59 @@ MUST OUTPUT EXACT JSON ARRAY ONLY:
 Step 1: Analyze image for human presence
 
 {
-  "type": "tool_call",
-  "method": "/vision",
-  "params": {
-    "query": "Determine whether a person is visible in the image.",
-    "frames": true,
-    "task": "If a person is detected, continue workflow. If no person is detected, return NONE."
-  }
+"type": "tool_call",
+"method": "/vision",
+"params": {
+"query": "Determine whether a person is visible in the image.",
+"frames": true,
+"task": "If a person is detected, continue workflow. If no person is detected, 
+return NONE."
+}
 }
 
 Step 2: If person detected → trigger alert sequence
 
 [
-  {
-    "type": "tool_call",
-    "method": "/still",
-    "params": {
-      "frames": false,
-      "task": "NONE"
-    }
-  },
-  {
-    "type": "tool_call",
-    "method": "/digitalwrite",
-    "params": {
-      "pin": <blue_led_pin>,
-      "pinmode": "digitalwrite",
-      "value": 1
-    }
-  },
-  {
-    "type": "tool_call",
-    "method": "/delay",
-    "params": {
-      "milliseconds": 500
-    }
-  },
-  {
-    "type": "tool_call",
-    "method": "/digitalwrite",
-    "params": {
-      "pin": <blue_led_pin>,
-      "pinmode": "digitalwrite",
-      "value": 0
-    }
-  },
-  {
-    "type": "tool_call",
-    "method": "/delay",
-    "params": {
-      "milliseconds": 500
-    }
-  }
+{
+"type": "tool_call",
+"method": "/still",
+"params": {
+"frames": false,
+"task": "NONE"
+}
+},
+{
+"type": "tool_call",
+"method": "/digitalwrite",
+"params": {
+"pin": <blue_led_pin>,
+"pinmode": "digitalwrite",
+"value": 1
+}
+},
+{
+"type": "tool_call",
+"method": "/delay",
+"params": {
+"milliseconds": 500
+}
+},
+{
+"type": "tool_call",
+"method": "/digitalwrite",
+"params": {
+"pin": <blue_led_pin>,
+"pinmode": "digitalwrite",
+"value": 0
+}
+},
+{
+"type": "tool_call",
+"method": "/delay",
+"params": {
+"milliseconds": 500
+}
+}
 ]
 
 --------------------------------------------------
@@ -1067,37 +1105,28 @@ Return natural conversational response only.
 
 )";
 
-// ============================================================
-// 系統提示詞序列化暫存（作為對話初始上下文）
-// systemContent      ：含工具定義的完整系統提示
-// systemContentNoTools：不含工具定義的精簡版（用於時間轉換等無需工具的請求）
-// ============================================================
+// 序列化後的系統提示內容，作為對話的初始上下文
+// systemContent：完整版，含工具定義（用於一般對話與工具路由）
+// systemContentNoTools：輕量版，不含工具定義（用於 RTC 時間轉換等不需工具路由的情境）
 String systemContent = "";
 String systemContentNoTools = "";
 
-// 工具執行歷史記錄字串（用於 /log 指令顯示）
+// 記錄每次工具執行的人類可讀紀錄，供 /log 指令顯示
 String executeToolHistory = "";
-  
-// 完整對話歷史（Gemini API JSON 格式）
-// 每次請求時完整傳送，以維持跨請求的對話記憶
+
+// 以 Gemini API JSON 格式儲存完整的對話歷史，
+// 每次請求都帶入此歷史，實現跨請求的持久化對話記憶
 String historicalMessages = "";
 
-// 狀態指示 LED 輸出腳位
-// AMB82-mini 使用腳位 24（綠色 LED）；HUB 8735 Ultra 使用腳位 25
+// 指示燈輸出腳位（AMB82-mini：24，HUB 8735 Ultra：25）
 int ledPin = 24;
 
-// 最後一筆已處理的 Telegram 訊息 ID（用於避免重複處理）
+// 上次收到的 Telegram 訊息 ID，用於去重複、只處理新訊息
 long lastMessageId = 0;
 
-// 是否在啟動時傳送說明訊息至 Telegram
-bool shouldSendHelp = false;
-
-// ============================================================
-// 引入必要函式庫
-// ============================================================
 #include <WiFi.h>
 
-// SSL 加密客戶端（用於 Telegram HTTPS 長輪詢，保持持久連線）
+// 用於 Telegram 長輪詢的 SSL 客戶端，全域持久保持連線
 WiFiSSLClient botClient;
 
 #include "Base64.h"
@@ -1107,100 +1136,191 @@ WiFiSSLClient botClient;
 
 #include "AmebaFatFS.h"
 
-// FAT 檔案系統實例（對應 SD 卡）
+// FAT 檔案系統實例，用於讀寫 SD 卡上的設定與記憶體檔案
 AmebaFatFS fs;
 
 // 檔案操作物件
 File file;
 
-// 環境設定檔案名稱（存放 WiFi / Telegram / Gemini API 憑證）
+// 環境設定檔（WiFi / Telegram / Gemini API 憑證）
+// 預期 JSON 格式：
+// {
+//   "wifi_ssid": "",
+//   "wifi_pass": "",
+//   "telegramBot_token": "",
+//   "telegramBot_chatID": "",
+//   "gemini_apikey": "",
+//   "timezone": ""
+// }
 String envFilename = "env.md";
-  
-/*
-env.md 內容格式（JSON）：
-{
-  "wifi_ssid": "",
-  "wifi_pass": "",
-  "telegramBot_token": "",
-  "telegramBot_chatID": "",
-  "gemini_apikey": "",
-  "timezone": ""   
-}
-*/
 
-// 助理個性提示詞檔案（定義 Gemini 助理行為風格）
+// 系統人格提示檔（定義 Gemini 助理的行為風格）
 String soulFilename = "soul.md";
 
-// 持久化對話記憶檔案（儲存歷史對話上下文，重啟後自動還原）
+// 持久化對話記憶檔（儲存歷史對話上下文，開機時自動載入）
 String memoryFilename = "memory.md";
 
-// 裝置定義檔案（硬體腳位對應，可覆蓋程式碼中的預設值）
+// 裝置定義檔（硬體腳位映射）
 String deviceFilename = "device.md";
 
-// 技能定義檔案（自動化工作流程，可覆蓋程式碼中的預設值）
+// 技能定義檔（自動化工作流腳本）
 String skillFilename = "skill.md";
 
-// 前向宣告：處理代理回應的主要函式
+// 前向宣告，解決函數相互呼叫的編譯順序問題
+String getRtcTimeString();
+void replyUserMessage(String text, String keyboard);
 void handleAgentResponse(String message);
+String geminiChatRequest(String message, bool tools);
 
 #include "VideoStream.h"
 
-// 相機影像設定（320×240 解析度，JPEG 格式）
-// 如需較高畫質可改為：VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
+// 攝影機視訊設定（320×240，JPEG 格式，通道 0）
+// 如需更高解析度可改用 VIDEO_VGA
 VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
+//VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
 
-// 已擷取影像的記憶體位址與長度（影像快取）
+// 攝影機擷取影像的緩衝區位址與長度
+// imageLength == 0 表示尚未擷取任何影像，frames=false 時會觸發早期錯誤回傳
 uint32_t imageAddress = 0;
 uint32_t imageLength = 0;
 
-// ============================================================
-// RTC 時間相關引入與變數
-// ============================================================
 #include <stdio.h>
 #include <time.h>
 #include "rtc.h"
-
 struct tm *timeinfo;
-
-// RTC 時間分量（由 Gemini 時區轉換後寫入）
-int rtcYear   = 0;
-int rtcMonth  = 0;
-int rtcDay    = 0;
-int rtcHour   = 0;
+// RTC 時間欄位，由 rtcInitialTime() 從 Gemini 解析結果填入
+int rtcYear = 0;   // rtcYear == 0 表示 RTC 尚未初始化
+int rtcMonth = 0;
+int rtcDay = 0;
+int rtcHour = 0;
 int rtcMinute = 0;
 int rtcSecond = 0;
-
-// 格式化 RTC 時間字串（供排程任務注入 Gemini prompt 使用）
 String rtcFormatTime = "";
-
-// RTC 是否已成功同步的旗標
-// true 表示已完成初始化，防止重複同步
+// RTC 同步完成旗標：true 表示已成功同步，防止重複初始化
 bool rtcUpdateStatus = false;
 
-// ============================================================
-// 伺服馬達 / DHT11 感測器引入
-// ============================================================
 #include <AmebaServo.h>
-AmebaServo servo12;   // 腳位 12 的伺服馬達實例
+// 伺服馬達實例，對應 pin 12（SG90）
+AmebaServo servo12;
 
 #include "DHT.h"
-#define DHTPIN 20         // DHT11 資料腳位（HUB 8735 Ultra；AMB82-mini 請改為 8）
-#define DHTTYPE DHT11     // 感測器型號
+// DHT11 感測器預設使用 HUB 8735 Ultra 的腳位定義（PIN 20）
+// AMB82-mini 請改為 PIN 8
+#define DHTPIN 20
+#define DHTTYPE DHT11
 DHT dht(DHTPIN, DHTTYPE);
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
-// ============================================================
-// 傳送文字訊息至 Telegram Bot
-// 支援 HTML 格式與自訂鍵盤（reply_markup）
-// ============================================================
+// 使用 Gemini 同步的當地時間初始化 RTC。
+// 解析流程：從 Telegram HTTP header 取得 GMT 時間字串
+// → 呼叫 geminiChatRequest（不含工具）轉換為當地時區
+// → 解析 JSON 回應 → 寫入硬體 RTC
+void rtcInitialTime(String gmtTime) {
+
+  // 建立時區轉換提示，強制 Gemini 輸出純 JSON，不含任何說明文字
+  // 這是確保 ArduinoJson 能正確解析的關鍵約束
+  String prompt =
+    "Convert this GMT datetime to " + timeZone + ".\n"
+    "GMT datetime: " + gmtTime + "\n\n"
+
+    "Output requirements:\n"
+    "- Return ONLY a raw JSON object.\n"
+    "- Do NOT use markdown.\n"
+    "- Do NOT use code fences.\n"
+    "- Do NOT explain anything.\n"
+    "- Do NOT add extra text.\n"
+    "- First character must be {.\n"
+    "- Last character must be }.\n\n"
+
+    "Required JSON format:\n"
+    "{\n"
+    "\"rtcYear\":2026,\n"
+    "\"rtcMonth\":5,\n"
+    "\"rtcDay\":28,\n"
+    "\"rtcHour\":11,\n"
+    "\"rtcMinute\":35,\n"
+    "\"rtcSecond\":0\n"
+    "}";
+
+  // 使用 tools=false，採用輕量版系統提示，避免工具定義干擾純 JSON 輸出
+  String message = geminiChatRequest(prompt, false);
+
+  message.trim();
+
+  // 驗證回應是否為有效 JSON 物件（首尾字元檢查）
+  if (message.startsWith("{") && message.endsWith("}")) {
+
+    DynamicJsonDocument doc(1024);
+    DeserializationError error = deserializeJson(doc, message);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON 解析失敗\n" + message);
+      replyUserMessage("RTC time update failed. Device must be stopped immediately. "
+                       "Possible causes: history file corruption or invalid JSON format in stored records.", "");
+      return;
+    }
+
+    JsonObject obj = doc.as<JsonObject>();
+
+    // 以預設值 0 安全提取各時間欄位，避免 JSON 缺少欄位時發生未定義行為
+    rtcYear   = obj["rtcYear"]   | 0;
+    rtcMonth  = obj["rtcMonth"]  | 0;
+    rtcDay    = obj["rtcDay"]    | 0;
+    rtcHour   = obj["rtcHour"]   | 0;
+    rtcMinute = obj["rtcMinute"] | 0;
+    rtcSecond = obj["rtcSecond"] | 0;
+
+    // 設為 true，防止後續 Telegram 輪詢再次觸發 RTC 初始化
+    rtcUpdateStatus = true;
+
+  } else {
+    Serial.println("[DEBUG] JSON 解析失敗：(rtcInitialTime)\n" + message);
+    replyUserMessage("RTC time update failed. Device must be stopped immediately. "
+                     "Possible causes: history file corruption or invalid JSON format in stored records.", "");
+  }
+
+  // 初始化 RTC 硬體並寫入計算好的 epoch 時間戳
+  rtc.Init();
+  long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
+  rtc.Write(initTime);
+
+  replyUserMessage("RTC START: " + getRtcTimeString(), "");
+}
+
+// 從硬體 RTC 讀取目前時間並格式化為 "YYYY/M/D HH:MM:SS" 字串
+String getRtcTimeString() {
+
+  long long epoch = rtc.Read();
+
+  // 將 epoch 轉換為本地時間結構
+  time_t rawtime = (time_t)epoch;
+  struct tm *timeinfo = localtime(&rawtime);
+
+  char buffer[32];
+
+  // 格式化輸出：年/月/日 時:分:秒
+  sprintf(
+    buffer,
+    "%04d/%d/%d %02d:%02d:%02d",
+    timeinfo->tm_year + 1900,  // tm_year 為自 1900 年起的偏移量
+    timeinfo->tm_mon + 1,      // tm_mon 為 0–11，需加 1
+    timeinfo->tm_mday,
+    timeinfo->tm_hour,
+    timeinfo->tm_min,
+    timeinfo->tm_sec
+  );
+
+  return String(buffer);
+}
+
+// 透過 Telegram Bot API 傳送文字訊息
+// keyboard 為空字串時不附加自訂鍵盤
 void telegramSendMessage(String token, String chatid, String text, String keyboard) {
-  // 將換行符號轉換為 URL 編碼格式，以利 HTTP 傳輸
+  // 將換行字元轉換為 URL 編碼格式，確保 HTTP 傳輸正確
   text.replace("\\n", "%0A");
   const char* myDomain = "api.telegram.org";
   String getAll="", getBody = "";
-
-  // 建立 POST 請求主體（parse_mode=HTML 啟用 HTML 格式）
   String request = "parse_mode=HTML&chat_id="+chatid+"&text="+text;
 
   if (keyboard!="")
@@ -1220,16 +1340,17 @@ void telegramSendMessage(String token, String chatid, String text, String keyboa
     unsigned long startTime = millis();
     bool state = false;
 
-    // 等待並讀取 HTTP 回應
+    // 等待回應，超過 5 秒視為逾時
     while ((startTime + waitTime) > millis()) {
       delay(100);
-      while (client.available())  {
+      while (client.available()) {
         char c = client.read();
 
         if (state)
           getBody += String(c);
 
-        if (c == '\n')  {
+        // 偵測 HTTP header 結束（空行），之後的資料為回應主體
+        if (c == '\n') {
           if (getAll.length()==0)
             state=true;
           getAll = "";
@@ -1247,11 +1368,9 @@ void telegramSendMessage(String token, String chatid, String text, String keyboa
   }
 }
 
-// ============================================================
-// 拍攝靜態影像並以 JPEG 格式上傳至 Telegram
-// frames=true ：擷取當前相機影像幀
-// frames=false：使用前次已快取的影像幀（若不存在則回傳錯誤）
-// ============================================================
+// 從攝影機擷取靜態影像並以 JPEG 格式上傳至 Telegram
+// frames=true：擷取當前幀；frames=false：重用上次快取的幀
+// 若 frames=false 且 imageLength==0（無快取），提前回傳錯誤字串
 String telegramSendCapturedImage(String token, String chat_id, bool frames) {
   const char* myDomain = "api.telegram.org";
   String getAll="", getBody = "";
@@ -1259,11 +1378,10 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
 
   if (client.connect(myDomain, 443)) {
 
-    // 根據 frames 參數決定擷取新影像或使用快取
     if (frames)
-      Camera.getImage(0, &imageAddress, &imageLength);
+      Camera.getImage(0, &imageAddress, &imageLength);  // 擷取新幀
     else if (!frames && imageLength == 0) {
-      // 快取影像不存在，提前結束
+      // 無快取影像且要求重用，提前中止
       client.stop();
       return "Previous image does not exist";
     }
@@ -1271,11 +1389,12 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
     uint8_t *fbBuf = (uint8_t*)imageAddress;
     size_t fbLen = imageLength;
 
-    // 建立 multipart/form-data 請求標頭（使用 "Taiwan" 作為 boundary）
+    // multipart/form-data 邊界使用 "Taiwan" 作為分隔符
     String head =
       "--Taiwan\r\nContent-Disposition: form-data; name=\"chat_id\"; \r\n\r\n"
       + chat_id +
-      "\r\n--Taiwan\r\nContent-Disposition: form-data; name=\"photo\"; filename=\"capture.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
+      "\r\n--Taiwan\r\nContent-Disposition: form-data; name=\"photo\"; "
+      "filename=\"capture.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
 
     String tail = "\r\n--Taiwan--\r\n";
 
@@ -1291,13 +1410,14 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
 
     client.print(head);
 
-    // 分 1024 位元組分塊傳送 JPEG 資料（避免大緩衝區問題）
+    // 以 1024 位元組為單位分塊傳送 JPEG 資料，避免單次寫入過大
     for (size_t n=0;n<fbLen;n=n+1024) {
       if (n+1024<fbLen) {
         client.write(fbBuf, 1024);
         fbBuf += 1024;
       }
       else if (fbLen%1024>0) {
+        // 傳送最後不足 1024 位元組的剩餘部分
         size_t remainder = fbLen%1024;
         client.write(fbBuf, remainder);
       }
@@ -1305,11 +1425,11 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
 
     client.print(tail);
 
+    // 等待 Telegram API 回應，最長 10 秒
     int waitTime = 10000;
     unsigned long startTime = millis();
     bool state = false;
 
-    // 等待並讀取 HTTP 回應
     while ((startTime + waitTime) > millis()) {
       delay(100);
 
@@ -1345,23 +1465,22 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
   return getBody;
 }
 
-// ============================================================
-// 回覆訊息給 Telegram 使用者（封裝函式）
-// ============================================================
-void replayUserMessage(String text, String keyboard = "") {
-	telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+// 封裝 telegramSendMessage，使用全域 Token 與 Chat ID
+// keyboard 預設為空字串（無自訂鍵盤）
+void replyUserMessage(String text, String keyboard = "") {
+  telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 }
 
-// ============================================================
-// 將角色/內容對轉換為 Gemini API 相容的 JSON 訊息物件
-// comma=true 時在物件前加上逗號（用於串接多筆訊息）
-// ============================================================
-String buildGeminiMessage(String role, String message, bool comma) {
-  
+// 將 role/content 對組裝成 Gemini API 相容的 JSON 訊息物件
+// comma=true：在物件前加逗號（用於陣列中間項目）
+// comma=false：不加逗號（用於陣列第一項）
+String buildGeminiMessage(String role, String message, bool comma = true) {
+
   message.trim();
-  message.replace("\"", "\\\"");     // 跳脫雙引號，避免 JSON 格式錯誤
-  message.replace("\\\\", "\\");     // 修正雙重跳脫
-  
+  // 先處理引號跳脫，再還原雙重跳脫，確保 JSON 字串合法
+  message.replace("\"", "\\\"");
+  message.replace("\\\\", "\\");
+
   String jsonMessage = "";
   if (comma)
     jsonMessage = ", {\"role\": \"";
@@ -1375,9 +1494,8 @@ String buildGeminiMessage(String role, String message, bool comma) {
   return jsonMessage;
 }
 
-// ============================================================
-// 從 SD 卡讀取指定檔案內容並以字串形式回傳
-// ============================================================
+// 從 SD 卡讀取指定檔案的完整內容並回傳為字串
+// 若檔案不存在或讀取失敗，回傳空字串
 String getStringFromFile(String fileNname) {
   String data = "";
 
@@ -1388,136 +1506,138 @@ String getStringFromFile(String fileNname) {
 
   if (file) {
     uint32_t len = file.size();
-    // 動態分配緩衝區以讀取整個檔案
+    // 動態配置緩衝區（+1 用於 null terminator），讀完後立即釋放
     char *buf = (char*)malloc(len + 1);
 
     if (buf) {
       file.read(buf, len);
-      buf[len] = '\0';   // 加入字串結尾符號
+      buf[len] = '\0';
       data = String(buf);
-      free(buf);         // 釋放動態分配的記憶體
+      free(buf);
     }
 
     file.close();
   }
 
   fs.end();
-  
+
   return data;
 }
 
-// ============================================================
-// 將歷史對話訊息存入 SD 卡（持久化記憶）
-// 每次對話更新後呼叫，確保重啟後可還原對話狀態
-// ============================================================
+// 將更新後的對話歷史寫入 SD 卡，採用「先備份再寫入」策略：
+// 1. 若目前 memory.md 存在，重命名為 memory.md.bak
+// 2. 再建立並寫入新的 memory.md
+// 此策略確保寫入中途若斷電，備份檔案仍然完整可用
 void storeHistoricalMessagesToFile() {
+
   fs.begin();
-  
+
   String file_path = String(fs.getRootPath());
-  
-  // 若檔案已存在則先刪除再重建（覆寫）
-  if (fs.exists(file_path+"/"+memoryFilename))
-      fs.remove(file_path+"/"+memoryFilename); 
-      
-  file = fs.open(file_path+"/"+memoryFilename); 
-  
+  String currentFile = file_path + "/" + memoryFilename;
+  String backupFile = currentFile + ".bak";
+
+  if (fs.exists(currentFile)) {
+
+    if (fs.exists(backupFile)) {
+      fs.remove(backupFile);  // 移除舊備份，確保重命名成功
+    }
+
+    fs.rename(currentFile, backupFile);  // 原檔重命名為備份
+  }
+
+  file = fs.open(currentFile);  // 建立新的 memory.md
+
   if (file) {
     file.println(historicalMessages.c_str());
     file.close();
   }
-  
+
   fs.end();
 }
 
-// ============================================================
-// 重置對話記憶至系統提示詞初始狀態
-// 同時清空工具執行歷史記錄
-// ============================================================
+// 重置對話記憶至初始系統提示狀態
+// 同時清空工具執行歷史，對應 /reset 指令
 void geminiChatReset() {
-  
+
   historicalMessages = "";
   executeToolHistory = "";
 
-  // 重建完整系統提示（含工具定義）
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
+  // 重新組裝完整版與輕量版系統提示
+  // 使用 comma=false（第一項不加逗號）建構 user/model 對話起始
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition +
+    devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition +
+    devicesRule, false) + buildGeminiMessage("model", "OK");
 
-  // 重建精簡系統提示（不含工具定義，用於時間轉換等請求）
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);
-  
-  storeHistoricalMessagesToFile();
-  
 }
 
-// ============================================================
-// 傳送請求至 Gemini 並回傳回應文字
-// tools=true ：使用完整系統提示（含工具定義）
-// tools=false：使用精簡系統提示（不含工具定義）
-// ============================================================
-String geminiChatRequest(String message, bool tools) {
-  // 將使用者訊息加入對話歷史
-  historicalMessages += buildGeminiMessage("user", message, 1);
-  storeHistoricalMessagesToFile();
+// 向 Gemini 發送請求並回傳回應文字
+// tools=true：使用含工具定義的完整系統提示
+// tools=false：使用不含工具定義的輕量版提示（適合 RTC 時間轉換等純推理情境）
+String geminiChatRequest(String message, bool tools = true) {
+  historicalMessages += buildGeminiMessage("user", message);
 
-  // 根據 tools 參數選擇對應的系統提示
+  // 根據 tools 旗標選擇系統提示版本，並拼接完整對話歷史
   String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
 
-  // 組合 Gemini API 請求 JSON
   String request = "{\"contents\": [" + contents +
-                   "],\"generationConfig\": {\"maxOutputTokens\": " +
-                   geminiMaxOutputTokens +
-                   ", \"temperature\": " + geminiTemperature + "}}";
+    "],\"generationConfig\": {\"maxOutputTokens\": " +
+    geminiMaxOutputTokens +
+    ", \"temperature\": " + geminiTemperature + "}}";
 
   WiFiSSLClient client;
   String responseText = "";
 
   if (client.connect("generativelanguage.googleapis.com", 443)) {
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+
+      geminiApiKey+" HTTP/1.1");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
     client.println("Content-Type: application/json; charset=utf-8");
     client.println("Content-Length: " + String(request.length()));
     client.println();
-    
-    // 分 1024 位元組分塊傳送請求（避免超出緩衝限制）
+
+    // 以 1024 位元組為單位分塊傳送請求主體，避免大型請求一次性寫入失敗
     for (int i = 0; i < request.length(); i += 1024) {
       client.print(request.substring(i, i + 1024));
     }
 
     String body = "";
-    unsigned long timeout = millis() + 20000;
+    unsigned long timeout = millis() + 20000;  // 20 秒逾時
     bool headersEnded = false;
     String line = "";
 
-    // 讀取 HTTP 回應（跳過標頭，只保留 JSON 主體）
+    // 讀取回應：略過 HTTP header，只保留 JSON 主體
     while ((client.connected() || client.available()) && millis() < timeout) {
       while (client.available()) {
         char c = client.read();
 
         if (!headersEnded) {
+          // 偵測空行（header 結束標誌）
           if (c == '\n') {
             if (line.length() <= 1) {
-              headersEnded = true;   // 空行代表標頭結束
+              headersEnded = true;
             }
             line = "";
           } else if (c != '\r') {
             line += c;
           }
-        } 
+        }
         else {
           body += c;
-          timeout = millis() + 20000;   // 每收到一個字元就重置逾時
+          timeout = millis() + 20000;  // 每收到一個字元就重置逾時計時器
         }
       }
-      vTaskDelay(1);   // 讓出 CPU 給其他 FreeRTOS 任務
+      vTaskDelay(1);  // 讓出 CPU 給其他 FreeRTOS 任務
     }
-    
+
     client.stop();
 
     body.trim();
 
-    // 找到第一個 '{' 作為 JSON 起始位置（跳過可能的非 JSON 前綴）
-    int jsonStart = body.indexOf('{'); 
-    if (jsonStart != -1) { 
+    // 找到 JSON 起始位置，略過任何前置的非 JSON 內容
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
       body = body.substring(jsonStart);
     }
 
@@ -1525,16 +1645,18 @@ String geminiChatRequest(String message, bool tools) {
     DeserializationError error = deserializeJson(doc, body);
 
     if (error) {
-      Serial.println("[DEBUG] JSON parse failed: (geminiChatRequest)\n" + body);
+      Serial.println("[DEBUG] JSON 解析失敗：(geminiChatRequest)\n" + body);
       responseText = "JSON parse failed (geminiChatRequest). Please try again.";
-    }  
+    }
     else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
+      // 正常情況：從 Gemini 回應結構中提取文字內容
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
-    } 
+    }
     else if (doc["error"]) {
+      // API 層級錯誤（如金鑰無效、配額超限等）
       responseText = "Gemini API Error: " + doc["error"]["message"].as<String>();
       Serial.println(responseText);
-    } 
+    }
     else {
       responseText = "Unexpected response from Gemini.";
       Serial.println("Unknown response format.");
@@ -1549,42 +1671,38 @@ String geminiChatRequest(String message, bool tools) {
     responseText = "Gemini did not respond. Please try again.";
   }
 
-  // 將 Gemini 回應加入對話歷史
-  historicalMessages += buildGeminiMessage("model", responseText, 1);
-  storeHistoricalMessagesToFile();
+  // 將 Gemini 回應也加入對話歷史，維持完整的多輪對話上下文
+  historicalMessages += buildGeminiMessage("model", responseText);
 
   return responseText;
 }
 
-// ============================================================
-// 傳送請求至 Gemini 並啟用 Google Search 工具進行即時搜尋
-// 用於需要取得最新資訊的查詢（如時區轉換、最新新聞等）
-// tools=true ：使用含工具定義的系統提示
-// tools=false：使用精簡系統提示
-// ============================================================
-String geminiSearchRequest(String message, bool tools) {
-  historicalMessages += buildGeminiMessage("user", message, 1);
-  storeHistoricalMessagesToFile();
+// 向 Gemini 發送請求，並啟用 Google Search grounding 工具
+// 與 geminiChatRequest 相比，request 中額外加入 "tools": [{"google_search": {}}]
+// tools 參數控制系統提示版本（同 geminiChatRequest）
+String geminiSearchRequest(String message, bool tools = true) {
+  historicalMessages += buildGeminiMessage("user", message);
 
   String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
 
-  // 在請求中加入 google_search 工具以啟用即時搜尋功能
+  // 加入 Google Search 工具，使 Gemini 能查詢即時網路資訊
   String request = "{\"contents\": [" + contents +
-                   "],\"tools\": [{\"google_search\": {}}],\"generationConfig\": {\"maxOutputTokens\": " +
-                   geminiMaxOutputTokens +
-                   ", \"temperature\": " + geminiTemperature + "}}";
+    "],\"tools\": [{\"google_search\": {}}],\"generationConfig\": {\"maxOutputTokens\": " +
+    geminiMaxOutputTokens +
+    ", \"temperature\": " + geminiTemperature + "}}";
 
   WiFiSSLClient client;
   String responseText = "";
 
   if (client.connect("generativelanguage.googleapis.com", 443)) {
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+
+      geminiApiKey+" HTTP/1.1");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
     client.println("Content-Type: application/json; charset=utf-8");
     client.println("Content-Length: " + String(request.length()));
     client.println();
-    
+
     for (int i = 0; i < request.length(); i += 1024) {
       client.print(request.substring(i, i + 1024));
     }
@@ -1614,13 +1732,13 @@ String geminiSearchRequest(String message, bool tools) {
       }
       vTaskDelay(1);
     }
-    
+
     client.stop();
 
-    body.trim();   
-    
-    int jsonStart = body.indexOf('{'); 
-    if (jsonStart != -1) { 
+    body.trim();
+
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
       body = body.substring(jsonStart);
     }
 
@@ -1628,16 +1746,16 @@ String geminiSearchRequest(String message, bool tools) {
     DeserializationError error = deserializeJson(doc, body);
 
     if (error) {
-      Serial.println("[DEBUG] JSON parse failed: (geminiSearchRequest)\n" + body);
-      responseText = "JSON parse failed (geminiSearchRequest). Please try again.";
-    } 
+      Serial.println("[DEBUG] JSON 解析失敗：(geminiSearchRequest)\n" + body);
+      responseText = "JSON parse failed (geminiChatRequest). Please try again.";
+    }
     else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
-    } 
+    }
     else if (doc["error"]) {
       responseText = "Gemini Search API Error: " + doc["error"]["message"].as<String>();
       Serial.println(responseText);
-    } 
+    }
     else {
       responseText = "Unexpected response from Gemini Search.";
     }
@@ -1651,20 +1769,17 @@ String geminiSearchRequest(String message, bool tools) {
     responseText = "Gemini Search did not respond. Please try again.";
   }
 
-  historicalMessages += buildGeminiMessage("model", responseText, 1);
-  storeHistoricalMessagesToFile();
+  historicalMessages += buildGeminiMessage("model", responseText);
 
   return responseText;
 }
 
-// ============================================================
-// 擷取相機影像並傳送至 Gemini Vision 進行多模態分析
-// frames=true ：從相機擷取新影像幀
-// frames=false：使用已快取的影像幀（節省時間與 CPU 資源）
-// ============================================================
-String geminiVisionRequest(String message, bool frames) {
-  historicalMessages += buildGeminiMessage("user", message, 1);
-  storeHistoricalMessagesToFile();
+// 擷取攝影機幀並傳送至 Gemini Vision 進行多模態分析
+// frames=true：擷取新幀；frames=false：重用上次快取的幀
+// 注意：此函數不使用系統提示，直接以 inline_data 傳送影像，
+// 是一個獨立的視覺推理請求，不含工具路由邏輯
+String geminiVisionRequest(String message, bool frames = true) {
+  historicalMessages += buildGeminiMessage("user", message);
 
   WiFiSSLClient client;
   String responseText = "";
@@ -1674,41 +1789,43 @@ String geminiVisionRequest(String message, bool frames) {
     if (frames)
       Camera.getImage(0, &imageAddress, &imageLength);
     else if (!frames && imageLength == 0) {
-      // 快取影像不存在，提前結束並回傳錯誤
+      // 無快取影像，提前中止並回傳錯誤
       client.stop();
-      
+
       responseText = "Previous image does not exist";
-      historicalMessages += buildGeminiMessage("model", responseText, 1);
-      storeHistoricalMessagesToFile();
+      historicalMessages += buildGeminiMessage("model", responseText);
 
       return responseText;
     }
-    
+
     uint8_t *fbBuf = (uint8_t*)imageAddress;
     size_t fbLen = imageLength;
 
-    // 將 JPEG 影像資料轉換為 Base64 編碼字串（Gemini Vision API 格式）
+    // 將 JPEG 資料進行 Base64 編碼
+    // 注意：base64_encode 每次處理 3 個位元組，輸出 4 個字元
     char *input = (char *)fbBuf;
     char output[base64_enc_len(3)];
     String imageFile = "";
-    
+
     for (size_t i = 0; i < fbLen; i++) {
       base64_encode(output, (input++), 3);
-      if (i % 3 == 0) imageFile += String(output);   // 每 3 bytes 編碼一次
+      if (i % 3 == 0) imageFile += String(output);
     }
 
-    // 組合包含影像（inline_data）的 Gemini Vision 請求 JSON
-    String Data = "{\"contents\": [{\"parts\": [{\"text\": \"" + message + 
-                  "\"}, {\"inline_data\": {\"mime_type\":\"image/jpeg\",\"data\":\"" + 
-                  imageFile + "\"}}]}]}";
+    // 直接將 Base64 影像資料內嵌於 JSON 請求中（inline_data），
+    // 無需額外的檔案上傳步驟
+    String Data = "{\"contents\": [{\"parts\": [{\"text\": \"" + message +
+      "\"}, {\"inline_data\": {\"mime_type\":\"image/jpeg\",\"data\":\"" +
+      imageFile + "\"}}]}]}";
 
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+
+      geminiApiKey+" HTTP/1.1");
     client.println("Host: " + String(myDomain));
     client.println("Content-Type: application/json; charset=utf-8");
     client.println("Content-Length: " + String(Data.length()));
     client.println("Connection: close");
     client.println();
-    
+
     for (size_t i = 0; i < Data.length(); i += 1024) {
       client.print(Data.substring(i, i + 1024));
     }
@@ -1738,13 +1855,13 @@ String geminiVisionRequest(String message, bool frames) {
       }
       vTaskDelay(1);
     }
-    
+
     client.stop();
 
-    body.trim();    
+    body.trim();
 
-    int jsonStart = body.indexOf('{'); 
-    if (jsonStart != -1) { 
+    int jsonStart = body.indexOf('{');
+    if (jsonStart != -1) {
       body = body.substring(jsonStart);
     }
 
@@ -1752,16 +1869,16 @@ String geminiVisionRequest(String message, bool frames) {
     DeserializationError error = deserializeJson(doc, body);
 
     if (error) {
-      Serial.println("[DEBUG] JSON parse failed (geminiVisionRequest):\n" + body);
-      responseText = "JSON parse failed (geminiVisionRequest). Please try again.";
-    } 
+      Serial.println("[DEBUG] JSON 解析失敗：(geminiVisionRequest)\n" + body);
+      responseText = "JSON parse failed (geminiSearchRequest). Please try again.";
+    }
     else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
-    } 
+    }
     else if (doc["error"]) {
       responseText = "Gemini Vision API Error: " + doc["error"]["message"].as<String>();
       Serial.println(responseText);
-    } 
+    }
     else {
       responseText = "Unexpected response from Gemini Vision.";
     }
@@ -1775,509 +1892,525 @@ String geminiVisionRequest(String message, bool frames) {
     responseText = "Gemini Vision did not respond. Please try again.";
   }
 
-  historicalMessages += buildGeminiMessage("model", responseText, 1);
-  storeHistoricalMessagesToFile();
+  historicalMessages += buildGeminiMessage("model", responseText);
 
   return responseText;
 }
 
-// ============================================================
-// 取得目前系統記憶體使用資訊（供 /memory 指令使用）
-// ============================================================
+// 取得目前系統記憶體使用資訊
+// 包含：可用堆積、歷史最低堆積、對話歷史字串長度
+// 對話歷史長度可用於判斷是否接近堆積碎片化風險
 String getMemoryInfo() {
   String msg = "";
 
   msg += "Free heap: ";
-  msg += String(xPortGetFreeHeapSize());        // 目前可用堆積記憶體（bytes）
+  msg += String(xPortGetFreeHeapSize());
 
   msg += "\nMin heap: ";
-  msg += String(xPortGetMinimumEverFreeHeapSize());  // 歷史最低可用堆積記憶體（bytes）
+  msg += String(xPortGetMinimumEverFreeHeapSize());
 
   msg += "\nHistorical messages len: ";
-  msg += String(historicalMessages.length());   // 對話歷史字串長度（bytes）
+  msg += String(historicalMessages.length());
 
   return msg;
 }
 
-// ============================================================
 // 控制裝置數位或類比輸出
-// 支援 LED、繼電器、馬達等 GPIO 控制裝置
-// pin  ：目標 GPIO 腳位
-// mode ："digitalwrite"（0或1）或 "analogwrite"（0-255）
-// value：輸出值
-// ============================================================
+// 支援 LED、繼電器等 GPIO 控制裝置
+// mode="digitalwrite"：值必須為 0 或 1，否則回傳 invalid_digital_value 錯誤
+// mode="analogwrite"：值以 constrain 限制在 0–255，防止超範圍輸出
 String toolPinOutput(int pin, String mode, int value) {
 
-    pinMode(pin, OUTPUT);
+  pinMode(pin, OUTPUT);
 
-    mode.toLowerCase();
+  mode.toLowerCase();
 
-    if (mode == "digitalwrite") {
+  if (mode == "digitalwrite") {
 
-        // 數位輸出值必須嚴格為 0 或 1，其他值直接回傳錯誤
-        if (value != 0 && value != 1) {
-            return "{\"status\":\"error\",\"reason\":\"invalid_digital_value\",\"pin\":" + String(pin) + "}";
-        }
-
-        digitalWrite(pin, value);
-
-        return
-            "{\"status\":\"success\","
-            "\"method\":\"digitalwrite\","
-            "\"pin\":" + String(pin) + ","
-            "\"value\":" + String(value) +
-            "}";
-
+    // 嚴格驗證數位輸出值，只接受 0 或 1
+    if (value != 0 && value != 1) {
+      return "{\"status\":\"error\",\"reason\":\"invalid_digital_value\",\"pin\":" + String(pin) + "}";
     }
-    else if (mode == "analogwrite") {
 
-        // 類比輸出值限制在 0-255 範圍內（硬體安全防護）
-        value = constrain(value, 0, 255);
-
-        analogWrite(pin, value);
-
-        return
-            "{\"status\":\"success\","
-            "\"method\":\"analogwrite\","
-            "\"pin\":" + String(pin) + ","
-            "\"value\":" + String(value) +
-            "}";
-
-    }
+    digitalWrite(pin, value);
 
     return
-        "{\"status\":\"error\","
-        "\"reason\":\"invalid_output_mode\","
-        "\"pin\":" + String(pin) +
-        "}";
+      "{\"status\":\"success\","
+      "\"method\":\"digitalwrite\","
+      "\"pin\":" + String(pin) + ","
+      "\"value\":" + String(value) +
+      "}";
+
+  }
+  else if (mode == "analogwrite") {
+
+    // 硬體層最後防線：即使 Gemini 輸出超範圍值也強制限制在安全範圍內
+    value = constrain(value, 0, 255);
+
+    analogWrite(pin, value);
+
+    return
+      "{\"status\":\"success\","
+      "\"method\":\"analogwrite\","
+      "\"pin\":" + String(pin) + ","
+      "\"value\":" + String(value) +
+      "}";
+
+  }
+
+  return
+    "{\"status\":\"error\","
+    "\"reason\":\"invalid_output_mode\","
+    "\"pin\":" + String(pin) +
+    "}";
 }
 
-// ============================================================
 // 讀取裝置數位或類比輸入
 // 支援按鈕、類比感測器等 GPIO 輸入裝置
-// pin  ：目標 GPIO 腳位
-// mode ："digitalread"（0或1）或 "analogread"（0-1023）
-// ============================================================
+// 此函數為被動讀取，不對硬體產生任何輸出
 String toolPinInput(int pin, String mode) {
 
-    pinMode(pin, INPUT);
+  pinMode(pin, INPUT);
 
-    mode.toLowerCase();
+  mode.toLowerCase();
 
-    if (mode == "digitalread") {
+  if (mode == "digitalread") {
 
-        int value = digitalRead(pin);
-
-        return
-            "{\"status\":\"success\","
-            "\"method\":\"digitalread\","
-            "\"pin\":" + String(pin) + ","
-            "\"value\":" + String(value) +
-            "}";
-
-    }
-    else if (mode == "analogread") {
-
-        int value = analogRead(pin);
-
-        return
-            "{\"status\":\"success\","
-            "\"method\":\"analogread\","
-            "\"pin\":" + String(pin) + ","
-            "\"value\":" + String(value) +
-            "}";
-
-    }
+    int value = digitalRead(pin);
 
     return
-        "{\"status\":\"error\","
-        "\"reason\":\"invalid_input_mode\","
-        "\"pin\":" + String(pin) +
-        "}";
+      "{\"status\":\"success\","
+      "\"method\":\"digitalread\","
+      "\"pin\":" + String(pin) + ","
+      "\"value\":" + String(value) +
+      "}";
+
+  }
+  else if (mode == "analogread") {
+
+    int value = analogRead(pin);
+
+    return
+      "{\"status\":\"success\","
+      "\"method\":\"analogread\","
+      "\"pin\":" + String(pin) + ","
+      "\"value\":" + String(value) +
+      "}";
+
+  }
+
+  return
+    "{\"status\":\"error\","
+    "\"reason\":\"invalid_input_mode\","
+    "\"pin\":" + String(pin) +
+    "}";
 }
 
-// ============================================================
-// 控制伺服馬達旋轉至指定角度
-// 支援 SG90 等標準伺服馬達的絕對角度控制
-// servo：AmebaServo 實例（傳參考，避免複製）
-// pin  ：伺服馬達訊號腳位
-// angle：目標角度（0-180 度）
-// ============================================================
+// 控制伺服馬達轉至指定角度
+// servo 以引用傳遞，便於未來擴展支援多個伺服腳位
+// 角度以 constrain 限制在 0–180°，與 toolPinOutput 的防護策略一致
+// 若腳位未定義於確認清單，executeTool 會回傳 undefined_servo_pin 錯誤
 String tool_servo(AmebaServo &servo, int pin, int angle) {
-    if (!servo.attached())
-        servo.attach(pin);           // 若尚未附加則先附加腳位
-    angle = constrain(angle, 0, 180);  // 限制角度在有效範圍（硬體安全防護）
-    servo.write(angle);
+  if (!servo.attached())
+    servo.attach(pin);
+  angle = constrain(angle, 0, 180);  // 硬體層角度安全限制
+  servo.write(angle);
 
-    return
-        "{\"status\":\"success\","
-        "\"method\":\"servo\","
-        "\"pin\":" + String(pin) + ","
-        "\"angle\":" + String(angle) + "}";
+  return
+    "{\"status\":\"success\","
+    "\"method\":\"servo\","
+    "\"pin\":" + String(pin) + ","
+    "\"angle\":" + String(angle) + "}";
 }
 
-// ============================================================
 // 讀取 DHT11 溫濕度感測器數值
-// 回傳含溫度（°C）與濕度（%RH）的 JSON 字串
-// 若讀取失敗（isnan）則回傳錯誤 JSON
-// ============================================================
+// 使用 isnan() 處理感測器已知的讀取失敗模式（回傳 NaN）
+// 失敗結果會回饋至 Gemini 對話歷史，讓 AI 能以自然語言回應感測器故障
 String tool_dht11(int pin) {
-  float h = dht.readHumidity();      // 讀取相對濕度（%）
-  float t = dht.readTemperature();   // 讀取溫度（攝氏）
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();  // 預設讀取攝氏溫度
 
-  // 檢查讀取是否失敗（NaN 表示感測器無回應或接線異常）
+  // DHT11 讀取失敗時回傳 NaN，必須以 isnan() 明確檢查
   if (isnan(h) || isnan(t)) {
     return "{\"status\":\"error\","
            "\"reason\":\"dht11_read_failed\","
            "\"pin\":" + String(pin) + "}";
-
   }
 
   return
     "{\"status\":\"success\","
     "\"method\":\"dht11\","
-    "\"pin\":"         + String(pin)  + ","
+    "\"pin\":" + String(pin) + ","
     "\"temperature\":" + String(t) + ","
-    "\"humidity\":"    + String(h) + "}";
+    "\"humidity\":" + String(h) + "}";
 }
 
-// ============================================================
-// 詢問 Gemini 判斷目前工作流程是否已完成
-// 若尚有未完成的硬體動作，Gemini 將回傳下一個 tool_call JSON
-// 若工作流程已完成，Gemini 應回傳 "NONE"（哨兵值，不觸發任何動作）
-// reCheck：是否進行後續檢查（false 時直接返回，不呼叫 Gemini）
-// task   ：可選的原始使用者任務描述（提供上下文給 Gemini）
-// ============================================================
+// 詢問 Gemini 評估當前工作流是否已完成，並自動執行後續工具呼叫
+// reCheck=false：跳過評估（用於批次執行中的中間步驟，避免多餘的 API 請求）
+// reCheck=true：發送評估請求（僅在批次最後一步或單步工具後觸發）
+// task 參數提供原始使用者意圖，讓 Gemini 能對照目標評估完成度
 void evaluateWorkflowContinuation(bool reCheck, String task = "") {
 
-    if (!reCheck) return;   // 多工具陣列中間步驟傳入 false，直接跳過
+  if (!reCheck) return;
 
-    String prompt =
-        "Analyze the execution result and determine whether the workflow is complete.\n";
+  String prompt =
+    "Analyze the execution result and determine whether the workflow is complete.\n";
 
-    if (task != "") {
-        // 提供原始使用者意圖，使 Gemini 能對照目標而非僅看最後一步
-        prompt += "User task request:\n" + task + "\n\n";
-    }
+  if (task != "") {
+    prompt += "User task request:\n" + task + "\n\n";
+  }
 
-    prompt +=
-        "If additional hardware actions are strictly required, "
-        "return ONLY a valid tool_call JSON.\n"
-        "If the workflow is already complete, return EXACTLY: NONE.\n"
-        "If no tool action is required and a user-facing reply is needed, "
-        "respond naturally in the user's language.\n"
-        // 避免在同一工作流程中重複回應相同內容
-        "Avoid repeating the same meaning as your immediately previous response during the same workflow. If a new workflow or task begins, normal responses are allowed even if similar to previous ones.\n"
-        "Do not include explanation or extra text.";
+  prompt +=
+    "If additional hardware actions are strictly required, "
+    "return ONLY a valid tool_call JSON.\n"
+    "If the workflow is already complete, return EXACTLY: NONE.\n"
+    "If no tool action is required and a user-facing reply is needed, "
+    "respond naturally in the user's language.\n"
+    // 防止在同一工作流中重複輸出相同意義的回覆（如重複的「完成」確認訊息）
+    "Avoid repeating the same meaning as your immediately previous response "
+    "during the same workflow. If a new workflow or task begins, normal responses are "
+    "allowed even if similar to previous ones.\n"
+    "Do not include explanation or extra text.";
 
-    handleAgentResponse(
-        geminiChatRequest(prompt, 1)
-    );
+  handleAgentResponse(
+    geminiChatRequest(prompt)
+  );
 }
 
-// ============================================================
-// 執行 Gemini 回傳的工具指令（核心工具派發器）
-// command ：工具名稱（如 "/digitalwrite"）
-// params  ：工具參數（ArduinoJson JsonObject）
-// reCheck ：執行完畢後是否詢問 Gemini 工作流程是否繼續
-//           多工具陣列中，只有最後一個工具傳入 true
-// ============================================================
+// 執行 Gemini 回傳的工具指令，並視情況觸發後續工作流評估
+// reCheck 旗標：批次執行時中間步驟傳 false，最後一步傳 true
 void executeTool(String command, JsonObject params, bool reCheck = true) {
 
-    // ---- 數位 / 類比輸出控制 ----
-    if (command == "/digitalwrite"||command == "/analogwrite") {
-      int pin = params["pin"].as<int>();
-      String pinmode = params["pinmode"].as<String>();
-      int value = params["value"].as<int>();
-      
-      String response = toolPinOutput(pin, pinmode, value);
-    
-      // 將工具呼叫與結果記錄至對話歷史（供後續 Gemini 判斷使用）
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();
+  if (command == "/digitalwrite"||command == "/analogwrite") {
+    int pin = params["pin"].as<int>();
+    String pinmode = params["pinmode"].as<String>();
+    int value = params["value"].as<int>();
 
-      executeToolHistory += command + " ("+String(pin)+", "+pinmode+", "+String(value)+")\n";	  
+    String response = toolPinOutput(pin, pinmode, value);
 
-      evaluateWorkflowContinuation(reCheck);
-    
-    // ---- 數位 / 類比輸入讀取 ----
-    } else if (command == "/digitalread" || command == "/analogread") {
-      int pin = params["pin"].as<int>();
-      String pinmode = params["pinmode"].as<String>();
+    // 將工具呼叫與回應注入對話歷史，讓 Gemini 在後續評估時能參照執行結果
+    historicalMessages += buildGeminiMessage("user", command);
+    historicalMessages += buildGeminiMessage("model", response);
 
-      String response = toolPinInput(pin, pinmode);
+    executeToolHistory += command + " [ "+String(pin)+" | "+pinmode+" | "+String(value)+" ]\n";
 
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();
+    evaluateWorkflowContinuation(reCheck);
 
-	    executeToolHistory += command + " ("+String(pin)+", "+pinmode+")\n";	  
+  }
+  else if (command == "/digitalread" || command == "/analogread") {
+    int pin = params["pin"].as<int>();
+    String pinmode = params["pinmode"].as<String>();
 
-      evaluateWorkflowContinuation(reCheck); 
-      
-    // ---- 靜態影像擷取並傳送至 Telegram ----
-    } else if (command == "/still") {
-      bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
-      String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
-      String tgResponse = telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
+    String response = toolPinInput(pin, pinmode);
 
-      // 跳脫特殊字元，避免注入 JSON 格式
-      tgResponse.replace("\\", "\\\\");
-      tgResponse.replace("\"", "\\\"");   
-       
-      String response =
-        "{\"status\":\"success\","
-        "\"method\":\"still\","
-        "\"result\":\"" + tgResponse + "\"}";
-    
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();
+    historicalMessages += buildGeminiMessage("user", command);
+    historicalMessages += buildGeminiMessage("model", response);
 
-      executeToolHistory += command + " ("+frames+", "+task+")\n";
+    executeToolHistory += command + " [ "+String(pin)+" | "+pinmode+" ]\n";
 
-      evaluateWorkflowContinuation(reCheck, task);
-      
-    // ---- 對話重置 ----
-    } else if (command == "/reset") {
-      geminiChatReset();
-      replayUserMessage("New chat started.");
+    evaluateWorkflowContinuation(reCheck);
 
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", "New chat started.", 1);
-      storeHistoricalMessagesToFile();
+  }
+  else if (command == "/still") {
+    // frames 預設 true（擷取新幀），task 預設 "NONE"
+    bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
+    String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
+    String tgResponse = telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
 
-      executeToolHistory += command + "\n";	  
+    // 跳脫特殊字元，確保 Telegram 回應可安全嵌入 JSON 對話歷史
+    tgResponse.replace("\\", "\\\\");
+    tgResponse.replace("\"", "\\\"");
 
-    // ---- 記憶體狀態查詢 ----
-    } else if (command == "/memory") {
-      String msg = getMemoryInfo();
-      replayUserMessage(msg);
+    String response =
+      "{\"status\":\"success\","
+      "\"method\":\"still\","
+      "\"result\":\"" + tgResponse + "\"}";
 
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", msg, 1);
-      storeHistoricalMessagesToFile();
+    historicalMessages += buildGeminiMessage("user", command);
+    historicalMessages += buildGeminiMessage("model", response);
 
-      executeToolHistory += command + "\n";
+    executeToolHistory += command + " [ "+frames+" | "+task+" ]\n";
 
-      evaluateWorkflowContinuation(reCheck);          
+    // 帶入 task，讓後續評估能對照 /still 執行後是否需要繼續工作流
+    evaluateWorkflowContinuation(reCheck, task);
 
-    // ---- 工具執行歷史（輸出至序列埠）----
-    } else if (command == "/log") {
-      Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
-      replayUserMessage("Please check the serial monitor to view the tool execution log.");
-	
-    // ---- 自然語言對話回覆 ----
-    } else if (command == "/chat") {
-      String reply = params["reply"].as<String>();
-      replayUserMessage(reply);
+  }
+  else if (command == "/syncrtc") {
+    // 將 rtcUpdateStatus 設為 false，觸發下次 Telegram 輪詢時重新同步 RTC
+    rtcUpdateStatus = false;
 
-    // ---- Google 搜尋工具 ----
-    } else if (command == "/search") {
-      String query = params["query"].as<String>();
-      String task = params["task"].as<String>();
-	  
-      // 呼叫 Gemini Search 並將結果傳回代理處理流程
-      String response = geminiSearchRequest(query, 0);
-      handleAgentResponse(response);
-	  
-      executeToolHistory += command + " ("+query+", "+task+")\n";
-      
-      evaluateWorkflowContinuation(reCheck, task);
+    historicalMessages += buildGeminiMessage("user", command);
+    historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly.");
 
-    // ---- 延遲工具（暫停執行）----
-    } else if (command == "/delay") {
-      long milliseconds = params["milliseconds"].as<long>();
-      milliseconds = constrain(milliseconds, 0, 10000);   // 限制最長 10 秒，防止任務長時間阻塞
-  
-      unsigned long start = millis();
-  
-      // 使用 vTaskDelay 讓出 CPU 給其他 FreeRTOS 任務，避免忙等待
-      while (millis() - start < milliseconds) {
-          vTaskDelay(10 / portTICK_PERIOD_MS);
-      }
-  
-      executeToolHistory += command + " (" + String(milliseconds) + ")\n";
-  
-      evaluateWorkflowContinuation(reCheck);
-        
-    // ---- 視覺分析工具 ----
-    } else if (command == "/vision") {
-      // 若未提供 query，使用預設描述性提示
-      String query = params.containsKey("query") ? params["query"].as<String>() : "Describe the image in detail in the user's language. Do not return bounding boxes or coordinates. Respond in natural language only.";
-      bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
-      String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
-	  
-      String response = geminiVisionRequest(query, frames);
-      handleAgentResponse(response);
-	  
-      executeToolHistory += command + " ("+query+", "+frames+", "+task+")\n";
-      
-      evaluateWorkflowContinuation(reCheck, task);
+    executeToolHistory += command + "\n";
+
+  }
+  else if (command == "/getrtc") {
+    String rtcTime = getRtcTimeString();
+    replyUserMessage(rtcTime);
+
+    historicalMessages += buildGeminiMessage("user", command);
+    historicalMessages += buildGeminiMessage("model", rtcTime);
+
+    executeToolHistory += command + "\n";
+
+  }
+  else if (command == "/reset") {
+    geminiChatReset();
+    replyUserMessage("New chat started.");
+
+    // 注意：reset 後需重新加入這兩行，否則空的 historicalMessages 無法記錄本次 reset
+    historicalMessages += buildGeminiMessage("user", command);
+    historicalMessages += buildGeminiMessage("model", "New chat started.");
+
+    executeToolHistory += command + "\n";
+
+  }
+  else if (command == "/memory") {
+    String msg = getMemoryInfo();
+    replyUserMessage(msg);
+
+    historicalMessages += buildGeminiMessage("user", command);
+    historicalMessages += buildGeminiMessage("model", msg);
+
+    executeToolHistory += command + "\n";
+
+    evaluateWorkflowContinuation(reCheck);
+
+  }
+  else if (command == "/log") {
+    // 工具執行歷史輸出至 Serial Monitor，Telegram 只通知使用者查看序列埠
+    Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
+    replyUserMessage("Please check the serial monitor to view the tool execution log.");
+
+    executeToolHistory += command + "\n";
+
+  }
+  else if (command == "/chat") {
+    // 直接回覆自然語言，不觸發工具路由
+    String reply = params["reply"].as<String>();
+    replyUserMessage(reply);
+
+  }
+  else if (command == "/search") {
+    String query = params["query"].as<String>();
+    String task = params["task"].as<String>();
+
+    // 搜尋結果直接進入 handleAgentResponse，允許 Gemini 根據搜尋結果決定下一步
+    String response = geminiSearchRequest(query, false);
+    handleAgentResponse(response);
+
+    executeToolHistory += command + " [ "+query+" | "+task+" ]\n";
+
+    evaluateWorkflowContinuation(reCheck, task);
+
+  }
+  else if (command == "/delay") {
+    long milliseconds = params["milliseconds"].as<long>();
+    // 限制延遲上限 10 秒，防止工作流長時間阻塞
+    milliseconds = constrain(milliseconds, 0, 10000);
+
+    unsigned long start = millis();
+
+    // 使用 vTaskDelay 而非 delay()，在等待期間讓出 CPU 給其他 FreeRTOS 任務
+    while (millis() - start < milliseconds) {
+      vTaskDelay(10 / portTICK_PERIOD_MS);
     }
-  	else if (command == "/reboot") {
-  		replayUserMessage("Rebooting the device, please wait...");
-  		
-  		Serial.println("User requested reboot the device.");
-  		delay(2000);
-		
-      executeToolHistory += command + "\n";
-  		
-  		NVIC_SystemReset();   // 觸發硬體系統重置（Cortex-M 內建）
-  	}	
 
-    // ---- 伺服馬達控制 ----
-    else if (command == "/servo") {
-        int pin   = params["pin"].as<int>();
-        int angle = params["angle"].as<int>();
+    executeToolHistory += command + " [ " + String(milliseconds) + " ]\n";
 
-        String response = "";
-        if (pin == 12)
-            response = tool_servo(servo12, pin, angle);   // 目前僅支援腳位 12
-        else
-            // 未定義的伺服腳位回傳結構化錯誤，而非靜默失敗
-            response = "{\"status\":\"error\","
-                       "\"reason\":\"undefined_servo_pin\","
-                       "\"pin\":" + String(pin) + "}";
+    evaluateWorkflowContinuation(reCheck);
 
-        historicalMessages += buildGeminiMessage("user", command, 1);
-        historicalMessages += buildGeminiMessage("model", response, 1);
-        storeHistoricalMessagesToFile();
+  }
+  else if (command == "/vision") {
+    // query 預設為詳細描述影像的通用提示
+    String query = params.containsKey("query") ? params["query"].as<String>() :
+      "Describe the image in detail in the user's language. Do not return bounding boxes or "
+      "coordinates. Respond in natural language only.";
+    bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
+    String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
 
-        executeToolHistory += command + " (pin=" + String(pin) + ", angle=" + String(angle) + ")\n";
-        evaluateWorkflowContinuation(reCheck);
-    }    
+    // 視覺分析結果進入 handleAgentResponse，讓 Gemini 根據觀察結果決定後續動作
+    String response = geminiVisionRequest(query, frames);
+    handleAgentResponse(response);
 
-    // ---- DHT11 溫濕度感測器讀取 ----
-    else if (command == "/dht11") {
-      int pin = params["pin"].as<int>();
-  
-      String response = tool_dht11(pin);
-  
-      historicalMessages += buildGeminiMessage("user", command, 1);
-      historicalMessages += buildGeminiMessage("model", response, 1);
-      storeHistoricalMessagesToFile();
-  
-      executeToolHistory += command + "," + String(pin) + ", " + response  + ")\n";
-      evaluateWorkflowContinuation(reCheck);
-  
-    }	
+    executeToolHistory += command + " [ "+query+" | "+frames+" | "+task+" ]\n";
 
-    // ---- 未知指令：交由 Gemini 處理 ----
-    else {
-      String response = geminiChatRequest(command, 1);
-      handleAgentResponse(response);
-    }	
+    evaluateWorkflowContinuation(reCheck, task);
+  }
+  else if (command == "/reboot") {
+    replyUserMessage("Rebooting the device, please wait...");
+
+    executeToolHistory += command + "\n";
+
+    Serial.println("User requested reboot the device.");
+    delay(2000);  // 等待訊息傳送完成後再重開機
+
+    NVIC_SystemReset();  // ARM Cortex-M 硬體重置
+  }
+  else if (command == "/servo") {
+    int pin = params["pin"].as<int>();
+    int angle = params["angle"].as<int>();
+
+    String response = "";
+    // 目前僅 pin 12 有確認的伺服馬達實例
+    // 未來如需支援更多腳位，可在此加入對應的 AmebaServo 實例
+    if (pin == 12)
+      response = tool_servo(servo12, pin, angle);
+    else
+      response = "{\"status\":\"error\","
+                 "\"reason\":\"undefined_servo_pin\","
+                 "\"pin\":" + String(pin) + "}";
+
+    historicalMessages += buildGeminiMessage("user", command);
+    historicalMessages += buildGeminiMessage("model", response);
+
+    executeToolHistory += command + " [ " + String(pin) + " | " + String(angle) + " ]\n";
+
+    evaluateWorkflowContinuation(reCheck);
+
+  }
+  else if (command == "/dht11") {
+    int pin = params["pin"].as<int>();
+
+    String response = tool_dht11(pin);
+
+    historicalMessages += buildGeminiMessage("user", command);
+    historicalMessages += buildGeminiMessage("model", response);
+
+    // 將完整回應（含溫濕度數值或錯誤原因）記入工具歷史，便於除錯
+    executeToolHistory += command + " [ " + String(pin) + " | " + response + " ]\n";
+
+    evaluateWorkflowContinuation(reCheck);
+
+  }
+  else if (command == "/help" || command == "/start") {
+
+    String mem = getMemoryInfo();
+    String command = systemCommand;
+    command.replace("<memory>", mem);  // 將記憶體資訊填入模板佔位符
+
+    // 請 Gemini 將說明文字翻譯成使用者語言，並附上快速指令鍵盤
+    command = geminiChatRequest("Reply the following text in the user's language:\n\n" + command);
+
+    replyUserMessage(command, telegrambotKeyboard);
+
+    historicalMessages += buildGeminiMessage("user", "Command list");
+    historicalMessages += buildGeminiMessage("model", command);
+
+  }
+  else {
+    // 未知指令：直接送入 Gemini 處理，允許 AI 自行判斷如何回應
+    String response = geminiChatRequest(command);
+    handleAgentResponse(response);
+
+  }
 }
 
-// ============================================================
-// 解析並處理代理回應（核心訊息路由函式）
-// 支援三種格式：
-//   1. 單一 JSON 物件 { ... }    → 執行單一工具
-//   2. JSON 陣列 [ {...}, {...} ] → 依序執行多個工具
-//   3. 純文字（或 "NONE" 哨兵值）→ 直接回覆使用者或靜默結束
-// 注意：非法 JSON 會被拒絕並記錄至序列埠，不執行任何工具
-// ============================================================
+// 解析並分派 Gemini 回傳的代理回應
+// 支援三種輸出格式：
+//   1. 單一 JSON 物件 {} → 提取 method 與 params，呼叫 executeTool
+//   2. JSON 陣列 []     → 依序執行，遇到不完整項目立即中止（最長有效前綴策略）
+//   3. 自然語言字串     → 清理 Markdown 格式後直接回覆使用者
+// 無效 JSON 一律拒絕執行並輸出 DEBUG 日誌
 void handleAgentResponse(String message) {
 
-  String rawMessage = message;   // 保留原始訊息供文字清理後使用
-  
-  // 清理 JSON 格式專用的跳脫與特殊字元
+  String rawMessage = message;  // 保留原始訊息，用於自然語言回覆時恢復換行格式
+
+  // 預處理：移除可能干擾 JSON 解析的空白字元與跳脫序列
   message.trim();
-  message.replace("\\\"", "\""); 
-  message.replace("\\\\", "\\");             
+  message.replace("\\\"", "\"");
+  message.replace("\\\\", "\\");
   message.replace("\\n", "");
   message.replace("\n", "");
   message.replace("\\r", "");
   message.replace("\r", "");
   message.replace("\\t", "");
   message.replace("\t", "");
-  message.replace(String(char(0)), "");   // 移除 NULL 字元
+  message.replace(String(char(0)), "");  // 移除 null 字元
+  // 移除 Markdown 跳脫字元，避免影響 JSON 解析
   message.replace("\\-", "-");
   message.replace("\\*", "*");
   message.replace("\\_", "_");
-  message.replace("\\#", "#");              
+  message.replace("\\#", "#");
 
-  // ---- 情況1：單一 JSON 工具呼叫物件 ----
   if (message.startsWith("{") && message.endsWith("}")) {
+    // 單一 tool_call 物件
     JsonObject obj;
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, message);
     if (error) {
-        Serial.println("[DEBUG] JSON parse failed: (handleAgentResponse)\n" + message);
-        return;
-    }
-  
-    obj = doc.as<JsonObject>();
-    String method =  obj["method"].as<String>();
-    JsonObject params = obj["params"];
-    executeTool(method, params); 
-  }
-
-  // ---- 情況2：多工具呼叫 JSON 陣列（依序執行）----
-  else if (message.startsWith("[") && message.endsWith("]")) {
-  
-    DynamicJsonDocument doc(8192);
-  
-    DeserializationError error = deserializeJson(doc, message);
-  
-    if (error) {
-      Serial.println("[DEBUG] JSON parse failed: (handleAgentResponse)\n" + message);
+      Serial.println("[DEBUG] JSON 解析失敗：(handleAgentResponse)\n" + message);
       return;
     }
-  
+
+    obj = doc.as<JsonObject>();
+    String method = obj["method"].as<String>();
+    JsonObject params = obj["params"];
+    executeTool(method, params);
+  }
+  else if (message.startsWith("[") && message.endsWith("]")) {
+
+    // 批次 tool_call 陣列：實作「最長有效前綴」執行策略
+    DynamicJsonDocument doc(8192);
+
+    DeserializationError error = deserializeJson(doc, message);
+
+    if (error) {
+      Serial.println("[DEBUG] JSON 解析失敗：(handleAgentResponse)\n" + message);
+      return;
+    }
+
     JsonArray toolsArray = doc.as<JsonArray>();
-    
+
     int toolCount = toolsArray.size();
-    
+
     for (int i = 0; i < toolCount; i++) {
       JsonObject toolObject = toolsArray[i];
-    
+
       if (toolObject.isNull()) continue;
-    
+
       String command = toolObject["method"].as<String>();
       JsonObject params = toolObject["params"];
-    
-      // 若任何一個工具呼叫不完整，立即終止並丟棄後續所有工具
+
+      // 若 method 或 params 缺失，視為不完整工具呼叫，立即中止後續所有執行
       if (command == "" || params.isNull()) {
         Serial.println("Incomplete tool detected → abort remaining tools");
         break;
       }
-    
-      // 只有最後一個工具才需要 reCheck（避免中間工具觸發不必要的後續評估）
+
+      // 只有最後一個工具才觸發 evaluateWorkflowContinuation（reCheck=true），
+      // 中間工具傳 false 以避免多餘的 API 請求
       bool isLast = (i == toolCount - 1);
-    
+
       executeTool(command, params, isLast);
     }
   }
-
-  // ---- 情況3：純文字回覆或 NONE 哨兵值 ----
   else {
     if (message.startsWith("[") || message.startsWith("{")) {
-      // 以 JSON 格式開頭但解析失敗
-      Serial.println("[DEBUG] Json parse failed: (handleAgentResponse)\n" + message);
-      replayUserMessage("Json parse failed (handleAgentResponse). Please type \"Continue\"");
-	  
+      // 以 [ 或 { 開頭但解析失敗：JSON 格式錯誤，提示使用者重試
+      Serial.println("[DEBUG] JSON 解析失敗：(handleAgentResponse)\n" + message);
+      replyUserMessage("Json parse failed (handleAgentResponse). Please type \"Continue\"");
+
     } else if (message != "NONE") {
-      // 非 NONE 的純文字訊息 → 清理格式化符號後回覆使用者
+      // 自然語言回覆：從原始訊息還原，清理 Markdown 格式後傳送
+      // 使用 rawMessage 以保留原始換行格式（\n → 實際換行）
       message = rawMessage;
-  
+
       message.replace("\\\"", "\"");
       message.replace("\\\\", "\\");
       message.replace("\\n", "\n");
-
-      // HTML 實體轉換（避免 Telegram HTML 模式下的格式錯誤）
+      // HTML 特殊字元跳脫（Telegram 使用 parse_mode=HTML）
       message.replace("&", "&amp;");
       message.replace("<", "&lt;");
       message.replace(">", "&gt;");
-
-      // 移除 Markdown 格式符號（Telegram 使用 HTML 格式，不支援 Markdown）
+      // 移除 Markdown 標記，轉換為 Telegram HTML 可顯示格式
       message.replace("### ", "");
       message.replace("## ", "");
       message.replace("# ", "");
       message.replace("__", "");
       message.replace("* ", "• ");
+      // 移除程式碼區塊標記
       message.replace("```json", "");
       message.replace("```cpp", "");
       message.replace("```c++", "");
@@ -2287,40 +2420,34 @@ void handleAgentResponse(String message) {
       message.replace("> ", "");
       message.replace("---", "");
       message.replace("***", "");
-      message.replace("**", "");        
-      message.replace("___", ""); 
-      
-      replayUserMessage(message);
+      message.replace("**", "");
+      message.replace("___", "");
+
+      replyUserMessage(message);
     }
-    // NONE 哨兵值表示工作流程已完成，不做任何動作（靜默結束）
+    // message == "NONE"：工作流完成哨兵值，不執行任何動作，靜默結束
   }
 }
 
-// ============================================================
-// 將語音音訊緩衝區進行 Base64 編碼後傳送至 Gemini 進行語音轉文字（STT）
-// 音訊資料直接內嵌於 JSON 請求主體（inline_data），不需額外上傳步驟。
-//
-// @param fileinput 原始音訊位元組指標（來自 Telegram 的 OGG/Opus 格式）
-// @param fileSize  有效位元組數
-// @param mimeType  MIME 類型字串，例如 "audio/ogg; codecs=opus"
-// @param prompt    隨音訊一同傳送的指令文字
-// @return          轉錄文字，或錯誤訊息字串
-// ============================================================
+// 將音訊緩衝區 Base64 編碼後傳送至 Gemini 進行語音轉文字（STT）
+// 此函數為獨立請求，不使用任何系統提示，只發送音訊資料與轉錄指令
+// 記憶體管理：Base64 緩衝區在建構請求字串後立即 free，
+// 確保大型編碼緩衝區不與後續 SSL 傳輸競爭堆積空間
 String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
 
-  // 計算 Base64 編碼後所需長度並動態分配緩衝區
-  int   encodedLen  = base64_enc_len(fileSize);
+  int encodedLen = base64_enc_len(fileSize);
   char* encodedData = (char*)malloc(encodedLen);
   if (!encodedData) {
-    Serial.println("[STT] malloc failed for Base64 buffer");
+    Serial.println("[STT] Base64 緩衝區 malloc 失敗");
     return "Malloc failed for Base64 encoding.";
   }
   base64_encode(encodedData, (char*)fileinput, fileSize);
 
-  // 清理 prompt 中可能破壞 JSON 的字元
+  // 清理提示中可能破壞 JSON 的字元
   prompt.replace("\n", "");
   prompt.replace("\"", "\\\"");
 
+  // 使用 inline_data 將 Base64 音訊內嵌於請求中，無需額外檔案上傳
   String request =
     "{\"contents\": [{\"role\": \"user\", \"parts\": ["
     "{\"inline_data\": {\"data\": \"" + String(encodedData) + "\","
@@ -2328,23 +2455,22 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
     "{\"text\": \"" + prompt + "\"}"
     "]}]}";
 
-  free(encodedData);   // 釋放 Base64 緩衝區（請求已組好，不再需要）
+  free(encodedData);  // 立即釋放 Base64 緩衝區，避免與 SSL 客戶端競爭堆積
 
   WiFiSSLClient client;
   if (!client.connect("generativelanguage.googleapis.com", 443)) {
-    Serial.println("[STT] Connection to Gemini failed");
+    Serial.println("[STT] 連線 Gemini 失敗");
     return "Connected to Gemini failed.";
   }
 
   client.println("POST /v1beta/models/" + geminiModel +
-                 ":generateContent?key=" + geminiApiKey + " HTTP/1.1");
+    ":generateContent?key=" + geminiApiKey + " HTTP/1.1");
   client.println("Host: generativelanguage.googleapis.com");
   client.println("Content-Type: application/json; charset=utf-8");
   client.println("Content-Length: " + String(request.length()));
   client.println("Connection: close");
   client.println();
 
-  // 分塊傳送請求
   for (int i = 0; i < (int)request.length(); i += 1024) {
     client.print(request.substring(i, i + 1024));
   }
@@ -2354,6 +2480,8 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
   bool headersEnded = false;
   String line = "";
 
+  // 注意：此處使用 client.connected() 而非同時檢查 client.available()，
+  // 適用於 HTTP/1.1 Connection: close 的場景
   while (client.connected() && millis() < timeout) {
     while (client.available()) {
       char c = client.read();
@@ -2383,7 +2511,7 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
   DeserializationError err = deserializeJson(doc, body);
 
   if (err) {
-    Serial.println("[DEBUG] JSON parse failed: (sendAudioFileToGeminiSTT)\n" + body);
+    Serial.println("[DEBUG] JSON 解析失敗：(sendAudioFileToGeminiSTT)\n" + body);
     return "JSON parse failed (sendAudioFileToGeminiSTT). Please try again.";
   }
 
@@ -2394,7 +2522,7 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
 
   if (doc["candidates"][0]["content"]["parts"][0].containsKey("text")) {
     String result = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
-    result.replace("\n", "");   // 移除換行符號（Telegram 訊息不需要）
+    result.replace("\n", "");  // 移除轉錄結果中的換行，確保後續指令解析正確
     return result;
   }
 
@@ -2402,153 +2530,49 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
 }
 
 // ============================================================
-// 使用 HTTP 標頭的 GMT 時間，透過 Gemini 轉換為本地時間並初始化 RTC
-//
-// 設計原理：
-//   Telegram 每次 HTTP 回應標頭中均包含 GMT 時間（Date: 欄位）。
-//   本函式利用此現成資訊，請 Gemini 轉換時區，零成本完成時間同步，
-//   完全不需要額外的 NTP 請求或獨立的時間查詢 API 呼叫。
-//
-// @param gmtTime  從 HTTP 回應標頭擷取的 GMT 時間字串
+// Telegram：依檔案路徑下載檔案
 // ============================================================
-void rtcInitialTime(String gmtTime) {
-  
-  // 要求 Gemini 將 GMT 時間轉換為指定時區的本地時間
-  // 嚴格要求純 JSON 輸出，禁止 Markdown 與說明文字
-  String prompt =
-	  "Convert this GMT datetime to " + timeZone + ".\n"
-	  "GMT datetime: " + gmtTime + "\n\n"
 
-	  "Output requirements:\n"
-	  "- Return ONLY a raw JSON object.\n"
-	  "- Do NOT use markdown.\n"
-	  "- Do NOT use code fences.\n"
-	  "- Do NOT explain anything.\n"
-	  "- Do NOT add extra text.\n"
-	  "- First character must be {.\n"
-	  "- Last character must be }.\n\n"
-
-	  "Required JSON format:\n"
-	  "{\n"
-	  "\"rtcYear\":2026,\n"
-	  "\"rtcMonth\":5,\n"
-	  "\"rtcDay\":28,\n"
-	  "\"rtcHour\":11,\n"
-	  "\"rtcMinute\":35,\n"
-	  "\"rtcSecond\":0\n"
-	  "}";
-
-  // 使用精簡系統提示（不含工具定義），避免 Gemini 誤產生工具呼叫
-  String message = geminiSearchRequest(prompt, false);
-
-  message.trim();
-
-  if (message.startsWith("{") && message.endsWith("}")) {
-
-    DynamicJsonDocument doc(1024);
-    DeserializationError error = deserializeJson(doc, message);
-
-    if (error) {
-      Serial.println("[DEBUG] JSON parse failed\n" + message);
-      return;
-    }
-
-    JsonObject obj = doc.as<JsonObject>();
-
-    // 使用 | 0 作為預設值，防止 JSON 欄位缺失時取得 null
-    rtcYear   = obj["rtcYear"]   | 0;
-    rtcMonth  = obj["rtcMonth"]  | 0;
-    rtcDay    = obj["rtcDay"]    | 0;
-    rtcHour   = obj["rtcHour"]   | 0;
-    rtcMinute = obj["rtcMinute"] | 0;
-    rtcSecond = obj["rtcSecond"] | 0;
-
-    // 標記 RTC 已成功同步，防止後續重複初始化
-    rtcUpdateStatus = true;
-
-  } else {
-    Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
-  }
-
-  // 初始化 RTC 硬體並寫入轉換後的本地時間
-  rtc.Init();
-  long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
-  rtc.Write(initTime);   // 將 epoch 時間戳寫入硬體 RTC
-}
-
-// ============================================================
-// 讀取 RTC 硬體時間並格式化為字串
-// 回傳格式：YYYY/M/D HH:MM:SS
-// 供排程任務注入 Gemini prompt 使用，無需另行搜尋當前時間
-// ============================================================
-String getRtcTimeString() {
-
-  long long epoch = rtc.Read();
-
-  time_t rawtime = (time_t)epoch;
-
-  struct tm *timeinfo = localtime(&rawtime);
-
-  char buffer[32];
-
-  sprintf(
-    buffer,
-    "%04d/%d/%d %02d:%02d:%02d",
-    timeinfo->tm_year + 1900,
-    timeinfo->tm_mon + 1,
-    timeinfo->tm_mday,
-    timeinfo->tm_hour,
-    timeinfo->tm_min,
-    timeinfo->tm_sec
-  );
-
-  return String(buffer);
-}
-
-// ============================================================
-// 從 Telegram CDN 下載指定路徑的檔案至堆積記憶體緩衝區
-// 使用 HTTP/1.0 避免 chunked transfer encoding，確保二進位資料完整讀取
-//
-// @param filePath  由 getTelegramFilePath() 取得的相對路徑
-// @return          指向已分配緩衝區的指標（呼叫方須負責 free()），失敗時回傳 NULL
-// ============================================================
+// 從 Telegram CDN 下載檔案至堆積配置的緩衝區
+// 刻意使用 HTTP/1.0 以禁用分塊傳輸編碼，確保回應主體為純淨二進位串流
+// MAX_FILE_SIZE（256 KB）防止超大檔案導致堆積溢位
 uint8_t* downloadTelegramFile(String filePath) {
 
   uint8_t* voiceFile = (uint8_t*)malloc(MAX_FILE_SIZE);
-  if (!voiceFile) return NULL;   // 記憶體分配失敗
+  if (!voiceFile) return NULL;
 
   downloadedFileSize = 0;
   WiFiSSLClient client;
 
   if (client.connect("api.telegram.org", 443)) {
 
-    // HTTP/1.0 禁用 chunked transfer encoding，使回應主體為純二進位資料
+    // HTTP/1.0：關閉分塊傳輸編碼，回應主體為純二進位串流，方便逐位元組讀取
     client.println("GET /file/bot" + telegrambotToken + "/" + filePath + " HTTP/1.0");
     client.println("Host: api.telegram.org");
     client.println("Connection: close");
     client.println();
 
-    // 消耗 HTTP 標頭，直到找到空行（\r\n\r\n）
-    String header    = "";
-    long   startTime = millis();
+    // 略過 HTTP header，等待直到讀取到 "\r\n\r\n"（header 結束標誌）
+    String header = "";
+    long startTime = millis();
 
     while (client.connected() || client.available()) {
-      if (millis() - startTime > 10000) break;   // 10 秒逾時保護
+      if (millis() - startTime > 10000) break;  // 10 秒 header 讀取逾時
       if (client.available()) {
         char c = client.read();
         header += c;
-        if (header.endsWith("\r\n\r\n")) break;   // 標頭已完全消耗
+        if (header.endsWith("\r\n\r\n")) break;  // Header 讀取完畢
       }
     }
 
-    // 直接讀取二進位主體至輸出緩衝區
+    // 逐位元組讀取二進位主體至緩衝區
     startTime = millis();
     while ((client.connected() || client.available()) &&
            downloadedFileSize < MAX_FILE_SIZE) {
-      if (millis() - startTime > 10000) break;
+      if (millis() - startTime > 10000) break;  // 10 秒主體讀取逾時
       if (client.available()) {
         voiceFile[downloadedFileSize++] = client.read();
-        startTime = millis();   // 每收到一個位元組重置逾時
+        startTime = millis();  // 每收到一個位元組就重置逾時計時器
       }
     }
 
@@ -2559,11 +2583,15 @@ uint8_t* downloadTelegramFile(String filePath) {
 }
 
 // ============================================================
-// 呼叫 Telegram getFile API，將 file_id 轉換為可下載的相對路徑
-//
-// @param fileId  Telegram file_id（例如語音訊息物件中的 file_id）
-// @return        相對檔案路徑，例如 "voice/file_123.oga"
+// Telegram：將 file_id 解析為下載路徑
 // ============================================================
+
+/**
+ * @brief 呼叫 Telegram getFile API，將 file_id 轉換為可下載的相對路徑
+ *
+ * @param fileId  Telegram file_id（例如來自語音訊息物件）
+ * @return        相對路徑字串，例如 "voice/file_123.oga"
+ */
 String getTelegramFilePath(String fileId) {
 
   WiFiSSLClient client;
@@ -2573,14 +2601,14 @@ String getTelegramFilePath(String fileId) {
   if (client.connect("api.telegram.org", 443)) {
 
     client.println("GET /bot" + telegrambotToken +
-                   "/getFile?file_id=" + fileId + " HTTP/1.1");
+      "/getFile?file_id=" + fileId + " HTTP/1.1");
     client.println("Host: api.telegram.org");
     client.println("Connection: close");
     client.println();
 
-    int     waitTime  = 5000;
-    long    startTime = millis();
-    boolean state     = false;
+    int waitTime = 5000;
+    long startTime = millis();
+    boolean state = false;
 
     while ((startTime + waitTime) > millis()) {
       delay(100);
@@ -2612,14 +2640,9 @@ String getTelegramFilePath(String fileId) {
   return filePath;
 }
 
-// ============================================================
-// 輪詢 Telegram Bot API 取得最新使用者訊息（長輪詢機制）
-// 支援文字訊息與語音訊息兩種輸入類型
-// 語音訊息會先透過 Gemini STT 轉為文字再處理
-//
-// 額外功能：從 HTTP 回應標頭擷取 GMT 時間，
-//           在 RTC 尚未初始化時觸發 rtcInitialTime() 進行時間同步
-// ============================================================
+// 透過 Telegram Bot API 長輪詢取得最新使用者訊息
+// 同時處理三種輸入：文字訊息、語音訊息、以及斜線指令
+// 並寄生性地從 HTTP Date: header 取得 GMT 時間，用於 RTC 初始化
 void getTelegramMessage() {
 
   const char* myDomain = "api.telegram.org";
@@ -2628,11 +2651,10 @@ void getTelegramMessage() {
   JsonObject obj;
   DynamicJsonDocument doc(8192);
 
-  String text        = "";
+  String text = "";
   String voiceFileId = "";
-  long   message_id  = 0;
-  
-  // 首次連線時輸出除錯訊息
+  long message_id = 0;
+
   if (lastMessageId == 0)
     Serial.println("Connect to " + String(myDomain));
 
@@ -2640,16 +2662,16 @@ void getTelegramMessage() {
 
     if (lastMessageId == 0) {
       Serial.println("Connection successful");
-    
-      // 連線成功時以 LED 閃爍三次作為視覺指示
+
+      // 首次連線成功：LED 閃爍 3 次作為視覺確認
       for (int i = 0; i < 3; i++) {
         digitalWrite(ledPin, HIGH);
         delay(500);
         digitalWrite(ledPin, LOW);
         delay(500);
       }
-    
-  }
+
+    }
 
     while (botClient.connected()) {
 
@@ -2657,14 +2679,14 @@ void getTelegramMessage() {
       getTime = "";
       getBody = "";
 
-      // 使用 keep-alive 長輪詢：僅取最新一筆訊息（limit=1, offset=-1）
+      // limit=1：只取最新一則訊息；offset=-1：從最新開始；only message 更新類型
       String request = "limit=1&offset=-1&allowed_updates=message";
 
       botClient.println("POST /bot"+telegrambotToken+"/getUpdates HTTP/1.1");
       botClient.println("Host: " + String(myDomain));
       botClient.println("Content-Length: " + String(request.length()));
       botClient.println("Content-Type: application/x-www-form-urlencoded");
-      botClient.println("Connection: keep-alive");
+      botClient.println("Connection: keep-alive");  // 保持長連線，降低重連開銷
       botClient.println();
       botClient.print(request);
 
@@ -2672,7 +2694,6 @@ void getTelegramMessage() {
       unsigned long startTime = millis();
       bool state = false;
 
-      // 讀取 HTTP 回應（分離標頭與主體）
       while ((startTime + waitTime) > millis()){
         delay(100);
 
@@ -2688,17 +2709,16 @@ void getTelegramMessage() {
             getAll += String(c);
 
           if (state)
-            // 主體部分
             getBody += String(c);
           else {
-            // 標頭部分：提取 Date: 欄位（GMT 時間），跳過 Content-Type 行
+            // 寄生式時間擷取：在讀取 header 時同步提取 Date: 欄位
+            // 用於 RTC 初始化，無需額外網路請求
             if (getTime.indexOf("Date:")!=-1)
               getTime = "";
             else if (getTime.indexOf("Content-Type")!=-1)
               getTime += "";
             else
               getTime += String(c);
-
           }
 
           startTime = millis();
@@ -2708,13 +2728,11 @@ void getTelegramMessage() {
           break;
       }
 
-      // 清理擷取到的時間字串
       getTime.replace("Content-Type", "");
       getTime.trim();
-      
-      // RTC 尚未初始化且尚未成功同步，且有有效的 HTTP 時間戳，則立即初始化
-      // rtcUpdateStatus 防止每次輪詢都重複觸發初始化
-      if (getTime != "" && rtcYear == 0 & !rtcUpdateStatus) {
+
+      // 若尚未初始化 RTC 或同步未完成，使用從 header 擷取的 GMT 時間進行初始化
+      if ((getTime != "" && rtcYear == 0) || !rtcUpdateStatus) {
         Serial.println(getTime);
         rtcInitialTime(getTime);
       }
@@ -2723,122 +2741,95 @@ void getTelegramMessage() {
 
       if (getBody == "")
         return;
-      
+
       DeserializationError err = deserializeJson(doc, getBody);
       if (err) {
-        Serial.println("[DEBUG] JSON parse failed: (getTelegramMessage)\n" + getBody);
+        Serial.println("[DEBUG] JSON 解析失敗：(getTelegramMessage)\n" + getBody);
         return;
       }
       obj = doc.as<JsonObject>();
 
       message_id = obj["result"][0]["message"]["message_id"].as<long>();
 
-      // 僅處理尚未處理過的新訊息
       if (message_id!=lastMessageId&&message_id) {
 
         long id_last = lastMessageId;
         lastMessageId = message_id;
 
         if (id_last==0) {
-          // 第一次啟動：標記訊息為已處理，視需要傳送說明訊息
+          // 首次執行：記錄最新訊息 ID 但不處理（避免處理歷史訊息）
           message_id = 0;
 
-          if (shouldSendHelp == true) { 
-    			  executeTool("/help", JsonObject());
-    			  return; 
-    		  }
-		  
-        } else {	
-		
-          // 處理文字訊息
-          if (obj["result"][0]["message"].containsKey("text")) {
-    			  text = obj["result"][0]["message"]["text"].as<String>();
-    			
-    			  if (text=="help"||text=="/help"||text=="/start") {
-    			
-    				String mem = getMemoryInfo();
-    				
-    				// 顯示說明指令列表與系統狀態
-    				String command =
-    				  "Built-in commands:\n"
-    				  "/help command list\n"
-    				  "/still capture and send a camera image\n"
-    				  "/memory show system memory usage\n"
-    				  "/log show tool execution history\n"
-    				  "/reset start a new conversation\n\n"
-    				  "Hardware control supported:\n"
-    				  "- Digital output (0 or 1)\n"
-    				  "- Analog output (0–255)\n"
-    				  "- Digital input reading\n"
-    				  "- Analog input reading\n\n"
-    				  "System Status:\n"
-    				  + mem +
-    				  "\n\nYou can chat with Gemini using natural language.\n"
-    				  "The system supports real-time search and vision-based analysis.\n\n"
-    				  "Documentation:\n"
-    				  "https://github.com/fustyles/fuClaw";
-    			  
-    				// 在 Telegram 顯示快速指令鍵盤
-    				String keyboard = "{\"keyboard\":[[{\"text\":\"/help\"},{\"text\":\"/still\"},{\"text\":\"/memory\"},{\"text\":\"/log\"},{\"text\":\"/reset\"}]],\"one_time_keyboard\":false}";
-    				
-    				replayUserMessage(command, keyboard);
-    
-    				historicalMessages += buildGeminiMessage("user", "Command list", 1);
-    				historicalMessages += buildGeminiMessage("model", command, 1);
-    				storeHistoricalMessagesToFile();      
-    			
-    			  } else if (text=="null") {
-    			
-    				  // "null" 表示無效訊息，中斷連線重連
-    				  botClient.stop();
-    			
-    			  } else {
-              
-    				  // 一般訊息處理：斜線開頭為直接工具指令，否則送至 Gemini 推理
-    				  if (text.startsWith("/")) 
-    				    executeTool(text, JsonObject()); 
-    				  else {
-    				    text = geminiChatRequest(text, 1);
-    				    handleAgentResponse(text);
-    				  } 
-    			  }
-    		  }
+        } else {
 
-          // 處理語音訊息（OGG/Opus 格式）
-    		  else if (doc["result"][0]["message"].containsKey("voice")) {
+          if (obj["result"][0]["message"].containsKey("text")) {
+            text = obj["result"][0]["message"]["text"].as<String>();
+
+            if (text == "help") {
+              // 特殊處理：不以斜線開頭的 help 文字也觸發說明指令
+              executeTool("/help", JsonObject());
+
+            }
+            else if (text=="null") {
+              // 特殊指令：斷開 botClient 連線（可用於強制重連）
+              botClient.stop();
+
+            }
+            else {
+              if (text.startsWith("/"))
+                // 斜線指令：直接分派至 executeTool，跳過 Gemini 推理
+                executeTool(text, JsonObject());
+              else {
+                // 自然語言：送入 Gemini 推理，回應再透過 handleAgentResponse 分派
+                text = geminiChatRequest(text);
+                handleAgentResponse(text);
+              }
+
+            }
+
+            // 每次文字訊息處理後立即持久化對話歷史至 SD 卡
+            storeHistoricalMessagesToFile();
+
+          }
+          else if (doc["result"][0]["message"].containsKey("voice")) {
 
             voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
 
-            // 解析 file_id → CDN 路徑 → 下載原始 OGG 位元組
-            String   filePath  = getTelegramFilePath(voiceFileId);
+            // 語音訊息完整處理流程：
+            // 1. 解析 file_id → 取得 CDN 路徑
+            // 2. 下載 OGG/Opus 音訊至堆積緩衝區
+            // 3. 傳送至 Gemini STT 轉錄為文字
+            // 4. 與文字輸入使用完全相同的處理管線
+            String filePath = getTelegramFilePath(voiceFileId);
             uint8_t* voiceFile = downloadTelegramFile(filePath);
 
             if (voiceFile && downloadedFileSize > 0) {
 
-              // 透過 Gemini STT 轉錄語音為文字，再當作文字指令處理
               text = sendAudioFileToGeminiSTT(
                 voiceFile, downloadedFileSize,
                 "audio/ogg; codecs=opus",
                 "Transcribe this audio to text exactly as spoken.");
 
-                if (text.startsWith("/")) 
-                  executeTool(text, JsonObject()); 
-                else {
-                  text = geminiChatRequest(text, 1);
-                  handleAgentResponse(text);
-                } 
+              if (text.startsWith("/"))
+                executeTool(text, JsonObject());
+              else {
+                text = geminiChatRequest(text);
+                handleAgentResponse(text);
+              }
             }
 
-            // 無論成功與否，務必釋放語音緩衝區以防止記憶體洩漏
-            if (voiceFile) free(voiceFile);
-            
+            if (voiceFile)
+              free(voiceFile);  // 務必釋放語音緩衝區，防止堆積洩漏
+
+            storeHistoricalMessagesToFile();
+
           }
         }
       }
     }
   }
 
-  // WiFi 斷線自動重連機制
+  // WiFi 斷線重連：嘗試重新連線直到成功
   while (WiFi.status() != WL_CONNECTED) {
 
     WiFi.disconnect();
@@ -2847,67 +2838,62 @@ void getTelegramMessage() {
     unsigned long start = millis();
 
     while (WiFi.status() != WL_CONNECTED &&
-      millis() - start < 10000) {
+           millis() - start < 10000) {
       delay(500);
     }
   }
 }
 
-// ============================================================
-// FreeRTOS 背景任務：持續輪詢 Telegram 訊息
-// 每 1000ms 輪詢一次（於 vTaskDelay 中讓出 CPU）
-// ============================================================
+// Telegram 持續輪詢背景任務
+// Stack：16384 bytes（較大，因需處理 JSON 解析與 SSL 連線）
 void task_getTelegramMessage(void *param) {
   (void)param;
   while (1) {
-    
+
     getTelegramMessage();
-    
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    
+
+    vTaskDelay(1000 / portTICK_PERIOD_MS);  // 輪詢間隔 1 秒
+
   }
 }
 
-// ============================================================
-// FreeRTOS 背景任務：防盜偵測定期執行
-// 每 300000ms（5分鐘）觸發一次視覺偵測工作流程
-// 注意：預設已以 /* */ 停用，需手動啟用
-// ============================================================
+// 防盜偵測週期任務（預設停用，需手動在 setup() 中取消注解啟用）
+// 每 5 分鐘觸發一次視覺偵測工作流
+// 執行前停止 botClient 連線，避免與 Telegram 輪詢任務競爭網路資源
 void task_anti_theft_detection(void *param) {
   (void)param;
   while (1) {
-    
-    vTaskDelay(300000 / portTICK_PERIOD_MS);   // 等待 5 分鐘
-    
-    // 暫停 Telegram 任務的活動以避免網路資源競爭
+
+    vTaskDelay(300000 / portTICK_PERIOD_MS);  // 等待 5 分鐘
+
+    // 等待 Telegram 任務閒置，防止網路資源競爭
     botClient.stop();
     vTaskDelay(2000 / portTICK_PERIOD_MS);
-    
+
     Serial.println("\n\nExecuting Skill: anti_theft_detection\n\n");
- 
-    // 呼叫工作流程評估，強制執行防盜偵測技能
+
     evaluateWorkflowContinuation(true, "Must execute skill anti_theft_detection. Return ONLY tool_call JSON.");
 
+    storeHistoricalMessagesToFile();
+
   }
-  
+
 }
 
-// ============================================================
-// FreeRTOS 背景任務：定時排程任務執行
-// 每 60000ms（1分鐘）檢查一次是否有到期的排程任務
-// 注意：預設已以 /* */ 停用，需手動啟用
-// ============================================================
+// 時間排程週期任務（預設停用，需手動在 setup() 中取消注解啟用）
+// 每 1 分鐘檢查一次是否有已到達執行時間的排程任務
+// 僅在 RTC 已初始化（rtcYear != 0）時才進行評估
 void task_time_scheduling(void *param) {
   (void)param;
   while (1) {
-    
-    vTaskDelay(60000 / portTICK_PERIOD_MS);   // 每分鐘執行一次
 
-    // 暫停 Telegram 任務的活動以避免網路資源競爭
+    vTaskDelay(60000 / portTICK_PERIOD_MS);  // 每 1 分鐘檢查一次
+
+    // 等待 Telegram 任務閒置
     botClient.stop();
     vTaskDelay(2000 / portTICK_PERIOD_MS);
 
-    // RTC 尚未初始化則跳過本次週期（不重試，防止時鐘不可信時誤觸發）
+    // 若 RTC 尚未初始化，跳過本次評估（「跳過而非誤觸」策略）
     if (rtcYear == 0) {
       Serial.println("[DEBUG] RTC time is not initialized.");
       continue;
@@ -2915,14 +2901,13 @@ void task_time_scheduling(void *param) {
 
     Serial.println("\n\nExecuting Skill: skill_time_scheduling\n\n");
 
-    // 從 RTC 讀取當前格式化時間並注入 Gemini prompt
     Serial.println("Current Time: "+ getRtcTimeString());
     rtcFormatTime = getRtcTimeString();
-    
-    // 傳遞當前 RTC 時間作為排程評估的上下文
+
     evaluateWorkflowContinuation(
       true,
 
+      // 將目前 RTC 時間注入提示，讓 Gemini 能與對話歷史中的排程任務進行比對
       "Invoke skill: skill_time_scheduling. "
       "This is a deterministic scheduling evaluation step. "
 
@@ -2944,19 +2929,20 @@ void task_time_scheduling(void *param) {
       "6. NEVER infer the timezone. "
       "7. NEVER execute outside the scheduled window."
     );
-    
+
+    storeHistoricalMessagesToFile();
+
   }
 }
 
-// ============================================================
-// WiFi 連線初始化（最多嘗試 2 次，每次等待 5 秒）
-// ============================================================
+// 初始化 WiFi 連線
+// 嘗試兩次，每次等待最多 5 秒
 void initWiFi() {
-    
+
   for (int i=0;i<2;i++) {
 
     if (wifiSsid=="")
-      break;   // 未設定 SSID 則略過
+      break;
 
     WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
     delay(1000);
@@ -2971,154 +2957,147 @@ void initWiFi() {
       delay(500);
 
       if ((StartTime+5000) < millis())
-        break;   // 5 秒逾時則放棄本次嘗試
+        break;
     }
   }
-  
+
 }
 
-// ============================================================
-// 從 JSON 字串解析並設定環境變數
-// 用於從 env.md 檔案載入憑證與設定
-// ============================================================
+// 從 JSON 字串解析並套用環境設定
+// 對應 env.md 的 JSON 格式，覆蓋預設的全域憑證變數
 void setEnvironmentSettings(String jsonString) {
-  
+
   DynamicJsonDocument doc(8192);
   DeserializationError error = deserializeJson(doc, jsonString);
   if (error) {
-    Serial.println("[DEBUG] JSON parse failed : (setEnvironmentSettings)\n" + jsonString);
+    Serial.println("[DEBUG] JSON 解析失敗：(setEnvironmentSettings)\n" + jsonString);
     return;
   }
 
   JsonObject obj = doc.as<JsonObject>();
-  wifiSsid         = obj["wifi_ssid"].as<String>();
-  wifiPassword     = obj["wifi_pass"].as<String>();
-  telegrambotToken = obj["telegramBot_token"].as<String>();
-  telegrambotChatId= obj["telegramBot_chatID"].as<String>();
-  geminiApiKey     = obj["gemini_apikey"].as<String>();
-  timeZone         = obj["timezone"].as<String>();
-  
+  wifiSsid          = obj["wifi_ssid"].as<String>();
+  wifiPassword      = obj["wifi_pass"].as<String>();
+  telegrambotToken  = obj["telegramBot_token"].as<String>();
+  telegrambotChatId = obj["telegramBot_chatID"].as<String>();
+  geminiApiKey      = obj["gemini_apikey"].as<String>();
+  timeZone          = obj["timezone"].as<String>();
+
 }
 
-// ============================================================
-// Arduino 初始化函式（系統啟動時執行一次）
-// 執行順序：
-//   1. 序列埠初始化
-//   2. 指示 LED 初始化
-//   3. 從 SD 卡讀取 env.md 並套用設定
-//   4. WiFi 連線
-//   5. 相機初始化
-//   6. 建立 Telegram 輪詢 FreeRTOS 任務
-//   7. （選用）建立防盜偵測與定時排程任務
-//   8. 從 SD 卡載入 soul / device / skill 設定
-//   9. 建立系統提示詞
-//  10. 還原對話記憶
-//  11. 初始化伺服馬達與 DHT11 感測器
-//  注意：RTC 時間同步不在 setup() 中執行，
-//        而是在首次收到 Telegram 訊息時由輪詢迴圈自動觸發
-// ============================================================
+// Arduino 初始化函數（系統啟動時執行一次）
 void setup() {
   Serial.begin(115200);
 
-  // 初始化指示 LED（用於連線狀態視覺回饋）
+  // 初始化指示燈腳位
   pinMode(ledPin, OUTPUT);
-  
-  // 從 SD 卡讀取環境設定（優先於程式碼中的預設值）
+
+  // 1. 從 SD 卡載入環境設定（WiFi/Telegram/Gemini 憑證）
   String env = getStringFromFile(envFilename);
-  Serial.println("env.md len: " + String(env.length())); 
+  Serial.println("env.md len: " + String(env.length()));
   if (env != "")
     setEnvironmentSettings(env);
 
+  // 2. 連接 WiFi
   initWiFi();
 
-  // 相機設定與初始化（旋轉角度 0 度，通道 0）
+  // 3. 初始化攝影機（320×240 JPEG，通道 0）
   config.setRotation(0);
   Camera.configVideoChannel(0, config);
   Camera.videoInit();
   Camera.channelBegin(0);
 
-  // 建立 Telegram 訊息輪詢任務（堆疊大小 16384 bytes，最高優先級）
-  if (xTaskCreate(
-        task_getTelegramMessage,
-        (const char *)"task_getTelegramMessage",
-        16384,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_getTelegramMessage failed");
-  } 
-  
-/* 以下兩個背景任務預設停用，如需啟用請取消 /* 與 */ 的包圍
- 
-  if (xTaskCreate(
-        task_anti_theft_detection,
-        (const char *)"task_anti_theft_detection",
-        6144,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_anti_theft_detection failed");
-  } 
-
-  if (xTaskCreate(
-        task_time_scheduling,
-        (const char *)"task_time_scheduling",
-        6144,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_time_scheduling failed");
-  }   
-
-*/   
-  
-  // 從 SD 卡載入自訂個性提示詞（若存在則覆蓋預設值）
+  // 4. 從 SD 卡載入客製化人格提示（soul.md），覆蓋預設 geminiRole
   String soul = getStringFromFile(soulFilename);
   Serial.println("Soul.md len: " + String(soul.length()));
   if (soul != "")
     geminiRole = soul;
 
-  // 從 SD 卡載入自訂裝置定義（若存在則覆蓋預設值）
+  // 5. 從 SD 卡載入裝置定義（device.md），覆蓋預設 devicesDefinition
   String device = getStringFromFile(deviceFilename);
   Serial.println("device.md len: " + String(device.length()));
   if (device != "")
     devicesDefinition = device;
 
-  // 從 SD 卡載入自訂技能定義（若存在則覆蓋預設值）
+  // 6. 從 SD 卡載入技能定義（skill.md），覆蓋預設 skillsDefinition
   String skill = getStringFromFile(skillFilename);
   Serial.println("skill.md len: " + String(skill.length()));
   if (skill != "")
     skillsDefinition = skill;
 
-  // 建立完整系統提示詞（含工具定義）
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK", 1);
+  // 7. 組裝兩版系統提示（完整版 / 輕量版）
+  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition +
+    devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition +
+    devicesRule, 0) + buildGeminiMessage("model", "OK");
 
-  // 建立精簡系統提示詞（不含工具定義，用於時間轉換等請求）
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK", 1);  
-    
-  // 從 SD 卡還原歷史對話（裝置重啟後保持對話連續性）
+  // 8. 從 SD 卡恢復持久化對話歷史（memory.md），實現重開機後的對話記憶延續
   String memory = getStringFromFile(memoryFilename);
   Serial.println("memory.md len: " + String(memory.length()));
   if (memory != "")
     historicalMessages = memory;
-    
-  // 初始化伺服馬達（預先附加腳位 12）
+
+  // 9. 初始化伺服馬達（pin 12）
   servo12.attach(12);
 
-  // 初始化 DHT11 感測器
-  dht.begin();	
+  // 10. 初始化 DHT11 感測器
+  dht.begin();
+
+  // 11. 建立 Telegram 輪詢任務（主要使用者互動任務，Stack 16KB）
+  if (xTaskCreate(
+    task_getTelegramMessage,
+    (const char *)"task_getTelegramMessage",
+    16384,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  )!= pdPASS) {
+
+    Serial.println("Create task_getTelegramMessage failed");
+  }
+
+  /*
+  // 以下兩個任務預設停用，需主動取消注解才能啟用
+  // 啟用後將開始自主背景偵測與排程執行，請確認硬體安全後再開啟
+
+  if (xTaskCreate(
+    task_anti_theft_detection,
+    (const char *)"task_anti_theft_detection",
+    6144,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  )!= pdPASS) {
+
+    Serial.println("Create task_anti_theft_detection failed");
+  } 
+
+  if (xTaskCreate(
+    task_time_scheduling,
+    (const char *)"task_time_scheduling",
+    6144,
+    NULL,
+    tskIDLE_PRIORITY + 1,
+    NULL
+  )!= pdPASS) {
+
+    Serial.println("Create task_time_scheduling failed");
+  } 
+
+  */
+
+  // WiFi 連線成功：LED 快閃 3 次作為啟動完成的視覺確認
+  if (WiFi.status() == WL_CONNECTED) {
+    for (int i=0 ; i<3 ; i++) {
+      digitalWrite(ledPin, 1);
+      delay(300);
+      digitalWrite(ledPin, 0);
+      delay(300);
+    }
+  }
+
 }
 
-// ============================================================
-// Arduino 主迴圈（空函式）
-// 所有邏輯均由 FreeRTOS 任務處理，主迴圈不需執行任何動作
-// ============================================================
+// 主迴圈（空白）
+// 所有工作由 FreeRTOS 任務處理，loop() 不執行任何邏輯
 void loop() {
-  // 所有功能均在 FreeRTOS 任務中執行，此處保持空白
 }
