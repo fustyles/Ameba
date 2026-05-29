@@ -94,8 +94,8 @@ Supported Tools
 /analogwrite <br>    GPIO analog output<br>
 /digitalread <br>    GPIO digital input<br>
 /analogread <br>     GPIO analog input<br>
-/syncrtc <br>        update the hardware RTC
-/getrtc <br>         get the hardware RTC current time  
+/syncrtc <br>        update the hardware RTC<br>
+/getrtc <br>         get the hardware RTC current time<br>
 /still <br>          Capture image<br>
 /vision <br>         Capture + multimodal analysis<br>
 /search <br>         Grounded web search<br>
@@ -538,8 +538,8 @@ Gemini 不使用原生的 function-calling API。
 `/analogwrite` — GPIO 類比輸出<br>
 `/digitalread` — GPIO 數位輸入<br>
 `/analogread` — GPIO 類比輸入<br>
-`/syncrtc` — 更新硬體 RTC（實時時鐘）
-`/getrtc` — 讀取硬體 RTC 當前時間 
+`/syncrtc` — 更新硬體 RTC 實時時鐘<br>
+`/getrtc` — 讀取硬體 RTC 當前時間<br>
 `/still` — 擷取影像<br>
 `/vision` — 擷取影像 + 多模態分析<br>
 `/search` — Grounded 網路搜尋<br>
