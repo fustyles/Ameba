@@ -286,36 +286,42 @@ void executeCommand(String botMessage) {
     sendMessageToTelegram(telegramBot_token, telegramBot_chatID, command, keyboard);
 
   // ---- Force reconnect ----
-  } else if (botMessage == "null") {
+  } 
+  else if (botMessage == "null") {
 
     // Drop the current connection; getTelegramMessage() will reconnect
     botClient.stop();
     getTelegramMessage();
 
   // ---- LED on ----
-  } else if (botMessage == "/on") {
+  } 
+  else if (botMessage == "/on") {
 
     digitalWrite(ledPin, 1);
     sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Turn on", "");
 
   // ---- LED off ----
-  } else if (botMessage == "/off") {
+  } 
+  else if (botMessage == "/off") {
 
     digitalWrite(ledPin, 0);
     sendMessageToTelegram(telegramBot_token, telegramBot_chatID, "Turn off", "");
 
   // ---- Camera snapshot ----
-  } else if (botMessage == "/still") {
+  } 
+  else if (botMessage == "/still") {
 
     sendCapturedImageToTelegram(telegramBot_token, telegramBot_chatID, 1);
 
   // ---- Memory report ----
-  } else if (botMessage == "/memory") {
+  } 
+  else if (botMessage == "/memory") {
 
     sendMessageToTelegram(telegramBot_token, telegramBot_chatID, getMemoryInfo(), "");
 
   // ---- Unknown command ----
-  } else {
+  } 
+  else {
 
     sendMessageToTelegram(
       telegramBot_token, telegramBot_chatID,
