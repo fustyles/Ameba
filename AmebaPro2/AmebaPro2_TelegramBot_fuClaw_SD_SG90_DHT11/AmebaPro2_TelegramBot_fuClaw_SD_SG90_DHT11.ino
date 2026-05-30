@@ -1243,7 +1243,7 @@ void rtcInitialTime(String gmtTime) {
   long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
   rtc.Write(initTime);
 
-  replyUserMessage("RTC START: " + getRtcTimeString(), "");
+  replyUserMessage("RTC START: " + getRtcTimeString(), telegrambotKeyboard);
 }
 
 String getRtcTimeString() {
