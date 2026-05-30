@@ -1,6 +1,6 @@
 /*
 ------------------------------------------------------------
-fuClaw AI Telegram Assistant with Gemini Integration
+fuClaw Embedded AI Agent Framework
 ------------------------------------------------------------
 
 Author:
@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-29 19:00
+Build Date: 2026-05-30
 
 ------------------------------------------------------------
 Overview
@@ -31,32 +31,38 @@ on Realtek Ameba Pro2 devices:
 
 It combines:
 
-- Telegram Bot API (HTTPS long polling)
+- MQTT messaging
 - Google Gemini generateContent API
 - Gemini grounded web search
 - Gemini multimodal vision reasoning
+- Gemini speech-to-text processing
 - Prompt-driven JSON tool routing
 - GPIO digital / analog I/O control
-- Camera capture and image upload
+- Camera capture and image publishing
+- Servo motor control
+- DHT11 sensor integration
 - Persistent conversation memory
+- SD card runtime storage
 - FreeRTOS concurrent task scheduling
 
 The runtime acts as a hybrid autonomous agent:
 
-Conversation + Reasoning + Tools + Vision + Memory + Hardware
+Conversation + Reasoning + Tools + Vision + Memory + Skills + Hardware
 
 ------------------------------------------------------------
 Runtime Architecture
 ------------------------------------------------------------
 
-Telegram User
+MQTT User
       ↓
-Telegram Polling Task
+MQTT Broker
+      ↓
+MQTT Runtime Task
       ↓
 Message Router
       ↓
-Gemini Reasoning Engine
-(Chat / Search / Vision / Workflow)
+Gemini Agent Engine
+(Chat / Search / Vision)
       ↓
 JSON tool_call output
       ↓
@@ -67,6 +73,8 @@ Tool Dispatcher
 Hardware / Search / Vision Execution
       ↓
 Result injection into memory
+      ↓
+Workflow evaluation
       ↓
 Natural language reply
 
@@ -83,59 +91,142 @@ Instead:
 - Gemini emits structured JSON tool_call responses
 - Local firmware validates all tool calls
 - Invalid JSON is rejected
-- Execution is strictly sequential
+- Execution is locally controlled
 - Hardware actions are never simulated
+- Tool results are injected back into memory
 
 Atomic execution rule:
 
-One response may perform only ONE hardware action:
+One hardware operation per tool execution:
 
 - one pin
 - one operation
 - one value
 
-Multi-step workflows are executed step-by-step.
+Complex workflows are executed step-by-step through
+reasoning, execution, observation and re-evaluation.
+
+------------------------------------------------------------
+Workflow Engine
+------------------------------------------------------------
+
+fuClaw supports autonomous multi-step workflows.
+
+Execution cycle:
+
+Reason
+  ↓
+Tool Call
+  ↓
+Execution
+  ↓
+Result Injection
+  ↓
+Workflow Re-Evaluation
+  ↓
+Continue or Finish
+
+The agent can determine whether:
+
+- additional actions are required
+- additional observations are needed
+- the workflow is already complete
 
 ------------------------------------------------------------
 Supported Tools
 ------------------------------------------------------------
 
+GPIO
+
 /digitalwrite   GPIO digital output
 /analogwrite    GPIO analog output
 /digitalread    GPIO digital input
 /analogread     GPIO analog input
-/syncrtc        update the hardware RTC
-/getrtc         get the hardware RTC current time   
-/still          Capture image  
-/vision         Capture + multimodal analysis
+
+Camera
+
+/still          Capture image and publish via MQTT
+/vision         Capture image and analyze with Gemini
+
+Device Control
+
+/servo          Servo motor control
+/dht11          Temperature and humidity sensing
+
+Time
+
+/syncrtc        Synchronize RTC
+/getrtc         Read RTC time
+
+Agent Utilities
+
 /search         Grounded web search
-/delay          Pause execution for specified milliseconds
-/memory         Runtime memory diagnostics
-/log            Show tool execution history
-/reset          Reset conversation state
 /chat           Natural language reply
-/reboot         Reboot the device
+/delay          Pause execution
+/memory         Runtime memory diagnostics
+/log            Tool execution history
+/reset          Reset conversation state
+/reboot         Reboot device
 
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
 
 env.json
-  WiFi / Telegram / Gemini credentials / Time zone
+
+  WiFi / MQTT / Gemini credentials
+  Time zone configuration
 
 device.md
-  Devices definition
+
+  Hardware definitions
 
 skill.md
-  Skills definition
+
+  Agent skills definition
 
 soul.md
-  Custom assistant personality prompt
+
+  Assistant personality definition
 
 memory.md
-  Conversation history persistence
+
+  Persistent conversation history
+
+memory.md.bak
+
+  Automatic memory backup
 
 Conversation state is restored automatically on boot.
+
+------------------------------------------------------------
+Memory Architecture
+------------------------------------------------------------
+
+The runtime maintains:
+
+- System prompts
+- Device definitions
+- Skill definitions
+- Historical conversations
+- Tool execution history
+
+Conversation memory survives reboot and power loss.
+
+------------------------------------------------------------
+Vision Architecture
+------------------------------------------------------------
+
+Camera frames can be:
+
+- Published through MQTT
+- Analyzed by Gemini Vision
+- Reused without recapturing
+
+Supported image transport modes:
+
+- Raw JPEG binary streaming
+- Base64 Data URI encoding
 
 ------------------------------------------------------------
 Hardware Safety
@@ -143,42 +234,54 @@ Hardware Safety
 
 Confirmed device mappings only.
 
-AMB82-mini
-- Green LED: GPIO 24
-- Blue LED : GPIO 23
-
-HUB 8735 Ultra
-- Green LED : GPIO 25
-- Blue LED  : GPIO 26
-- Fill LED  : GPIO 13
-- Button    : GPIO 12 (input only)
-
 Unknown hardware mappings require clarification.
 
-GPIO values are strictly validated before execution.
+GPIO parameters are validated before execution.
+
+Invalid tool calls are rejected by the firmware.
+
+Hardware actions are never assumed or simulated.
 
 ------------------------------------------------------------
 Software Stack
 ------------------------------------------------------------
 
-- WiFi.h
+Core
+
+- FreeRTOS
+- WiFi
 - WiFiSSLClient
 - ArduinoJson
-- FreeRTOS
-- VideoStream
-- Base64
+
+Storage
+
 - AmebaFatFS
+
+Vision
+
+- VideoStream
+- Camera
+
+Networking
+
+- MQTT
+- HTTPS
+
+Utilities
+
+- Base64
 
 ------------------------------------------------------------
 Known Limitations
 ------------------------------------------------------------
 
-- Conversation history grows over time
-- String-heavy heap fragmentation risk
-- Vision encoding is CPU intensive
+- Conversation history grows continuously
+- Heavy String usage may fragment heap memory
+- Base64 image encoding is memory intensive
+- Vision processing consumes significant CPU time
 - Large JSON parsing impacts heap usage
-- Gemini response format handled by ArduinoJson validation layer
-- Recursive tool chaining controlled via reCheck flag and NONE sentinel
+- Workflow recursion depends on model compliance
+- Long-running memory may require periodic reset
 
 ------------------------------------------------------------
 */
@@ -1227,8 +1330,7 @@ String getGeminiDatetime() {
 
         if (getDatetime.indexOf("Date:")!=-1)
           getDatetime = "";
-        else if (getDatetime.indexOf("Content-Type")!=-1) {
-          getDatetime += "";
+        else if (getDatetime.indexOf("Server:")!=-1) {
           waitTime = 0;
           break;
         }
@@ -1239,7 +1341,7 @@ String getGeminiDatetime() {
       }
     }
 
-    getDatetime.replace("Content-Type", "");
+    getDatetime.replace("Server:", "");
     getDatetime.trim();
 
   } else {
