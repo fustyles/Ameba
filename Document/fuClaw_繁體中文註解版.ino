@@ -2433,7 +2433,7 @@ void handleAgentResponse(String message) {
 // 此函數為獨立請求，不使用任何系統提示，只發送音訊資料與轉錄指令
 // 記憶體管理：Base64 緩衝區在建構請求字串後立即 free，
 // 確保大型編碼緩衝區不與後續 SSL 傳輸競爭堆積空間
-String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
+String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
 
   int encodedLen = base64_enc_len(fileSize);
   char* encodedData = (char*)malloc(encodedLen);
@@ -2511,8 +2511,8 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
   DeserializationError err = deserializeJson(doc, body);
 
   if (err) {
-    Serial.println("[DEBUG] JSON 解析失敗：(sendAudioFileToGeminiSTT)\n" + body);
-    return "JSON parse failed (sendAudioFileToGeminiSTT). Please try again.";
+    Serial.println("[DEBUG] JSON 解析失敗：(sendFileToGemini)\n" + body);
+    return "JSON parse failed (sendFileToGemini). Please try again.";
   }
 
   if (doc.containsKey("error")) {
@@ -2805,7 +2805,7 @@ void getTelegramMessage() {
 
             if (voiceFile && downloadedFileSize > 0) {
 
-              text = sendAudioFileToGeminiSTT(
+              text = sendFileToGemini(
                 voiceFile, downloadedFileSize,
                 "audio/ogg; codecs=opus",
                 "Transcribe this audio to text exactly as spoken.");

@@ -389,7 +389,7 @@ void initWiFi() {
  * @param prompt     Instruction text sent alongside the audio
  * @return           Transcribed text, or an error message string
  */
-String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
+String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
 
   int   encodedLen  = base64_enc_len(fileSize);
   char* encodedData = (char*)malloc(encodedLen);
@@ -727,7 +727,7 @@ void getTelegramMessage() {
             if (voiceFile && downloadedFileSize > 0) {
 
               // Transcribe with Gemini and treat result as a text command
-              text = sendAudioFileToGeminiSTT(
+              text = sendFileToGemini(
                 voiceFile, downloadedFileSize,
                 "audio/ogg; codecs=opus",
                 "Transcribe this audio to text exactly as spoken.");

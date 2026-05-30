@@ -2291,7 +2291,7 @@ void handleAgentResponse(String message) {
 
 // Base64-encode an audio buffer and send it to Gemini for transcription.
 
-String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
+String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
 
   int   encodedLen  = base64_enc_len(fileSize);
   char* encodedData = (char*)malloc(encodedLen);
@@ -2365,8 +2365,8 @@ String sendAudioFileToGeminiSTT(uint8_t* fileinput, size_t fileSize, String mime
   DeserializationError err = deserializeJson(doc, body);
 
   if (err) {
-    Serial.println("[DEBUG] JSON parse failed: (sendAudioFileToGeminiSTT)\n" + body);
-    return "JSON parse failed (sendAudioFileToGeminiSTT). Please try again.";
+    Serial.println("[DEBUG] JSON parse failed: (sendFileToGemini)\n" + body);
+    return "JSON parse failed (sendFileToGemini). Please try again.";
   }
 
   if (doc.containsKey("error")) {
@@ -2643,7 +2643,7 @@ void getTelegramMessage() {
             if (voiceFile && downloadedFileSize > 0) {
 
               // Transcribe with Gemini and treat result as a text command
-              text = sendAudioFileToGeminiSTT(
+              text = sendFileToGemini(
                 voiceFile, downloadedFileSize,
                 "audio/ogg; codecs=opus",
                 "Transcribe this audio to text exactly as spoken.");

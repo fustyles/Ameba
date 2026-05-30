@@ -284,7 +284,7 @@ Tools can be added, modified, or removed entirely at the text level. Both `skill
 Every JSON output is validated through ArduinoJson before execution. Malformed responses are rejected outright — there is no ambiguous partial execution. The system enforces a strict separation between two output modes — **valid `tool_call` JSON** and **natural language reply** — and prohibits mixing them, making the entire control flow highly predictable.
 
 ### Dual System Prompt Strategy
-The framework maintains two compiled system prompts: `systemContent` (full, with tool definitions) and `systemContentNoTools` (lightweight, without tool definitions). The `tools` boolean parameter in `geminiChatRequest()` and `geminiSearchRequest()` selects between them at call time. The STT pipeline (`sendAudioFileToGeminiSTT()`) is purpose-built as a standalone transcription call that uses neither system prompt — it sends only the audio data and a minimal transcription instruction, keeping token usage minimal and avoiding any tool-routing interference in a context that requires only raw text output.
+The framework maintains two compiled system prompts: `systemContent` (full, with tool definitions) and `systemContentNoTools` (lightweight, without tool definitions). The `tools` boolean parameter in `geminiChatRequest()` and `geminiSearchRequest()` selects between them at call time. The STT pipeline (`sendFileToGemini()`) is purpose-built as a standalone transcription call that uses neither system prompt — it sends only the audio data and a minimal transcription instruction, keeping token usage minimal and avoiding any tool-routing interference in a context that requires only raw text output.
 
 ---
 
@@ -713,7 +713,7 @@ Claude 評價
 所有 JSON 輸出在執行前都會經過 ArduinoJson 驗證。格式錯誤的回應會被直接拒絕——不存在模糊的部分執行情況。系統強制區分兩種輸出模式——**有效的 `tool_call` JSON** 與**自然語言回覆**——並禁止混用，使整體控制流程具有高度可預測性。
 
 ### 雙系統提示策略
-框架維護兩份編譯好的系統提示：`systemContent`（完整版，含工具定義）與 `systemContentNoTools`（輕量版，不含工具定義）。`geminiChatRequest()` 與 `geminiSearchRequest()` 在呼叫時透過 `tools` 布林參數選擇使用哪一份。STT 管線（`sendAudioFileToGeminiSTT()`）則是一個獨立設計的轉錄呼叫，兩份系統提示均不使用——它只傳送音訊資料與最簡化的轉錄指令，將 token 用量降至最低，並避免在只需要純文字輸出的情境中產生任何工具路由干擾。
+框架維護兩份編譯好的系統提示：`systemContent`（完整版，含工具定義）與 `systemContentNoTools`（輕量版，不含工具定義）。`geminiChatRequest()` 與 `geminiSearchRequest()` 在呼叫時透過 `tools` 布林參數選擇使用哪一份。STT 管線（`sendFileToGemini()`）則是一個獨立設計的轉錄呼叫，兩份系統提示均不使用——它只傳送音訊資料與最簡化的轉錄指令，將 token 用量降至最低，並避免在只需要純文字輸出的情境中產生任何工具路由干擾。
 
 ---
 
