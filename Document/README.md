@@ -59,7 +59,8 @@ SD 卡根目錄/
 - **Telegram Bot Token**：在 Telegram 搜尋 `@BotFather`，輸入 `/newbot` 依指示建立，複製 Token。
 - **Telegram Chat ID**：啟動 Bot 後，傳一則訊息，再用瀏覽器開啟 `https://api.telegram.org/bot<TOKEN>/getUpdates`，找 `"chat":{"id":...}` 欄位。
 - **Gemini API Key**：前往 [Google AI Studio](https://aistudio.google.com)，登入後點選「Get API key」。
-
+- **timezone**：裝置所屬時區。
+  
 ---
 
 ### 0.4 首次燒錄流程 SOP
@@ -127,6 +128,7 @@ SD 卡根目錄/
 ### Agent Pipeline 完整流程圖
 
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_zh-TW.png)  
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_MQTT_zh-TW.png)  
 
 ---
 
