@@ -59,9 +59,6 @@ VideoSetting config(320, 240, CAM_FPS, VIDEO_JPEG, 1);
 // Alternatively use VGA resolution:
 // VideoSetting config(VIDEO_VGA, CAM_FPS, VIDEO_JPEG, 1);
 
-// WiFi AP channel (unused in station mode, kept for reference)
-char channel_ap[] = "2";
-
 // Pointers to the last captured image buffer
 uint32_t img_addr = 0;
 uint32_t img_len  = 0;
