@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-30
+Build Date: 2026-05-30 21:00
 
 ------------------------------------------------------------
 Overview
@@ -1321,6 +1321,7 @@ String getGeminiDatetime() {
 
     int waitTime = 5000;
     unsigned long startTime = millis();
+    bool getStatus = false;
 
     while ((startTime + waitTime) > millis()){
       delay(100);
@@ -1328,11 +1329,13 @@ String getGeminiDatetime() {
       while (client.available()){
         char c = client.read();
 
-        if (getDatetime.indexOf("Date:")!=-1)
-          getDatetime = "";
-        else if (getDatetime.indexOf("Server:")!=-1) {
+        if (getStatus == true && c == '\n') {
           waitTime = 0;
           break;
+        }
+        if (getDatetime.indexOf("Date:")!=-1) {
+          getDatetime = "";
+          getStatus = true;
         }
         else
           getDatetime += String(c);
@@ -1340,10 +1343,9 @@ String getGeminiDatetime() {
         startTime = millis();
       }
     }
-
-    getDatetime.replace("Server:", "");
-    getDatetime.trim();
-
+    
+    client.stop();
+    
   } else {
     getDatetime = "Use grounded search to retrieve the current GMT date and time.";
   }
@@ -1362,6 +1364,9 @@ void rtcInitialTime() {
   String prompt =
     "Convert this GMT datetime to " + timeZone + ".\n"
     "GMT datetime: " + getGeminiDatetime() + "\n\n"
+
+    "Before generating the JSON output, add exactly 4 seconds to the converted local datetime.\n"
+    "Handle minute, hour, day, month, and year rollovers correctly if needed.\n\n"    
 
     "Output requirements:\n"
     "- Return ONLY a raw JSON object.\n"
@@ -2469,100 +2474,6 @@ void handleAgentResponse(String message) {
       replyUserMessage(message);
     }
   }
-}
-
-// Base64-encode an audio buffer and send it to Gemini for transcription.
-
-String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, String prompt) {
-
-  int   encodedLen  = base64_enc_len(fileSize);
-  char* encodedData = (char*)malloc(encodedLen);
-  if (!encodedData) {
-    Serial.println("[STT] malloc failed for Base64 buffer");
-    return "Malloc failed for Base64 encoding.";
-  }
-  base64_encode(encodedData, (char*)fileinput, fileSize);
-
-  prompt.replace("\n", "");
-  prompt.replace("\"", "\\\"");
-
-  String request =
-    "{\"contents\": [{\"role\": \"user\", \"parts\": ["
-    "{\"inline_data\": {\"data\": \"" + String(encodedData) + "\","
-    "\"mime_type\": \"" + mimeType + "\"}},"
-    "{\"text\": \"" + prompt + "\"}"
-    "]}]}";
-
-  free(encodedData);
-
-  WiFiSSLClient client;
-  if (!client.connect("generativelanguage.googleapis.com", 443)) {
-    Serial.println("[STT] Connection to Gemini failed");
-    return "Connected to Gemini failed.";
-  }
-
-  client.println("POST /v1beta/models/" + geminiModel +
-                 ":generateContent?key=" + geminiApiKey + " HTTP/1.1");
-  client.println("Host: generativelanguage.googleapis.com");
-  client.println("Content-Type: application/json; charset=utf-8");
-  client.println("Content-Length: " + String(request.length()));
-  client.println("Connection: close");
-  client.println();
-
-  for (int i = 0; i < (int)request.length(); i += 1024) {
-    client.print(request.substring(i, i + 1024));
-  }
-
-  String body = "";
-  unsigned long timeout = millis() + 20000;
-  bool headersEnded = false;
-  String line = "";
-
-  while (client.connected() && millis() < timeout) {
-    while (client.available()) {
-      char c = client.read();
-
-      if (!headersEnded) {
-        if (c == '\n') {
-          if (line.length() <= 1) {
-            headersEnded = true;
-          }
-          line = "";
-        } else if (c != '\r') {
-          line += c;
-        }
-      } else {
-        body += c;
-      }
-    }
-  }
-
-  client.stop();
-
-  body.trim();
-  int jsonStart = body.indexOf('{');
-  if (jsonStart != -1) body = body.substring(jsonStart);
-
-  DynamicJsonDocument doc(8192);
-  DeserializationError err = deserializeJson(doc, body);
-
-  if (err) {
-    Serial.println("[DEBUG] JSON parse failed: (sendFileToGemini)\n" + body);
-    return "JSON parse failed (sendFileToGemini). Please try again.";
-  }
-
-  if (doc.containsKey("error")) {
-    String msg = "Gemini STT Error: " + doc["error"]["message"].as<String>();
-    return msg;
-  }
-
-  if (doc["candidates"][0]["content"]["parts"][0].containsKey("text")) {
-    String result = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
-    result.replace("\n", "");
-    return result;
-  }
-
-  return "No text returned from Gemini.";
 }
 
 // Initialize WiFi

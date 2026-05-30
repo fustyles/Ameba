@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-29 10:30
+Build Date: 2026-05-29 22:30
 
 ------------------------------------------------------------
 Overview
@@ -1081,6 +1081,7 @@ Return natural conversational response only.
 
 // Serialized system prompt content used as the initial conversation context
 String systemContent = "";
+String systemContentTools = "";
 String systemContentNoTools = "";
 
 // Logs each tool execution as a human-readable record for /log command
@@ -1144,7 +1145,7 @@ String skillFilename = "skill.md";
 String getRtcTimeString();
 void replyUserMessage(String text, String keyboard);
 void handleAgentResponse(String message);
-String geminiChatRequest(String message, bool tools);
+String geminiChatRequest(String message, int tools);
 
 #include "VideoStream.h"
 
@@ -1185,6 +1186,9 @@ void rtcInitialTime(String gmtTime) {
   String prompt =
     "Convert this GMT datetime to " + timeZone + ".\n"
     "GMT datetime: " + gmtTime + "\n\n"
+	
+    "Before generating the JSON output, add exactly 4 seconds to the converted local datetime.\n"
+    "Handle minute, hour, day, month, and year rollovers correctly if needed.\n\n" 
 
     "Output requirements:\n"
     "- Return ONLY a raw JSON object.\n"
@@ -1205,7 +1209,7 @@ void rtcInitialTime(String gmtTime) {
     "\"rtcSecond\":0\n"
     "}";
 
-  String message = geminiChatRequest(prompt, false);
+  String message = geminiChatRequest(prompt, -1);
 
   message.trim();
 
@@ -1498,16 +1502,22 @@ void geminiChatReset() {
   historicalMessages = "";
   executeToolHistory = "";
 
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
   
 }
 
 // Send request to Gemini and return response text
-String geminiChatRequest(String message, bool tools = true) {
+String geminiChatRequest(String message, int tools = 1) {
   historicalMessages += buildGeminiMessage("user", message);
 
-  String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
+  String contents = systemContent + buildGeminiMessage("user", message);
+  if (tools == 1)
+    contents = systemContentTools + historicalMessages;
+  else if (tools == 0)
+    contents = systemContentNoTools + historicalMessages;
+    
 
   String request = "{\"contents\": [" + contents +
                    "],\"generationConfig\": {\"maxOutputTokens\": " +
@@ -1600,10 +1610,14 @@ String geminiChatRequest(String message, bool tools = true) {
 }
 
 // Send Gemini request with Google Search tool enabled
-String geminiSearchRequest(String message, bool tools = true) {
+String geminiSearchRequest(String message, int tools = 1) {
   historicalMessages += buildGeminiMessage("user", message);
 
-  String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
+  String contents = systemContent + buildGeminiMessage("user", message);
+  if (tools == 1)
+    contents = systemContentTools + historicalMessages;
+  else if (tools == 0)
+    contents = systemContentNoTools + historicalMessages;
 
   // Build request with Google Search tool
   String request = "{\"contents\": [" + contents +
@@ -2513,7 +2527,7 @@ void getTelegramMessage() {
 
     if (lastMessageId == 0) {
       Serial.println("Connection successful");
-    
+      
       for (int i = 0; i < 3; i++) {
         digitalWrite(ledPin, HIGH);
         delay(500);
@@ -2846,7 +2860,8 @@ void setup() {
   if (skill != "")
     skillsDefinition = skill;
 
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
+  systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK");  
     
   String memory = getStringFromFile(memoryFilename);
