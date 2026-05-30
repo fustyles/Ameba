@@ -1,8 +1,13 @@
+### fuClaw AI (Telegram Bot)
+
 ![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart.png)  
 
+### fuClaw AI (MQTT)
+
+![AmebaPro2 Telegram Bot](https://fustyles.github.io/fuClaw/Document/fuClaw_AIoT_Agent_System_Flow_Chart_MQTT.png)
 
 ------------------------------------------------------------
-fuClaw AI Telegram Assistant with Gemini Integration
+fuClaw AI Assistant with Gemini Integration
 ------------------------------------------------------------
 
 Author:
