@@ -290,6 +290,10 @@ Known Limitations
 String wifiSsid = "xxxxxxxxxx";
 String wifiPassword = "xxxxxxxxxx";
 
+// AP credentials http://192.168.1.1:81
+String apSsid = "fuclaw";
+String apPassword = "12345678";
+
 String systemCommand =
   "Built-in commands:\n"
   "/help command list\n"
@@ -334,6 +338,8 @@ int geminiMaxOutputTokens = 8192;  // If the AI ​​is unable to transmit comp
 float geminiTemperature = 1.0;
 
 String timeZone = "Taiwan";
+
+String mainPageHTML = "";
 
 // System prompt that defines assistant behavior.
 // Must be JSON-safe (avoid invalid escape characters or unsupported symbols).
@@ -1188,6 +1194,7 @@ Return natural conversational response only.
 
 // Serialized system prompt content used as the initial conversation context
 String systemContent = "";
+String systemContentTools = "";
 String systemContentNoTools = "";
 
 // Logs each tool execution as a human-readable record for /log command
@@ -1211,6 +1218,9 @@ int ledPin = 24;    // green led (AMB82-mini: 24, HUB 8735 Ultra: 25)
 
 // Underlying TCP socket used by PubSubClient
 WiFiClient wifiClient;
+
+char channel_ap[] = "2";
+WiFiServer server(81);
 
 // MQTT client instance bound to the WiFi socket
 PubSubClient mqttClient(wifiClient);
@@ -1254,13 +1264,16 @@ String deviceFilename = "device.md";
 // Skills definition
 String skillFilename = "skill.md";
 
+// Configuration web page
+String mainpageFilename = "index.html";
+
 // Forward declarations
 String buildGeminiMessage(String role, String message, bool comma);
 String getRtcTimeString();
 void replyUserMessage(String text);
 void handleAgentResponse(String message);
-String geminiChatRequest(String message, bool tools);
-String geminiSearchRequest(String message, bool tools);
+String geminiChatRequest(String message, int tools);
+String geminiSearchRequest(String message, int tools);
 
 #include "VideoStream.h"
 
@@ -1652,12 +1665,12 @@ String getStringFromFile(String fileNname) {
 }
 
 // Backup existing historical messages file and save updated messages to SD card
-void storeHistoricalMessagesToFile() {
+void storeDataToFile(String filename, String data) {
   
   fs.begin();
   
   String file_path = String(fs.getRootPath());
-  String currentFile = file_path + "/" + memoryFilename; 
+  String currentFile = file_path + "/" + filename; 
   String backupFile = currentFile + ".bak";  
   
   if (fs.exists(currentFile)) {
@@ -1674,7 +1687,7 @@ void storeHistoricalMessagesToFile() {
   
   if (file) {
     
-    file.println(historicalMessages.c_str());
+    file.println(data.c_str());
     file.close();
   }
   
@@ -1687,16 +1700,21 @@ void geminiChatReset() {
   historicalMessages = "";
   executeToolHistory = "";
 
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
+  systemContent = buildGeminiMessage("user", geminiRole, false) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, false) + buildGeminiMessage("model", "OK");
   systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, false) + buildGeminiMessage("model", "OK");
   
 }
 
 // Send request to Gemini and return response text
-String geminiChatRequest(String message, bool tools = true) {
+String geminiChatRequest(String message, int tools = 1) {
   historicalMessages += buildGeminiMessage("user", message);
 
-  String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
+  String contents = systemContent + buildGeminiMessage("user", message);
+  if (tools == 1)
+    contents = systemContentTools + historicalMessages;
+  else if (tools == 0)
+    contents = systemContentNoTools + historicalMessages;
 
   String request = "{\"contents\": [" + contents +
                    "],\"generationConfig\": {\"maxOutputTokens\": " +
@@ -1789,10 +1807,14 @@ String geminiChatRequest(String message, bool tools = true) {
 }
 
 // Send Gemini request with Google Search tool enabled
-String geminiSearchRequest(String message, bool tools = true) {
+String geminiSearchRequest(String message, int tools = 1) {
   historicalMessages += buildGeminiMessage("user", message);
 
-  String contents = tools ? systemContent + historicalMessages : systemContentNoTools + historicalMessages;
+  String contents = systemContent + buildGeminiMessage("user", message);
+  if (tools == 1)
+    contents = systemContentTools + historicalMessages;
+  else if (tools == 0)
+    contents = systemContentNoTools + historicalMessages;
 
   // Build request with Google Search tool
   String request = "{\"contents\": [" + contents +
@@ -2503,6 +2525,129 @@ void initWiFi() {
   
 }
 
+
+unsigned char h2int(char c) {
+  if (c >= '0' && c <='9'){
+    return((unsigned char)c - '0');
+  }
+  if (c >= 'a' && c <='f'){
+    return((unsigned char)c - 'a' + 10);
+  }
+  if (c >= 'A' && c <='F'){
+    return((unsigned char)c - 'A' + 10);
+  }
+  return(0);
+}
+
+String urldecode(String str) {
+  String encodedString;
+  char c;
+  char code0;
+  char code1;
+  for (int i =0; i < str.length(); i++){
+    c=str.charAt(i);
+    if (c == '+'){
+      encodedString+=' ';
+    } else if (c == '%') {
+      i++;
+      code0=str.charAt(i);
+      i++;
+      code1=str.charAt(i);
+      c = (h2int(code0) << 4) | h2int(code1);
+      encodedString+=c;
+    } else {
+      encodedString+=c;
+    }
+    yield();
+  }
+  return encodedString;
+}
+
+// fuClaw configuration web page. Users can set system parameters from the webpage.
+void task_getRequest(void *param) {
+  (void)param;
+  while (1) {
+	  
+    WiFiClient client = server.available();
+
+    if (client) {
+      String currentLine = "";  // Buffer to accumulate one line of the HTTP request
+
+      while (client.connected()) {
+        if (client.available()) {
+          char c = client.read();
+
+          if (c == '\n') {
+            if (currentLine.length() == 0) {
+
+              // --- Send HTTP response headers ---
+              client.println("HTTP/1.1 200 OK");
+              client.println("Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept");
+              client.println("Access-Control-Allow-Methods: GET,POST,PUT,DELETE,OPTIONS");
+              client.println("Content-Type: text/html; charset=utf-8");
+              client.println("Access-Control-Allow-Origin: *");
+              client.println("X-Content-Type-Options: nosniff");
+              client.println("Cache-Control: no-cache");
+              client.println("Connection: close");
+              client.println();  // Blank line required to end headers
+
+              if (mainPageHTML == "") {
+                mainPageHTML = getStringFromFile(mainpageFilename);
+                mainPageHTML.replace("wifiSsid", wifiSsid);
+                mainPageHTML.replace("wifiPassword", wifiPassword);
+                mainPageHTML.replace("mqttServer", mqttServer);
+                mainPageHTML.replace("mqttPort", String(mqttPort));
+                mainPageHTML.replace("mqttUser", mqttUser);
+                mainPageHTML.replace("mqttPassword", mqttPassword);
+                mainPageHTML.replace("mqttSubscribeTextTopic", mqttSubscribeTextTopic);
+                mainPageHTML.replace("mqttPublishTextTopic", mqttPublishTextTopic);
+                mainPageHTML.replace("mqttPublishImageTopic", mqttPublishImageTopic);
+                mainPageHTML.replace("geminiApiKey", geminiApiKey);
+              }
+              
+              for (int index = 0; index < mainPageHTML.length(); index += 1024) {
+                client.print(mainPageHTML.substring(index, index + 1024));
+              }
+              
+              mainPageHTML = "";
+
+              break;
+
+            } else {
+              currentLine = "";
+            }
+          }
+          else if (c != '\r') {
+            currentLine += c;
+          }
+
+          // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
+          if ((currentLine.indexOf("GET /save?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+            currentLine = urldecode(currentLine);
+            currentLine.replace("GET /save?", "");
+            currentLine.replace(" HTTP", "");
+            currentLine.trim();
+            
+
+            if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
+              storeDataToFile(envFilename, currentLine);
+              currentLine = "";
+              
+              mainPageHTML = "fuClaw configuration saved successfully.";
+              executeTool("/reboot", JsonObject());
+              
+            }
+              
+          }
+        }
+      }
+
+      client.stop();
+    }
+	
+  }
+}
+
 // ============================================================
 //  MQTT: Inbound Message Callback
 // ============================================================
@@ -2545,7 +2690,7 @@ void callback(char* topic, byte* payload, unsigned int length) {
   
       free(message);                     // Release temporary buffer
       
-      storeHistoricalMessagesToFile();
+      storeDataToFile(memoryFilename, historicalMessages);
     }
 }
 
@@ -2605,7 +2750,7 @@ void task_anti_theft_detection(void *param) {
  
     evaluateWorkflowContinuation(true, "Must execute skill anti_theft_detection. Return ONLY tool_call JSON.");
 
-    storeHistoricalMessagesToFile();
+    storeDataToFile(memoryFilename, historicalMessages);
 
   }
   
@@ -2653,7 +2798,7 @@ void task_time_scheduling(void *param) {
       "7. NEVER execute outside the scheduled window."
     );
 
-    storeHistoricalMessagesToFile();
+    storeDataToFile(memoryFilename, historicalMessages);
     
   }
 }
@@ -2683,6 +2828,10 @@ void setEnvironmentSettings(String jsonString) {
   
 }
 
+String Ip2String(IPAddress ip) {
+  return String(ip[0])+String(".")+String(ip[1])+String(".")+String(ip[2])+String(".")+String(ip[3]);
+}
+
 // Arduino setup
 void setup() {
   Serial.begin(115200);
@@ -2696,6 +2845,20 @@ void setup() {
     setEnvironmentSettings(env);
 
   initWiFi();
+  
+  server.begin();
+
+  if (xTaskCreate(
+        task_getRequest,
+        (const char *)"task_getRequest",
+        16384,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_task_getRequest failed");
+  }    
 
   config.setRotation(0);
   Camera.configVideoChannel(0, config);
@@ -2717,8 +2880,9 @@ void setup() {
   if (skill != "")
     skillsDefinition = skill;
 
-  systemContent = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
-  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK");  
+  systemContent = buildGeminiMessage("user", geminiRole, 0) + buildGeminiMessage("model", "OK");
+  systemContentTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule + skillsDefinition + toolsDefinition, 0) + buildGeminiMessage("model", "OK");
+  systemContentNoTools = buildGeminiMessage("user", geminiRole + devicesDefinition + devicesRule, 0) + buildGeminiMessage("model", "OK"); 
     
   String memory = getStringFromFile(memoryFilename);
   Serial.println("memory.md len: " + String(memory.length()));
@@ -2757,6 +2921,13 @@ void setup() {
 
 */  
 
+  Serial.println("\n\n"); 
+  Serial.println("fuClaw configuration");    
+  Serial.println("AP http://192.168.1.1:81");
+  Serial.println("apSsid = " + apSsid);
+  Serial.println("apPassword = " + apPassword);
+  Serial.println("\n");   
+
   if (WiFi.status() == WL_CONNECTED) {
     for (int i=0 ; i<3 ; i++) {
       digitalWrite(ledPin, 1);
@@ -2764,7 +2935,10 @@ void setup() {
       digitalWrite(ledPin, 0);
       delay(300);      
     }
-  }
+  
+    Serial.println("STA http://" + Ip2String(WiFi.localIP()) + ":81");
+    Serial.println("\n\n");   
+  }  
 
   // ---- MQTT initialisation ----
   // Use non-blocking TCP so the RTOS scheduler is not stalled during I/O
