@@ -230,6 +230,7 @@ float geminiTemperature = 1.0;
 String timeZone = "Taiwan";
 
 String mainPageHTML = "";
+bool mainPageStatus = false;
 
 // Maximum download buffer size for Telegram voice files (256 KB)
 #define MAX_FILE_SIZE 262144
@@ -348,6 +349,10 @@ Never expose:
 - shell-like syntax
 - execution internals
 - raw implementation details
+- message sources
+- timestamps
+- page markers
+- runtime metadata
 
 If tool_call JSON cannot be safely produced:
 
@@ -462,6 +467,42 @@ Do not invent missing values.
 Ask naturally if required information is missing.
 
 ==================================================
+DEVICE STATE RULE
+==================================================
+
+For output devices (LED, relay, fan, actuator):
+
+When the user asks:
+
+- current status
+- is it on
+- is it off
+- state
+- status
+
+The assistant MUST determine the state from:
+
+1. conversation history
+2. tool execution history
+3. stored device state
+
+The assistant MUST NOT use:
+
+- digitalread
+- analogread
+
+to determine the state of an output device.
+
+digitalread and analogread are only allowed when the user explicitly requests:
+
+- read GPIO
+- read pin value
+- inspect electrical state
+- verify hardware level
+
+Device state and GPIO level are different concepts.
+
+==================================================
 SAFETY OVERRIDE
 ==================================================
 
@@ -484,6 +525,39 @@ LANGUAGE RULE
 ==================================================
 
 Always respond using the user's language.
+
+==================================================
+OUTPUT SANITIZATION RULE (CRITICAL)
+==================================================
+
+Conversation history may contain additional metadata automatically
+inserted by the runtime system, including:
+
+message sources
+timestamps
+
+Example:
+
+<PAGE> 2026/5/31 17:35:44 
+<BOT> 2026/5/31 17:35:44 
+
+These values are NOT part of the conversation.
+
+They exist only for history tracking and context management.
+
+The assistant must completely ignore them when generating replies.
+
+No assistant response may end with a message source, timestamp.
+
+The assistant must NEVER output any of the following:
+
+- <PAGE>, <BOT>, and similar system or runtime markers.
+- timestamps (any format containing YYYY/M/D HH:MM:SS)
+- system metadata lines
+- runtime logs
+- page markers
+- internal headers
+
 
 )";
 
@@ -910,7 +984,7 @@ BUILT-IN SKILLS REGISTRY
 ==================================================
 
 ==================================================
-SKILL: anti_theft_detection
+SKILL: theft_detection
 ==================================================
 
 Goal:
@@ -1153,14 +1227,15 @@ String deviceFilename = "device.md";
 // Skills definition
 String skillFilename = "skill.md";
 
-// Configuration web page
-String mainpageFilename = "index.html";
+// Web page
+String mainpageFilename = "index.html";    // Configuration
+String chatpageFilename = "index_chat.html";    // Chat
 
 // Forward declarations
 String getRtcTimeString();
-void replyUserMessage(String text, String keyboard);
-void handleAgentResponse(String message);
-String geminiChatRequest(String message, int tools);
+void replyUserMessage(String workId, String text, String keyboard);
+void handleAgentResponse(String workId, String message);
+String geminiChatRequest(String workId, String message, int tools);
 
 #include "VideoStream.h"
 
@@ -1196,7 +1271,7 @@ DHT dht(DHTPIN, DHTTYPE);
 #define CONFIG_INIC_IPC_HIGH_TP
 
 // Initialize the RTC using Gemini-synchronized local time.
-void rtcInitialTime(String gmtTime) {
+String rtcInitialTime(String gmtTime) {
   
   String prompt =
     "Convert this GMT datetime to " + timeZone + ".\n"
@@ -1224,9 +1299,7 @@ void rtcInitialTime(String gmtTime) {
     "\"rtcSecond\":0\n"
     "}";
 
-  String message = geminiChatRequest(prompt, -1);
-
-  message.trim();
+  String message = geminiChatRequest("[BOT]", prompt, -1);
 
   if (message.startsWith("{") && message.endsWith("}")) {
 
@@ -1236,9 +1309,8 @@ void rtcInitialTime(String gmtTime) {
     if (error) {
       Serial.println("[DEBUG] JSON parse failed\n" + message);
       
-      replyUserMessage("RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.", "");
+      return "RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.";
       
-      return;
     }
 
     JsonObject obj = doc.as<JsonObject>();
@@ -1255,14 +1327,14 @@ void rtcInitialTime(String gmtTime) {
   } else {
     Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
 
-    replyUserMessage("RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.", "");
+    return "RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.";
   }
 
   rtc.Init();
   long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
   rtc.Write(initTime);
 
-  replyUserMessage("RTC START: " + getRtcTimeString(), telegrambotKeyboard);
+  return "";
 }
 
 String getRtcTimeString() {
@@ -1314,7 +1386,8 @@ void telegramSendMessage(String token, String chatid, String text, String keyboa
     bool state = false;
 
     while ((startTime + waitTime) > millis()) {
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+	  
       while (client.available())  {
         char c = client.read();
 
@@ -1395,7 +1468,7 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
     bool state = false;
 
     while ((startTime + waitTime) > millis()) {
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
       while (client.available()) {
         char c = client.read();
@@ -1429,14 +1502,35 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
   return getBody;
 }
 
-void replyUserMessage(String text, String keyboard = "") {
-	telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+void replyUserMessage(String workId, String text, String keyboard = "") {
+Serial.println(text);
+	if (workId.indexOf("<PAGE>") != -1 && text != "" && !text.startsWith("NONE") && !text.startsWith("<PAGE>")) {
+    if (mainPageHTML.indexOf("<PAGE>") != -1)
+      mainPageHTML = mainPageHTML.substring(0, mainPageHTML.indexOf("<PAGE>"));
+		mainPageHTML += text;
+	}
+	else if (workId.startsWith("<BOT>")) {
+    if (text.indexOf("<BOT>") != -1)
+      text = text.substring(0, text.indexOf("<BOT>"));
+		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+	}
+	else if (workId.startsWith("<THEFT_DETECTION>")) {
+    if (text.indexOf("<THEFT_DETECTION>") != -1)
+      text = text.substring(0, text.indexOf("<THEFT_DETECTION>"));
+		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+	}
+	else if (workId.startsWith("<TIME_SCHEDULING>")) {
+    if (text.indexOf("<TIME_SCHEDULING>") != -1)
+      text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));    
+		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+	}
+	else
+		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 }
 
 // Convert role/content pair into Gemini-compatible JSON message object
 String buildGeminiMessage(String role, String message, bool comma = true) {
   
-  message.trim();
   message.replace("\"", "\\\"");
   message.replace("\\\\", "\\");
   
@@ -1524,8 +1618,10 @@ void geminiChatReset() {
 }
 
 // Send request to Gemini and return response text
-String geminiChatRequest(String message, int tools = 1) {
-  historicalMessages += buildGeminiMessage("user", message);
+String geminiChatRequest(String workId, String message, int tools = 1) {
+  String timestamps = "\n" + workId;
+  
+  historicalMessages += buildGeminiMessage("user", message + timestamps);
 
   String contents = systemContent + buildGeminiMessage("user", message);
   if (tools == 1)
@@ -1543,7 +1639,7 @@ String geminiChatRequest(String message, int tools = 1) {
   String responseText = "";
 
   if (client.connect("generativelanguage.googleapis.com", 443)) {
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
     client.println("Content-Type: application/json; charset=utf-8");
@@ -1583,8 +1679,6 @@ String geminiChatRequest(String message, int tools = 1) {
     
     client.stop();
 
-    body.trim();
-
     int jsonStart = body.indexOf('{'); 
     if (jsonStart != -1) { 
       body = body.substring(jsonStart);
@@ -1599,6 +1693,10 @@ String geminiChatRequest(String message, int tools = 1) {
     }  
     else if (doc["candidates"][0]["content"]["parts"][0]["text"]) {
       responseText = doc["candidates"][0]["content"]["parts"][0]["text"].as<String>();
+      //const char* rawText = doc["candidates"][0]["content"]["parts"][0]["text"];
+      //if (rawText) {
+      //  responseText = String(rawText);
+      //}
     } 
     else if (doc["error"]) {
       responseText = "Gemini API Error: " + doc["error"]["message"].as<String>();
@@ -1618,15 +1716,17 @@ String geminiChatRequest(String message, int tools = 1) {
     responseText = "Gemini did not respond. Please try again.";
   }
 
-  historicalMessages += buildGeminiMessage("model", responseText);
+  historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
   
 }
 
 // Send Gemini request with Google Search tool enabled
-String geminiSearchRequest(String message, int tools = 1) {
-  historicalMessages += buildGeminiMessage("user", message);
+String geminiSearchRequest(String workId, String message, int tools = 1) {
+  String timestamps = "\n" + workId;
+  
+  historicalMessages += buildGeminiMessage("user", message + timestamps);
 
   String contents = systemContent + buildGeminiMessage("user", message);
   if (tools == 1)
@@ -1645,7 +1745,7 @@ String geminiSearchRequest(String message, int tools = 1) {
 
   if (client.connect("generativelanguage.googleapis.com", 443)) {
     // Send HTTP Request
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Connection: close");
     client.println("Host: generativelanguage.googleapis.com");
     client.println("Content-Type: application/json; charset=utf-8");
@@ -1682,10 +1782,8 @@ String geminiSearchRequest(String message, int tools = 1) {
       vTaskDelay(1);
     }
     
-    client.stop();
+    client.stop();  
 
-    body.trim();   
-    
     int jsonStart = body.indexOf('{'); 
     if (jsonStart != -1) { 
       body = body.substring(jsonStart);
@@ -1718,14 +1816,16 @@ String geminiSearchRequest(String message, int tools = 1) {
     responseText = "Gemini Search did not respond. Please try again.";
   }
 
-  historicalMessages += buildGeminiMessage("model", responseText);
+  historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
 }
 
 // Capture camera frame and send it to Gemini Vision for multimodal analysis
-String geminiVisionRequest(String message, bool frames = true) {
-  historicalMessages += buildGeminiMessage("user", message);
+String geminiVisionRequest(String workId, String message, bool frames = true) {
+  String timestamps = "\n" + workId;
+  
+  historicalMessages += buildGeminiMessage("user", message + timestamps);
 
   WiFiSSLClient client;
   String responseText = "";
@@ -1738,7 +1838,7 @@ String geminiVisionRequest(String message, bool frames = true) {
       client.stop();
       
       responseText = "Previous image does not exist";
-      historicalMessages += buildGeminiMessage("model", responseText);
+      historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
       return responseText;
     }
@@ -1759,7 +1859,7 @@ String geminiVisionRequest(String message, bool frames = true) {
                   "\"}, {\"inline_data\": {\"mime_type\":\"image/jpeg\",\"data\":\"" + 
                   imageFile + "\"}}]}]}";
 
-    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.0");
     client.println("Host: " + String(myDomain));
     client.println("Content-Type: application/json; charset=utf-8");
     client.println("Content-Length: " + String(Data.length()));
@@ -1796,9 +1896,7 @@ String geminiVisionRequest(String message, bool frames = true) {
       vTaskDelay(1);
     }
     
-    client.stop();
-
-    body.trim();    
+    client.stop();   
 
     int jsonStart = body.indexOf('{'); 
     if (jsonStart != -1) { 
@@ -1832,7 +1930,7 @@ String geminiVisionRequest(String message, bool frames = true) {
     responseText = "Gemini Vision did not respond. Please try again.";
   }
 
-  historicalMessages += buildGeminiMessage("model", responseText);
+  historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
 }
@@ -1981,7 +2079,7 @@ String tool_dht11(int pin) {
 // Ask Gemini to re-check whether the current workflow is complete.
 // Optionally provide the original user task for context-aware continuation.
 // Executes returned tool calls automatically via handleAgentResponse().
-void evaluateWorkflowContinuation(bool reCheck, String task = "") {
+void evaluateWorkflowContinuation(String workId, bool reCheck, String task = "") {
 
     if (!reCheck) return;
 
@@ -2001,13 +2099,12 @@ void evaluateWorkflowContinuation(bool reCheck, String task = "") {
         "Avoid repeating the same meaning as your immediately previous response during the same workflow. If a new workflow or task begins, normal responses are allowed even if similar to previous ones.\n"
         "Do not include explanation or extra text.";
 
-    handleAgentResponse(
-        geminiChatRequest(prompt)
-    );
+    handleAgentResponse(workId, geminiChatRequest(workId, prompt));
 }
 
 // Execute tool commands returned by Gemini
-void executeTool(String command, JsonObject params, bool reCheck = true) {
+void executeTool(String workId, String command, JsonObject params, bool reCheck = true) {
+    String timestamps = "\n" + workId;
 
     if (command == "/digitalwrite"||command == "/analogwrite") {
       int pin = params["pin"].as<int>();
@@ -2016,12 +2113,12 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       
       String response = toolPinOutput(pin, pinmode, value);
     
-      historicalMessages += buildGeminiMessage("user", command);
-      historicalMessages += buildGeminiMessage("model", response);
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
 
-      executeToolHistory += command + " [ "+String(pin)+" | "+pinmode+" | "+String(value)+" ]\n";	  
+      executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" | "+String(value)+" ]\n";	  
 
-      evaluateWorkflowContinuation(reCheck);
+      evaluateWorkflowContinuation(workId, reCheck);
     
     } 
     else if (command == "/digitalread" || command == "/analogread") {
@@ -2030,12 +2127,12 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 
       String response = toolPinInput(pin, pinmode);
 
-      historicalMessages += buildGeminiMessage("user", command);
-      historicalMessages += buildGeminiMessage("model", response);
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
 
-	    executeToolHistory += command + " [ "+String(pin)+" | "+pinmode+" ]\n";	  
+	  executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";	  
 
-      evaluateWorkflowContinuation(reCheck); 
+      evaluateWorkflowContinuation(workId, reCheck); 
       
     } 
     else if (command == "/still") {
@@ -2051,77 +2148,77 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
         "\"method\":\"still\","
         "\"result\":\"" + tgResponse + "\"}";
     
-      historicalMessages += buildGeminiMessage("user", command);
-      historicalMessages += buildGeminiMessage("model", response);
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
 
-      executeToolHistory += command + " [ "+frames+" | "+task+" ]\n";
+      executeToolHistory += workId + " " + command + " [ "+frames+" | "+task+" ]\n";
 
-      evaluateWorkflowContinuation(reCheck, task);
+      evaluateWorkflowContinuation(workId, reCheck, task);
       
     } 
     else if (command == "/syncrtc") {
       rtcUpdateStatus = false;
 
-      historicalMessages += buildGeminiMessage("user", command);
-      historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly.");
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly." + timestamps);
 
-      executeToolHistory += command + "\n";
+      executeToolHistory += workId + " " + command + "\n";
 
     } 
     else if (command == "/getrtc") {
       String rtcTime = getRtcTimeString();
-      replyUserMessage(rtcTime);
+      replyUserMessage(workId, rtcTime);
 
-      historicalMessages += buildGeminiMessage("user", command);
-      historicalMessages += buildGeminiMessage("model", rtcTime);
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", rtcTime + timestamps);
 
-      executeToolHistory += command + "\n";
+      executeToolHistory += workId + " " + command + "\n";
               
     }      
     else if (command == "/reset") {
       geminiChatReset();
-      replyUserMessage("New chat started.");
+      replyUserMessage(workId, "New chat started.");
 
-      historicalMessages += buildGeminiMessage("user", command);
-      historicalMessages += buildGeminiMessage("model", "New chat started.");
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", "New chat started." + timestamps);
 
-      executeToolHistory += command + "\n";	  
+      executeToolHistory += workId + " " + command + "\n";	  
 
     } 
     else if (command == "/memory") {
       String msg = getMemoryInfo();
-      replyUserMessage(msg);
+      replyUserMessage(workId, msg);
 
-      historicalMessages += buildGeminiMessage("user", command);
-      historicalMessages += buildGeminiMessage("model", msg);
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", msg + timestamps);
 
-      executeToolHistory += command + "\n";
+      executeToolHistory += workId + " " + command + "\n";
 
-      evaluateWorkflowContinuation(reCheck);          
+      evaluateWorkflowContinuation(workId, reCheck);          
 
     } 
     else if (command == "/log") {
       Serial.println("\n\nExecute tools history:\n\n"+executeToolHistory+"\n\n");
-      replyUserMessage("Please check the serial monitor to view the tool execution log.");
+      replyUserMessage(workId, "Please check the serial monitor to view the tool execution log.");
 
-      executeToolHistory += command + "\n";
+      executeToolHistory += workId + " " + command + "\n";
       
     } 
     else if (command == "/chat") {
       String reply = params["reply"].as<String>();
-      replyUserMessage(reply);
+      replyUserMessage(workId, reply);
 
     } 
     else if (command == "/search") {
       String query = params["query"].as<String>();
       String task = params["task"].as<String>();
 	  
-      String response = geminiSearchRequest(query, false);
-      handleAgentResponse(response);
+      String response = geminiSearchRequest(workId, query, false);
+      handleAgentResponse(workId, response);
 	  
-      executeToolHistory += command + " [ "+query+" | "+task+" ]\n";
+      executeToolHistory += workId + " " + command + " [ "+query+" | "+task+" ]\n";
       
-      evaluateWorkflowContinuation(reCheck, task);
+      evaluateWorkflowContinuation(workId, reCheck, task);
 
     } 
     else if (command == "/delay") {
@@ -2134,9 +2231,9 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
           vTaskDelay(10 / portTICK_PERIOD_MS);
       }
   
-      executeToolHistory += command + " [ " + String(milliseconds) + " ]\n";
+      executeToolHistory += workId + " " + command + " [ " + String(milliseconds) + " ]\n";
   
-      evaluateWorkflowContinuation(reCheck);
+      evaluateWorkflowContinuation(workId, reCheck);
         
     } 
     else if (command == "/vision") {
@@ -2144,22 +2241,22 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
       String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
 	  
-      String response = geminiVisionRequest(query, frames);
-      handleAgentResponse(response);
+      String response = geminiVisionRequest(workId, query, frames);
+      handleAgentResponse(workId, response);
 	  
-      executeToolHistory += command + " [ "+query+" | "+frames+" | "+task+" ]\n";
+      executeToolHistory += workId + " " + command + " [ "+query+" | "+frames+" | "+task+" ]\n";
       
-      evaluateWorkflowContinuation(reCheck, task);
+      evaluateWorkflowContinuation(workId, reCheck, task);
     }
   	else if (command == "/reboot") {
-  		replyUserMessage("Rebooting the device, please wait...");
+  	  replyUserMessage(workId, "Rebooting the device, please wait...");
 
-      executeToolHistory += command + "\n";
+      executeToolHistory += workId + " " + command + "\n";
   		
-  		Serial.println("User requested reboot the device.");
-  		delay(2000);
+  	  Serial.println("User requested reboot the device.");
+  	  vTaskDelay(2000 / portTICK_PERIOD_MS);
   		
-  		NVIC_SystemReset();
+  	  NVIC_SystemReset();
   	}	
     else if (command == "/servo") {
         int pin   = params["pin"].as<int>();
@@ -2173,12 +2270,12 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
                        "\"reason\":\"undefined_servo_pin\","
                        "\"pin\":" + String(pin) + "}";
 
-        historicalMessages += buildGeminiMessage("user", command);
-        historicalMessages += buildGeminiMessage("model", response);
+        historicalMessages += buildGeminiMessage("user", command + timestamps);
+        historicalMessages += buildGeminiMessage("model", response + timestamps);
 
-        executeToolHistory += command + " [ " + String(pin) + " | " + String(angle) + " ]\n";
+        executeToolHistory += workId + " " + command + " [ " + String(pin) + " | " + String(angle) + " ]\n";
         
-        evaluateWorkflowContinuation(reCheck);
+        evaluateWorkflowContinuation(workId, reCheck);
         
     }    
     else if (command == "/dht11") {
@@ -2186,12 +2283,12 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
   
       String response = tool_dht11(pin);
   
-      historicalMessages += buildGeminiMessage("user", command);
-      historicalMessages += buildGeminiMessage("model", response);
+      historicalMessages += buildGeminiMessage("user", command + timestamps);
+      historicalMessages += buildGeminiMessage("model", response + timestamps);
   
-      executeToolHistory += command + " [ " + String(pin) + " | " + response  + " ]\n";
+      executeToolHistory += workId + " " + command + " [ " + String(pin) + " | " + response  + " ]\n";
       
-      evaluateWorkflowContinuation(reCheck);
+      evaluateWorkflowContinuation(workId, reCheck);
   
     }	
     else if (command == "/help" || command == "/start") {
@@ -2199,28 +2296,27 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       String mem = getMemoryInfo();
       String command = systemCommand;
       command.replace("<memory>", mem);
-      command = geminiChatRequest("Reply the following text in the user's language:\n\n" + command);
+      command = geminiChatRequest(workId, "Reply the following text in the user's language:\n\n" + command);
       
-      replyUserMessage(command, telegrambotKeyboard);
+      replyUserMessage(workId, command, telegrambotKeyboard);
 
-      historicalMessages += buildGeminiMessage("user", "Command list");
-      historicalMessages += buildGeminiMessage("model", command);
+      historicalMessages += buildGeminiMessage("user", "Command list" + timestamps);
+      historicalMessages += buildGeminiMessage("model", command + timestamps);
       
     }      
     else {
-      String response = geminiChatRequest(command);
-      handleAgentResponse(response);
+      String response = geminiChatRequest(workId, command);
+      handleAgentResponse(workId, response);
       
     }	
 }
 
 // Invalid JSON is rejected and logged to Serial.
 // No tool execution occurs on malformed payloads.
-void handleAgentResponse(String message) {
+void handleAgentResponse(String workId, String message) {
 
   String rawMessage = message;
   
-  message.trim();
   message.replace("\\\"", "\""); 
   message.replace("\\\\", "\\");             
   message.replace("\\n", "");
@@ -2235,7 +2331,10 @@ void handleAgentResponse(String message) {
   message.replace("\\_", "_");
   message.replace("\\#", "#");              
 
-  if (message.startsWith("{") && message.endsWith("}")) {
+  if (message.startsWith("{") && message.indexOf("}") !=-1) {
+
+    message = message.substring(0, message.lastIndexOf("}") + 1);
+    
     JsonObject obj;
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, message);
@@ -2247,9 +2346,11 @@ void handleAgentResponse(String message) {
     obj = doc.as<JsonObject>();
     String method =  obj["method"].as<String>();
     JsonObject params = obj["params"];
-    executeTool(method, params); 
+    executeTool(workId, method, params); 
   }
-  else if (message.startsWith("[") && message.endsWith("]")) {
+  else if (message.startsWith("[") && message.indexOf("]") !=-1) {
+
+    message = message.substring(0, message.lastIndexOf("]") + 1);
   
     DynamicJsonDocument doc(8192);
   
@@ -2279,41 +2380,62 @@ void handleAgentResponse(String message) {
     
       bool isLast = (i == toolCount - 1);
     
-      executeTool(command, params, isLast);
+      executeTool(workId, command, params, isLast);
     }
   }
   else {
     if (message.startsWith("[") || message.startsWith("{")) {
       Serial.println("[DEBUG] Json parse failed: (handleAgentResponse)\n" + message);
-      replyUserMessage("Json parse failed (handleAgentResponse). Please type \"Continue\"");
+      replyUserMessage(workId, "Json parse failed (handleAgentResponse). Please type \"Continue\"");
 	  
     } else if (message != "NONE") {
       message = rawMessage;
-  
-      message.replace("\\\"", "\"");
-      message.replace("\\\\", "\\");
-      message.replace("\\n", "\n");
-      message.replace("&", "&amp;");
-      message.replace("<", "&lt;");
-      message.replace(">", "&gt;");
-      message.replace("### ", "");
-      message.replace("## ", "");
-      message.replace("# ", "");
-      message.replace("__", "");
-      message.replace("* ", "• ");
-      message.replace("```json", "");
-      message.replace("```cpp", "");
-      message.replace("```c++", "");
-      message.replace("```c", "");
-      message.replace("```", "");
-      message.replace("`", "");
-      message.replace("> ", "");
-      message.replace("---", "");
-      message.replace("***", "");
-      message.replace("**", "");        
-      message.replace("___", ""); 
+
+      if (workId.startsWith("<PAGE>")) {
+        message.replace("\\\"", "\"");
+        message.replace("\\\\", "\\");
+        message.replace("\\n", "\n");
+        message.replace("### ", "");
+        message.replace("## ", "");
+        message.replace("# ", "");
+        message.replace("__", "");
+        message.replace("* ", "• ");
+        message.replace("```json", "");
+        message.replace("```cpp", "");
+        message.replace("```c++", "");
+        message.replace("```c", "");
+        message.replace("```", "");
+        message.replace("`", "");
+        message.replace("---", "");
+        message.replace("***", "");
+        message.replace("**", "");        
+        message.replace("___", "");
+      }
+      else {
+        message.replace("\\\"", "\"");
+        message.replace("\\\\", "\\");
+        message.replace("\\n", "\n");
+        message.replace("&", "&amp;");
+        message.replace("<", "&lt;");
+        message.replace(">", "&gt;");
+        message.replace("### ", "");
+        message.replace("## ", "");
+        message.replace("# ", "");
+        message.replace("__", "");
+        message.replace("* ", "• ");
+        message.replace("```json", "");
+        message.replace("```cpp", "");
+        message.replace("```c++", "");
+        message.replace("```c", "");
+        message.replace("```", "");
+        message.replace("`", "");
+        message.replace("---", "");
+        message.replace("***", "");
+        message.replace("**", "");        
+        message.replace("___", "");
+      } 
       
-      replyUserMessage(message);
+      replyUserMessage(workId, message);
     }
   }
 }
@@ -2386,7 +2508,6 @@ String sendFileToGemini(uint8_t* fileinput, size_t fileSize, String mimeType, St
 
   client.stop();
 
-  body.trim();
   int jsonStart = body.indexOf('{');
   if (jsonStart != -1) body = body.substring(jsonStart);
 
@@ -2493,7 +2614,7 @@ String getTelegramFilePath(String fileId) {
     boolean state     = false;
 
     while ((startTime + waitTime) > millis()) {
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
       while (client.available()) {
         char c = client.read();
@@ -2525,227 +2646,189 @@ String getTelegramFilePath(String fileId) {
 // Poll Telegram Bot API for latest user message
 void getTelegramMessage() {
 
-  const char* myDomain = "api.telegram.org";
-  String getAll="", getTime = "", getBody = "";
+  const char* myDomain  = "api.telegram.org";
+  String      getAll    = "";
+  String      getTime   = "";
+  String      getBody   = "";
 
-  JsonObject obj;
+  JsonObject          obj;
   DynamicJsonDocument doc(8192);
 
   String text        = "";
   String voiceFileId = "";
   long   message_id  = 0;
-  
+
   if (lastMessageId == 0)
     Serial.println("Connect to " + String(myDomain));
 
-  if (botClient.connect(myDomain, 443)) {
+  if (!botClient.connect(myDomain, 443))
+    return;
 
-    if (lastMessageId == 0) {
-      Serial.println("Connection successful");
-      
-      for (int i = 0; i < 3; i++) {
-        digitalWrite(ledPin, HIGH);
-        delay(500);
-        digitalWrite(ledPin, LOW);
-        delay(500);
-      }
-    
-  }
+  if (lastMessageId == 0)
+    Serial.println("Connection successful");
 
-    while (botClient.connected()) {
+  while (botClient.connected()) {
 
-      getAll = "";
-      getTime = "";
-      getBody = "";
+    getAll  = "";
+    getTime = "";
+    getBody = "";
 
-      String request = "limit=1&offset=-1&allowed_updates=message";
+    String request = "limit=1&offset=-1&allowed_updates=message";
 
-      botClient.println("POST /bot"+telegrambotToken+"/getUpdates HTTP/1.1");
-      botClient.println("Host: " + String(myDomain));
-      botClient.println("Content-Length: " + String(request.length()));
-      botClient.println("Content-Type: application/x-www-form-urlencoded");
-      botClient.println("Connection: keep-alive");
-      botClient.println();
-      botClient.print(request);
+    botClient.println("POST /bot" + telegrambotToken + "/getUpdates HTTP/1.1");
+    botClient.println("Host: "           + String(myDomain));
+    botClient.println("Content-Length: " + String(request.length()));
+    botClient.println("Content-Type: application/x-www-form-urlencoded");
+    botClient.println("Connection: keep-alive");
+    botClient.println();
+    botClient.print(request);
 
-      int waitTime = 5000;
-      unsigned long startTime = millis();
-      bool state = false;
+    int           waitTime  = 5000;
+    unsigned long startTime = millis();
+    bool          state     = false;
 
-      while ((startTime + waitTime) > millis()){
-        delay(100);
+    while ((startTime + waitTime) > millis()) {
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
-        while (botClient.available()){
-          char c = botClient.read();
+      while (botClient.available()) {
+        char c = botClient.read();
 
-          if (c == '\n') {
-            if (getAll.length()==0)
-              state=true;
-            getAll = "";
-          }
-          else if (c != '\r')
-            getAll += String(c);
-
-          if (state)
-            getBody += String(c);
-          else {
-            if (getTime.indexOf("Date:")!=-1)
-              getTime = "";
-            else if (getTime.indexOf("Content-Type")!=-1)
-              getTime += "";
-            else
-              getTime += String(c);
-
-          }
-
-          startTime = millis();
+        if (c == '\n') {
+          if (getAll.length() == 0)
+            state = true;
+          getAll = "";
+        } else if (c != '\r') {
+          getAll += String(c);
         }
 
-        if (getBody.length()>0)
-          break;
+        if (state) {
+          getBody += String(c);
+        } else {
+          if      (getTime.indexOf("Date:")        != -1)  getTime  = "";
+          else if (getTime.indexOf("Content-Type") != -1)  getTime += "";
+          else                                                 getTime += String(c);
+        }
+
+        startTime = millis();
       }
 
-      getTime.replace("Content-Type", "");
-      getTime.trim();
-      
-      if ((getTime != "" && rtcYear == 0) || !rtcUpdateStatus) {
-        Serial.println(getTime);
-        rtcInitialTime(getTime);
-      }
+      if (getBody.length() > 0) break;
+    }
 
-      getBody.trim();
+    getTime.replace("Content-Type", "");
 
-      if (getBody == "")
-        return;
-      
-      DeserializationError err = deserializeJson(doc, getBody);
-      if (err) {
-        Serial.println("[DEBUG] JSON parse failed: (getTelegramMessage)\n" + getBody);
-        return;
-      }
-      obj = doc.as<JsonObject>();
+    String workId = "";
 
-      message_id = obj["result"][0]["message"]["message_id"].as<long>();
+    if ((getTime != "" && rtcYear == 0) || !rtcUpdateStatus) {
+      Serial.println(getTime);
+      String response = rtcInitialTime(getTime);
 
-      if (message_id!=lastMessageId&&message_id) {
+      workId = "<BOT> " + getRtcTimeString();
 
-        long id_last = lastMessageId;
-        lastMessageId = message_id;
+      if (response == "")
+        response = "RTC START: " + getRtcTimeString();
 
-        if (id_last==0) {
-          message_id = 0;
-		  
-        } else {	
-		
-          if (obj["result"][0]["message"].containsKey("text")) {
-    			  text = obj["result"][0]["message"]["text"].as<String>();
-    			
-    			  if (text == "help") {
-              executeTool("/help", JsonObject());
-              
-            } 
-            else if (text=="null") {
-    				  botClient.stop();
-    			
-    			  } 
-    			  else {
-      				if (text.startsWith("/")) 
-      				  executeTool(text, JsonObject()); 
-      				else {
-      				  text = geminiChatRequest(text);
-      				  handleAgentResponse(text);
-      				} 
-              
-    			  }
+      replyUserMessage(workId, response, telegrambotKeyboard);
+    }
 
-           storeDataToFile(memoryFilename, historicalMessages);
-           
-    		  }
-    		  else if (doc["result"][0]["message"].containsKey("voice")) {
+    if (getBody == "") return;
 
-            voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
+    DeserializationError err = deserializeJson(doc, getBody);
+    if (err) {
+      Serial.println("[DEBUG] JSON parse failed: (getTelegramMessage)\n" + getBody);
+      return;
+    }
+    obj = doc.as<JsonObject>();
 
-            // Resolve file_id → CDN path → download raw OGG bytes
-            String   filePath  = getTelegramFilePath(voiceFileId);
-            uint8_t* voiceFile = downloadTelegramFile(filePath);
+    message_id = obj["result"][0]["message"]["message_id"].as<long>();
 
-            if (voiceFile && downloadedFileSize > 0) {
+    if (message_id && message_id != lastMessageId) {
 
-              // Transcribe with Gemini and treat result as a text command
-              text = sendFileToGemini(
-                voiceFile, downloadedFileSize,
-                "audio/ogg; codecs=opus",
-                "Transcribe this audio to text exactly as spoken.");
+      long id_last  = lastMessageId;
+      lastMessageId = message_id;
 
-                if (text.startsWith("/")) 
-                  executeTool(text, JsonObject()); 
-                else {
-                  text = geminiChatRequest(text);
-                  handleAgentResponse(text);
-                } 
-            }
+      if (id_last == 0) {
+        message_id = 0;
 
-            if (voiceFile) 
-              free(voiceFile);   // Always release the voice buffer
+      } else {
+        workId = "<BOT> " + getRtcTimeString();
 
-            storeDataToFile(memoryFilename, historicalMessages);
-            
+        if (obj["result"][0]["message"].containsKey("text")) {
+          text = obj["result"][0]["message"]["text"].as<String>();
+
+          if (text == "help") {
+            executeTool(workId, "/help", JsonObject());
+
+          } else if (text == "null") {
+            botClient.stop();
+
+          } else if (text.startsWith("/")) {
+            executeTool(workId, text, JsonObject());
+
+          } else {
+            text = geminiChatRequest(workId, text);
+            handleAgentResponse(workId, text);
           }
+
+          storeDataToFile(memoryFilename, historicalMessages);
+
+        } else if (doc["result"][0]["message"].containsKey("voice")) {
+          voiceFileId = doc["result"][0]["message"]["voice"]["file_id"].as<String>();
+
+          String   filePath  = getTelegramFilePath(voiceFileId);
+          uint8_t* voiceFile = downloadTelegramFile(filePath);
+
+          if (voiceFile && downloadedFileSize > 0) {
+            text = sendFileToGemini(
+              voiceFile, downloadedFileSize,
+              "audio/ogg; codecs=opus",
+              "Transcribe this audio to text exactly as spoken."
+            );
+
+            if (text.startsWith("/")) {
+              executeTool(workId, text, JsonObject());
+            } else {
+              text = geminiChatRequest(workId, text);
+              handleAgentResponse(workId, text);
+            }
+          }
+
+          if (voiceFile)
+            free(voiceFile);  // Always release the voice buffer
+
+          storeDataToFile(memoryFilename, historicalMessages);
         }
       }
     }
   }
 
-  // Reconnect WiFi if disconnected
   while (WiFi.status() != WL_CONNECTED) {
-
     WiFi.disconnect();
     WiFi.begin((char*)wifiSsid.c_str(), (char*)wifiPassword.c_str());
 
     unsigned long start = millis();
 
-    while (WiFi.status() != WL_CONNECTED &&
-      millis() - start < 10000) {
-      delay(500);
-    }
+    while (WiFi.status() != WL_CONNECTED && millis() - start < 10000)
+      vTaskDelay(500 / portTICK_PERIOD_MS);
   }
 }
 
-unsigned char h2int(char c) {
-  if (c >= '0' && c <='9'){
-    return((unsigned char)c - '0');
-  }
-  if (c >= 'a' && c <='f'){
-    return((unsigned char)c - 'a' + 10);
-  }
-  if (c >= 'A' && c <='F'){
-    return((unsigned char)c - 'A' + 10);
-  }
-  return(0);
-}
-
-String urldecode(String str) {
-  String encodedString;
-  char c;
-  char code0;
-  char code1;
-  for (int i =0; i < str.length(); i++){
-    c=str.charAt(i);
-    if (c == '+'){
-      encodedString+=' ';
-    } else if (c == '%') {
-      i++;
-      code0=str.charAt(i);
-      i++;
-      code1=str.charAt(i);
-      c = (h2int(code0) << 4) | h2int(code1);
-      encodedString+=c;
-    } else {
-      encodedString+=c;
+String urldecode(const String& input) {
+    String result = "";
+    result.reserve(input.length());
+    for (int i = 0; i < (int)input.length(); i++) {
+        if (input[i] == '%' && i + 2 < (int)input.length()) {
+            char hex[3] = { input[i+1], input[i+2], '\0' };
+            uint8_t val = (uint8_t)strtol(hex, nullptr, 16);
+            result.concat((char)val);
+            i += 2;
+        } else if (input[i] == '+') {
+            result += ' ';
+        } else {
+            result += input[i];
+        }
     }
-    yield();
-  }
-  return encodedString;
+    return result;
 }
 
 // fuClaw configuration web page. Users can set system parameters from the webpage.
@@ -2757,6 +2840,7 @@ void task_getRequest(void *param) {
 
     if (client) {
       String currentLine = "";  // Buffer to accumulate one line of the HTTP request
+      
 
       while (client.connected()) {
         if (client.available()) {
@@ -2764,33 +2848,29 @@ void task_getRequest(void *param) {
 
           if (c == '\n') {
             if (currentLine.length() == 0) {
-
-              // --- Send HTTP response headers ---
+            
+              String pageToSend = mainPageHTML;
+              mainPageHTML = "";
+            
               client.println("HTTP/1.1 200 OK");
-              client.println("Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept");
-              client.println("Access-Control-Allow-Methods: GET,POST,PUT,DELETE,OPTIONS");
               client.println("Content-Type: text/html; charset=utf-8");
+              client.println("Content-Length: " + String(pageToSend.length()));
               client.println("Access-Control-Allow-Origin: *");
-              client.println("X-Content-Type-Options: nosniff");
               client.println("Cache-Control: no-cache");
               client.println("Connection: close");
-              client.println();  // Blank line required to end headers
-
-              if (mainPageHTML == "") {
-                mainPageHTML = getStringFromFile(mainpageFilename);
-                mainPageHTML.replace("wifiSsid", wifiSsid);
-                mainPageHTML.replace("wifiPassword", wifiPassword);
-                mainPageHTML.replace("telegrambotToken", telegrambotToken);
-                mainPageHTML.replace("telegrambotChatId", telegrambotChatId);
-                mainPageHTML.replace("geminiApiKey", geminiApiKey);
+              client.println();
+            
+              const char* ptr = pageToSend.c_str();
+              int total  = pageToSend.length();
+              int sent   = 0;
+              while (sent < total) {
+                int chunk   = (total - sent) > 512 ? 512 : (total - sent);
+                int written = client.write((const uint8_t*)(ptr + sent), chunk);
+                if (written > 0) sent += written;
+                else delay(5);
               }
-              
-              for (int index = 0; index < mainPageHTML.length(); index += 1024) {
-                client.print(mainPageHTML.substring(index, index + 1024));
-              }
-              
-              mainPageHTML = "";
-
+              client.flush();
+            
               break;
 
             } else {
@@ -2800,25 +2880,75 @@ void task_getRequest(void *param) {
           else if (c != '\r') {
             currentLine += c;
           }
-
+          
           // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
-          if ((currentLine.indexOf("GET /save?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+            
+            mainPageHTML = getStringFromFile(mainpageFilename);
+            
+            mainPageHTML.replace("wifiSsid", wifiSsid);
+            mainPageHTML.replace("wifiPassword", wifiPassword);
+            mainPageHTML.replace("telegrambotToken", telegrambotToken);
+            mainPageHTML.replace("telegrambotChatId", telegrambotChatId);
+            mainPageHTML.replace("geminiApiKey", geminiApiKey);
+
+            currentLine = "";            
+          } 
+          else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+
+            mainPageHTML = getStringFromFile(chatpageFilename);
+
+            currentLine = "";
+
+          }                      
+          else if ((currentLine.indexOf("GET /save?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+            
+            String workId = "<PAGE> " + getRtcTimeString();
+            
             currentLine = urldecode(currentLine);
             currentLine.replace("GET /save?", "");
             currentLine.replace(" HTTP", "");
-            currentLine.trim();
             
-
             if (currentLine.startsWith("{") && currentLine.endsWith("}")) {
               storeDataToFile(envFilename, currentLine);
-              currentLine = "";
               
               mainPageHTML = "fuClaw configuration saved successfully.";
-              executeTool("/reboot", JsonObject());
+              executeTool(workId, "/reboot", JsonObject());
               
             }
-              
+
+            currentLine = "";
+            
           }
+    			else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+            
+            mainPageStatus = true;
+
+            mainPageHTML = "";
+            
+            String workId = "<PAGE> " + getRtcTimeString();       
+
+            currentLine.replace("GET /message?", "");
+            currentLine.replace(" HTTP/1.1", "");
+
+            if (currentLine != "") {
+              currentLine = urldecode(currentLine);           
+      				
+      				if (currentLine.startsWith("/")) 
+      				  executeTool(workId, currentLine, JsonObject()); 
+      				else {
+      				  currentLine = geminiChatRequest(workId, currentLine);
+      				  handleAgentResponse(workId, currentLine);
+      				}
+      				
+              storeDataToFile(memoryFilename, historicalMessages);
+            }
+            
+            mainPageStatus = false;
+
+            currentLine = "";
+
+    			}      
         }
       }
 
@@ -2841,19 +2971,25 @@ void task_getTelegramMessage(void *param) {
 }
 
 // Periodic system check task
-void task_anti_theft_detection(void *param) {
+void task_theft_detection(void *param) {
   (void)param;
   while (1) {
-    
+	  
     vTaskDelay(300000 / portTICK_PERIOD_MS);
     
     // Wait until Telegram task is idle
     botClient.stop();
     vTaskDelay(2000 / portTICK_PERIOD_MS);
     
-    Serial.println("\n\nExecuting Skill: anti_theft_detection\n\n");
- 
-    evaluateWorkflowContinuation(true, "Must execute skill anti_theft_detection. Return ONLY tool_call JSON.");
+    Serial.println("\n\nExecuting Skill: theft_detection\n\n");
+
+    String workId = "<THEFT_DETECTION> " + getRtcTimeString();
+    
+    evaluateWorkflowContinuation(
+		workId, 
+		true, 
+		"Must execute skill theft_detection. Return ONLY tool_call JSON."
+	);
 
     storeDataToFile(memoryFilename, historicalMessages);
 
@@ -2865,7 +3001,7 @@ void task_anti_theft_detection(void *param) {
 void task_time_scheduling(void *param) {
   (void)param;
   while (1) {
-    
+	  
     vTaskDelay(60000 / portTICK_PERIOD_MS);
 
     // Wait until Telegram task is idle
@@ -2879,10 +3015,14 @@ void task_time_scheduling(void *param) {
 
     Serial.println("\n\nExecuting Skill: skill_time_scheduling\n\n");
 
-    Serial.println("Current Time: "+ getRtcTimeString());
     rtcFormatTime = getRtcTimeString();
     
+    Serial.println("Current Time: "+ rtcFormatTime);
+
+    String workId = "<TIME_SCHEDULING> " + rtcFormatTime;
+    
     evaluateWorkflowContinuation(
+	  workId, 
       true,
 
       "Invoke skill: skill_time_scheduling. "
@@ -2979,20 +3119,6 @@ void setup() {
 
   initWiFi();
 
-  server.begin();
-
-  if (xTaskCreate(
-        task_getRequest,
-        (const char *)"task_getRequest",
-        16384,
-        NULL,
-        tskIDLE_PRIORITY + 1,
-        NULL
-      )!= pdPASS) {
-
-    Serial.println("Create task_task_getRequest failed");
-  }  
-
   config.setRotation(0);
   Camera.configVideoChannel(0, config);
   Camera.videoInit();
@@ -3021,29 +3147,20 @@ void setup() {
   Serial.println("memory.md len: " + String(memory.length()));
   if (memory != "")
     historicalMessages = memory;
-    
-  servo12.attach(12);
 
-  dht.begin();	
-  
-  Serial.println("\n\n"); 
-  Serial.println("fuClaw configuration");    
-  Serial.println("AP http://192.168.1.1:81");
-  Serial.println("apSsid = " + apSsid);
-  Serial.println("apPassword = " + apPassword);
-  Serial.println("\n");   
+  server.begin();   
 
-  if (WiFi.status() == WL_CONNECTED) {
-    for (int i=0 ; i<3 ; i++) {
-      digitalWrite(ledPin, 1);
-      delay(300);
-      digitalWrite(ledPin, 0);
-      delay(300);      
-    }
-  
-    Serial.println("STA http://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("\n\n");   
-  }  
+  if (xTaskCreate(
+        task_getRequest,
+        (const char *)"task_getRequest",
+        16384,
+        NULL,
+        tskIDLE_PRIORITY + 1,
+        NULL
+      )!= pdPASS) {
+
+    Serial.println("Create task_task_getRequest failed");
+  }        
 
   if (xTaskCreate(
         task_getTelegramMessage,
@@ -3055,20 +3172,20 @@ void setup() {
       )!= pdPASS) {
 
     Serial.println("Create task_getTelegramMessage failed");
-  } 
-
+  }   
+  
 /*
  
   if (xTaskCreate(
-        task_anti_theft_detection,
-        (const char *)"task_anti_theft_detection",
+        task_theft_detection,
+        (const char *)"task_theft_detection",
         6144,
         NULL,
         tskIDLE_PRIORITY + 1,
         NULL
       )!= pdPASS) {
 
-    Serial.println("Create task_anti_theft_detection failed");
+    Serial.println("Create task_theft_detection failed");
   } 
 
   if (xTaskCreate(
@@ -3083,7 +3200,31 @@ void setup() {
     Serial.println("Create task_time_scheduling failed");
   }   
 
-*/  
+*/   
+
+  Serial.println("\n"); 
+  Serial.println("fuClaw configuration");    
+  Serial.println("http://192.168.1.1:81");
+  Serial.println("AP ssid : " + apSsid);
+  Serial.println("AP password : " + apPassword);
+  Serial.println("\n");  
+
+  if (WiFi.status() == WL_CONNECTED) {
+    for (int i=0 ; i<3 ; i++) {
+      digitalWrite(ledPin, 1);
+      delay(300);
+      digitalWrite(ledPin, 0);
+      delay(300);      
+    }
+    
+    Serial.println("fuClaw Configuration http://" + Ip2String(WiFi.localIP()) + ":81");
+    Serial.println("AI Chat http://" + Ip2String(WiFi.localIP()) + ":81/chat");    
+    Serial.println("\n");   
+  }  
+
+  servo12.attach(12);
+
+  dht.begin();  
   
 }
 
