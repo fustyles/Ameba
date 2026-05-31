@@ -14,7 +14,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-31 10:00
+Build Date: 2026-06-01 07:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -1476,7 +1476,9 @@ String geminiChatRequest(String workId, String message, int tools = 1) {
   if (responseText == "") {
     responseText = "Gemini did not respond. Please try again.";
   }
-
+  
+  responseText.replace(timestamps, "");
+  responseText.replace(workId, "");
   historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
@@ -1576,7 +1578,9 @@ String geminiSearchRequest(String workId, String message, int tools = 1) {
   if (responseText == "") {
     responseText = "Gemini Search did not respond. Please try again.";
   }
-
+  
+  responseText.replace(timestamps, "");
+  responseText.replace(workId, "");
   historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
@@ -1690,7 +1694,9 @@ String geminiVisionRequest(String workId, String message, bool frames = true) {
   if (responseText == "") {
     responseText = "Gemini Vision did not respond. Please try again.";
   }
-
+  
+  responseText.replace(timestamps, "");
+  responseText.replace(workId, "");
   historicalMessages += buildGeminiMessage("model", responseText + timestamps);
 
   return responseText;
