@@ -17,7 +17,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-30 01:00
+Build Date: 2026-05-31 10:00
 
 ------------------------------------------------------------
 Overview
@@ -1503,7 +1503,7 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
 }
 
 void replyUserMessage(String workId, String text, String keyboard = "") {
-Serial.println(text);
+
 	if (workId.indexOf("<PAGE>") != -1 && text != "" && !text.startsWith("NONE") && !text.startsWith("<PAGE>")) {
     if (text.indexOf("<PAGE>") != -1)
       text = text.substring(0, text.indexOf("<PAGE>"));
