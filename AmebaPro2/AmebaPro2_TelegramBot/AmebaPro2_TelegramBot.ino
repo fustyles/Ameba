@@ -108,7 +108,7 @@ void sendMessageToTelegram(String token, String chatid, String text, String keyb
     boolean state     = false;
 
     while ((startTime + waitTime) > millis()) {
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
       while (client.available()) {
         char c = client.read();
@@ -199,7 +199,7 @@ String sendCapturedImageToTelegram(String token, String chat_id, bool capture) {
     boolean state     = false;
 
     while ((startTime + waitTime) > millis()) {
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
       while (client.available()) {
         char c = client.read();
@@ -394,8 +394,10 @@ void getTelegramMessage() {
 
       // Signal successful connection with 3 LED blinks
       for (int i = 0; i < 3; i++) {
-        digitalWrite(ledPin, HIGH); delay(500);
-        digitalWrite(ledPin, LOW);  delay(500);
+        digitalWrite(ledPin, HIGH); 
+		vTaskDelay(500 / portTICK_PERIOD_MS);
+        digitalWrite(ledPin, LOW);  
+		vTaskDelay(500 / portTICK_PERIOD_MS);
       }
     }
 
@@ -421,7 +423,7 @@ void getTelegramMessage() {
       boolean state     = false;
 
       while ((startTime + waitTime) > millis()) {
-        delay(100);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
 
         while (botClient.available()) {
           char c = botClient.read();
@@ -480,7 +482,7 @@ void getTelegramMessage() {
 
     unsigned long start = millis();
     while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
-      delay(500);
+      vTaskDelay(500 / portTICK_PERIOD_MS);
     }
   }
 }
