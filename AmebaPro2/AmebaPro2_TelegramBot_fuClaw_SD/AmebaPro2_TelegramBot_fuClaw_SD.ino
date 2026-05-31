@@ -2861,7 +2861,7 @@ void setup() {
   if (memory != "")
     historicalMessages = memory;
 
-  Serial.println("\n\n"); 
+  Serial.println("\n"); 
   Serial.println("fuClaw configuration");    
   Serial.println("AP http://192.168.1.1:81");
   Serial.println("apSsid = " + apSsid);
@@ -2877,7 +2877,7 @@ void setup() {
     }
   
     Serial.println("STA http://" + Ip2String(WiFi.localIP()) + ":81");
-    Serial.println("\n\n");   
+    Serial.println("\n");   
   }    
 
   if (xTaskCreate(
