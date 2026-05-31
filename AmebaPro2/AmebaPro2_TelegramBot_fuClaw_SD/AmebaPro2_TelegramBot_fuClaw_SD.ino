@@ -490,19 +490,13 @@ These values are NOT part of the conversation.
 
 They exist only for history tracking and context management.
 
-The assistant must completely ignore them when generating replies.
+The system automatically appends timestamps and all runtime or logging metadata.
 
-No assistant response may end with a message source, timestamp.
+You must NOT generate, append, or simulate timestamps, logs, or any system markers in your responses.
 
-The assistant must NEVER output any of the following:
+Your output must contain only user-facing content.
 
-- <PAGE>, <BOT>, and similar system or runtime markers.
-- timestamps (any format containing YYYY/M/D HH:MM:SS)
-- system metadata lines
-- runtime logs
-- page markers
-- internal headers
-
+Any timestamping, logging, or message tracking is handled externally by the system and must not be duplicated in the model output.
 
 )";
 
