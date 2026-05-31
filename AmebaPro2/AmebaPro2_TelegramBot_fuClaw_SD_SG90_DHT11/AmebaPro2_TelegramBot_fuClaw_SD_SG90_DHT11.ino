@@ -119,6 +119,9 @@ memory.md
 index.html
   fuClaw configuration web page
 
+index_chat.html
+  Gemini talk web page (Web Chat Interface)
+
 Conversation state is restored automatically on boot.
 ------------------------------------------------------------
 Hardware Safety

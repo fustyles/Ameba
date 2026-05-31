@@ -2,35 +2,28 @@
 ------------------------------------------------------------
 fuClaw AI Telegram Assistant with Gemini Integration
 ------------------------------------------------------------
-
 Author:
   ChungYi Fu (Kaohsiung, Taiwan)
   https://www.facebook.com/francefu
 
 Repository:
   https://github.com/fustyles/fuClaw
-
 ------------------------------------------------------------
 Version
 ------------------------------------------------------------
-
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-2026-05-31 10:00
-
+Build Date: 2026-05-31 10:00
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
-
 fuClaw is an embedded multimodal AI agent framework running
 on Realtek Ameba Pro2 devices:
-
 - AMB82-mini
 - HUB 8735 Ultra
 
 It combines:
-
 - Telegram Bot API (HTTPS long polling)
 - Google Gemini generateContent API
 - Gemini grounded web search
@@ -42,13 +35,10 @@ It combines:
 - FreeRTOS concurrent task scheduling
 
 The runtime acts as a hybrid autonomous agent:
-
 Conversation + Reasoning + Tools + Vision + Memory + Hardware
-
 ------------------------------------------------------------
 Runtime Architecture
 ------------------------------------------------------------
-
 Telegram User
       ↓
 Telegram Polling Task
@@ -69,17 +59,14 @@ Hardware / Search / Vision Execution
 Result injection into memory
       ↓
 Natural language reply
-
 ------------------------------------------------------------
 Execution Model
 ------------------------------------------------------------
-
 This is a prompt-orchestrated tool-routing system.
 
 Gemini does NOT use native function-calling APIs.
 
 Instead:
-
 - Gemini emits structured JSON tool_call responses
 - Local firmware validates all tool calls
 - Invalid JSON is rejected
@@ -87,26 +74,22 @@ Instead:
 - Hardware actions are never simulated
 
 Atomic execution rule:
-
 One response may perform only ONE hardware action:
-
 - one pin
 - one operation
 - one value
 
 Multi-step workflows are executed step-by-step.
-
 ------------------------------------------------------------
 Supported Tools
 ------------------------------------------------------------
-
 /digitalwrite   GPIO digital output
 /analogwrite    GPIO analog output
 /digitalread    GPIO digital input
 /analogread     GPIO analog input
-/syncrtc        update the hardware RTC
-/getrtc         get the hardware RTC current time   
-/still          Capture image  
+/syncrtc        Update the hardware RTC
+/getrtc         Get the hardware RTC current time
+/still          Capture image
 /vision         Capture + multimodal analysis
 /search         Grounded web search
 /delay          Pause execution for specified milliseconds
@@ -115,11 +98,9 @@ Supported Tools
 /reset          Reset conversation state
 /chat           Natural language reply
 /reboot         Reboot the device
-
 ------------------------------------------------------------
 Persistent Files
 ------------------------------------------------------------
-
 env.json
   WiFi / Telegram / Gemini credentials / Time zone
 
@@ -134,36 +115,34 @@ soul.md
 
 memory.md
   Conversation history persistence
-  
+
 index.html
-  fuClaw configuration web page  
+  fuClaw configuration web page
+
+index_chat.html
+  Gemini talk web page (Web Chat Interface)
 
 Conversation state is restored automatically on boot.
-
 ------------------------------------------------------------
 Hardware Safety
 ------------------------------------------------------------
-
 Confirmed device mappings only.
 
 AMB82-mini
-- Green LED: GPIO 24
-- Blue LED : GPIO 23
+- Green LED : GPIO 24
+- Blue LED  : GPIO 23
 
 HUB 8735 Ultra
 - Green LED : GPIO 25
 - Blue LED  : GPIO 26
 - Fill LED  : GPIO 13
-- Button    : GPIO 12 (input only)
+- Button    : GPIO 12 (input only, active-low)
 
 Unknown hardware mappings require clarification.
-
 GPIO values are strictly validated before execution.
-
 ------------------------------------------------------------
 Software Stack
 ------------------------------------------------------------
-
 - WiFi.h
 - WiFiSSLClient
 - ArduinoJson
@@ -171,18 +150,15 @@ Software Stack
 - VideoStream
 - Base64
 - AmebaFatFS
-
 ------------------------------------------------------------
 Known Limitations
 ------------------------------------------------------------
-
 - Conversation history grows over time
 - String-heavy heap fragmentation risk
 - Vision encoding is CPU intensive
 - Large JSON parsing impacts heap usage
 - Gemini response format handled by ArduinoJson validation layer
 - Recursive tool chaining controlled via reCheck flag and NONE sentinel
-
 ------------------------------------------------------------
 */
 
