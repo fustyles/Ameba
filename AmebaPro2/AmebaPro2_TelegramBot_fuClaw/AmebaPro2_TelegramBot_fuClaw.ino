@@ -1157,7 +1157,8 @@ void telegramSendMessage(String token, String chatid, String text, String keyboa
     bool state = false;
 
     while ((startTime + waitTime) > millis()) {
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+	  
       while (client.available())  {
         char c = client.read();
 
@@ -1238,7 +1239,7 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
     bool state = false;
 
     while ((startTime + waitTime) > millis()) {
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
       while (client.available()) {
         char c = client.read();
@@ -1903,7 +1904,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
       executeToolHistory += command + "\n";
   		
   		Serial.println("User requested reboot the device.");
-  		delay(2000);
+  		vTaskDelay(2000 / portTICK_PERIOD_MS);
   		
   		NVIC_SystemReset();
   	}	
@@ -2206,7 +2207,7 @@ String getTelegramFilePath(String fileId) {
     boolean state     = false;
 
     while ((startTime + waitTime) > millis()) {
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
       while (client.available()) {
         char c = client.read();
@@ -2258,9 +2259,9 @@ void getTelegramMessage() {
       
       for (int i = 0; i < 3; i++) {
         digitalWrite(ledPin, HIGH);
-        delay(500);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
         digitalWrite(ledPin, LOW);
-        delay(500);
+        vTaskDelay(500 / portTICK_PERIOD_MS);
       }
     
   }
@@ -2286,7 +2287,7 @@ void getTelegramMessage() {
       bool state = false;
 
       while ((startTime + waitTime) > millis()){
-        delay(100);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
 
         while (botClient.available()){
           char c = botClient.read();
@@ -2415,7 +2416,7 @@ void getTelegramMessage() {
 
     while (WiFi.status() != WL_CONNECTED &&
       millis() - start < 10000) {
-      delay(500);
+      vTaskDelay(500 / portTICK_PERIOD_MS);
     }
   }
 }
