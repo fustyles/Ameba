@@ -1337,7 +1337,7 @@ String getGeminiDatetime() {
     bool getStatus = false;
 
     while ((startTime + waitTime) > millis()){
-      delay(100);
+      vTaskDelay(100 / portTICK_PERIOD_MS);
 
       while (client.available()){
         char c = client.read();
@@ -2337,7 +2337,7 @@ void executeTool(String command, JsonObject params, bool reCheck = true) {
 		executeToolHistory += command + "\n";
   		
   		Serial.println("User requested reboot the device.");
-  		delay(2000);
+  		vTaskDelay(2000 / portTICK_PERIOD_MS);
   		
   		NVIC_SystemReset();
   	}	
