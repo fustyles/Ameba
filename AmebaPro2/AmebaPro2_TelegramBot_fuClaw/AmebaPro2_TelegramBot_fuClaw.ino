@@ -1088,8 +1088,34 @@ bool rtcUpdateStatus = false;
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
+String getRtcTimeString() {
+
+  long long epoch = rtc.Read();
+
+  time_t rawtime = (time_t)epoch;
+
+  struct tm *timeinfo = localtime(&rawtime);
+
+  char buffer[32];
+
+  sprintf(
+    buffer,
+    "%04d/%d/%d %02d:%02d:%02d",
+    timeinfo->tm_year + 1900,
+    timeinfo->tm_mon + 1,
+    timeinfo->tm_mday,
+    timeinfo->tm_hour,
+    timeinfo->tm_min,
+    timeinfo->tm_sec
+  );
+
+  return String(buffer);
+}
+
 // Initialize the RTC using Gemini-synchronized local time.
 String rtcInitialTime(String gmtTime) {
+  
+  rtcUpdateStatus = true;
   
   String prompt =
     "Convert this GMT datetime to " + timeZone + ".\n"
@@ -1140,8 +1166,6 @@ String rtcInitialTime(String gmtTime) {
     rtcMinute = obj["rtcMinute"] | 0;
     rtcSecond = obj["rtcSecond"] | 0;
 
-    rtcUpdateStatus = true;
-
   } else {
     Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
 
@@ -1152,31 +1176,7 @@ String rtcInitialTime(String gmtTime) {
   long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
   rtc.Write(initTime);
 
-  return "";
-}
-
-String getRtcTimeString() {
-
-  long long epoch = rtc.Read();
-
-  time_t rawtime = (time_t)epoch;
-
-  struct tm *timeinfo = localtime(&rawtime);
-
-  char buffer[32];
-
-  sprintf(
-    buffer,
-    "%04d/%d/%d %02d:%02d:%02d",
-    timeinfo->tm_year + 1900,
-    timeinfo->tm_mon + 1,
-    timeinfo->tm_mday,
-    timeinfo->tm_hour,
-    timeinfo->tm_min,
-    timeinfo->tm_sec
-  );
-
-  return String(buffer);
+  return getRtcTimeString();
 }
 
 // Send text message to Telegram bot
@@ -1321,8 +1321,9 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
 }
 
 void replyUserMessage(String workId, String text, String keyboard = "") {
-
-	if (workId.indexOf("<PAGE>") != -1 && text != "" && !text.startsWith("NONE") && !text.startsWith("<PAGE>")) {
+	if (text.startsWith("NONE")) return;
+	
+	if (workId.indexOf("<PAGE>") != -1 && text != "" && !text.startsWith("<PAGE>")) {
     if (text.indexOf("<PAGE>") != -1)
       text = text.substring(0, text.indexOf("<PAGE>"));
 		mainPageHTML += text;
@@ -2405,16 +2406,15 @@ void getTelegramMessage() {
 
     getTime.replace("Content-Type", "");
 
-    String workId = "";
+    String workId = "<BOT>";
 
     if ((getTime != "" && rtcYear == 0) || !rtcUpdateStatus) {
       Serial.println(getTime);
       String response = rtcInitialTime(getTime);
 
-      workId = "<BOT> " + getRtcTimeString();
+      workId += " " + response;
 
-      if (response == "")
-        response = "RTC START: " + getRtcTimeString();
+      response = "RTC START: " + response;
 
       replyUserMessage(workId, response, telegrambotKeyboard);
     }
@@ -2589,7 +2589,7 @@ void task_getRequest(void *param) {
             String workId = "<PAGE> " + getRtcTimeString();       
 
             currentLine.replace("GET /message?", "");
-            currentLine.replace(" HTTP/1.1", "");
+            currentLine.replace(" HTTP", "");
 
             if (currentLine != "") {
               currentLine = urldecode(currentLine);           
