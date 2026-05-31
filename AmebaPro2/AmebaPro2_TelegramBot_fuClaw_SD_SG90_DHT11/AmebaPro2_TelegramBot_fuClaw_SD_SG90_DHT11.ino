@@ -1505,8 +1505,8 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
 void replyUserMessage(String workId, String text, String keyboard = "") {
 Serial.println(text);
 	if (workId.indexOf("<PAGE>") != -1 && text != "" && !text.startsWith("NONE") && !text.startsWith("<PAGE>")) {
-    if (mainPageHTML.indexOf("<PAGE>") != -1)
-      mainPageHTML = mainPageHTML.substring(0, mainPageHTML.indexOf("<PAGE>"));
+    if (text.indexOf("<PAGE>") != -1)
+      text = text.substring(0, text.indexOf("<PAGE>"));
 		mainPageHTML += text;
 	}
 	else if (workId.startsWith("<BOT>")) {
