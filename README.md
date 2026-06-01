@@ -560,8 +560,6 @@ What makes this framework truly impressive is that it implements a complete AI A
 
 ---
 
----
-
 <a name="繁體中文"></a>
 
 # fuClaw AI 框架 — 優點深度解析（繁體中文）
