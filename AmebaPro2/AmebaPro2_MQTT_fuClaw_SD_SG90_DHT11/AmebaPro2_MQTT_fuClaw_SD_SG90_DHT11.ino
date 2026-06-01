@@ -16,7 +16,7 @@ Version
 Prompt-Orchestrated Embedded Agent Edition
 Persistent Filesystem Runtime
 
-Build Date: 2026-05-31 10:00
+Build Date: 2026-06-01 07:30
 ------------------------------------------------------------
 Overview
 ------------------------------------------------------------
@@ -81,7 +81,7 @@ on Realtek Ameba Pro2 devices:
 - HUB 8735 Ultra
 
 It combines:
-- Telegram Bot API (HTTPS long polling)
+- MQTT Broker
 - Google Gemini generateContent API
 - Gemini grounded web search
 - Gemini multimodal vision reasoning
@@ -96,9 +96,9 @@ Conversation + Reasoning + Tools + Vision + Memory + Hardware
 ------------------------------------------------------------
 Workflow Engine
 ------------------------------------------------------------
-Telegram User
+MQTT User
       ↓
-Telegram Polling Task
+MQTT Polling Task
       ↓
 Message Router
       ↓
@@ -1415,7 +1415,7 @@ String rtcInitialTime() {
     "\"rtcSecond\":0\n"
     "}";
 
-  String message = geminiSearchRequest("[BOT]", prompt, -1);
+  String message = geminiSearchRequest("[MQTT]", prompt, -1);
 
   if (message.startsWith("{") && message.endsWith("}")) {
 
@@ -1598,24 +1598,24 @@ String mqttSendImage(String topic, bool capture, bool base64 = false) {
 }
 
 void replyUserMessage(String workId, String text) {
-	if (text.startsWith("NONE")) return;
-	
-	if (workId.indexOf("<PAGE>") != -1 && text != "" && !text.startsWith("<PAGE>")) {
+if (text.startsWith("NONE") || text == "") return;
+  
+  if (workId.startsWith("<PAGE>") && !text.startsWith("<PAGE>")) {
     if (text.indexOf("<PAGE>") != -1)
       text = text.substring(0, text.indexOf("<PAGE>"));
-		mainPageHTML += text;
-	}
-	else if (workId.startsWith("<MQTT>")) {
+    mainPageHTML += text;
+  }
+	else if (workId.startsWith("<MQTT>") && !text.startsWith("<MQTT>")) {
     if (text.indexOf("<MQTT>") != -1)
       text = text.substring(0, text.indexOf("<MQTT>"));
 		mqttSendText(mqttPublishTextTopic, text);
 	}
-	else if (workId.startsWith("<THEFT_DETECTION>")) {
+	else if (workId.startsWith("<THEFT_DETECTION>") && !text.startsWith("<THEFT_DETECTION>")) {
     if (text.indexOf("<THEFT_DETECTION>") != -1)
       text = text.substring(0, text.indexOf("<THEFT_DETECTION>"));
 		mqttSendText(mqttPublishTextTopic, text);
 	}
-	else if (workId.startsWith("<TIME_SCHEDULING>")) {
+	else if (workId.startsWith("<TIME_SCHEDULING>") && !text.startsWith("<TIME_SCHEDULING>")) {
     if (text.indexOf("<TIME_SCHEDULING>") != -1)
       text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));    
 		mqttSendText(mqttPublishTextTopic, text);
@@ -1623,6 +1623,34 @@ void replyUserMessage(String workId, String text) {
 	else
 		mqttSendText(mqttPublishTextTopic, text);
 	
+}
+
+String replyUserImage(String workId, bool frames) {
+  if (workId.startsWith("<PAGE>")) {
+      if (frames)
+          Camera.getImage(0, &imageAddress, &imageLength);
+          
+      uint8_t* fbBuf = (uint8_t*)imageAddress;
+      size_t   fbLen = imageLength;
+
+      char *input = (char *)fbBuf;
+      char output[base64_enc_len(3)];
+                  
+      size_t estimatedSize = 23 + ((fbLen + 2) / 3) * 4 + 1;
+      String imageFile = "<img src='data:image/jpeg;base64,";
+      imageFile.reserve(estimatedSize);
+      
+      for (int i = 0; i < fbLen; i++) {
+          base64_encode(output, (input++), 3);
+          if (i % 3 == 0) imageFile += String(output);
+      }
+      mainPageHTML = imageFile + "' style='max-width:240px; height:auto; border-radius:8px;'><br>";
+  }
+  else if (workId.startsWith("<MQTT>")) {
+    return mqttSendImage(mqttPublishImageTopic, frames);
+  }
+
+  return "";
 }
 
 // Convert role/content pair into Gemini-compatible JSON message object
@@ -2227,7 +2255,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);
 
-	  executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";	  
+	    executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";	  
 
       evaluateWorkflowContinuation(workId, reCheck); 
       
@@ -2235,13 +2263,12 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
     else if (command == "/still") {
       bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
       String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
-      String mqttResponse = mqttSendImage(mqttPublishImageTopic, frames);         // Raw binary JPEG  
-      // String mqttResponse = mqttSendImage(mqttPublishImageTopic, frames, true);      // Base64 data-URI JPEG  
+      String res = replyUserImage(workId, frames); 
        
       String response =
         "{\"status\":\"success\","
         "\"method\":\"still\","
-        "\"result\":\"" + mqttResponse + "\"}";
+        "\"result\":\"" + res + "\"}";
     
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);
