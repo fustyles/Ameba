@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>fuClaw AI Agent — 系統參數設定</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+TC:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg:        #f0f4ff;
+    --surface:   #ffffff;
+    --surface2:  #f7f9ff;
+    --border:    #dde3f5;
+    --border2:   #c4cef5;
+    --accent:    #4f6ef7;
+    --accent2:   #7c3aed;
+    --accent3:   #06b6d4;
+    --text:      #1a1d2e;
+    --text2:     #4a5270;
+    --text3:     #8892b0;
+    --success:   #10b981;
+    --warn:      #f59e0b;
+    --danger:    #ef4444;
+    --radius:    12px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(79,110,247,.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(124,58,237,.07) 0%, transparent 50%),
+      radial-gradient(circle at 60% 30%, rgba(6,182,212,.06) 0%, transparent 40%);
+    color: var(--text);
+    font-family: 'Noto Sans TC', 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 16px 60px;
+  }
+
+  .wrapper {
+    width: 100%;
+    max-width: 660px;
+  }
+
+  /* ── header ── */
+  header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    margin-bottom: 8px;
+  }
+
+  .logo-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 24px rgba(79,110,247,.3);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .logo-icon::before {
+    content: '';
+    position: absolute;
+    top: -50%; left: -50%;
+    width: 200%; height: 200%;
+    background: conic-gradient(transparent 30%, rgba(255,255,255,.15) 50%, transparent 70%);
+    animation: spin 4s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .logo-icon svg { position: relative; z-index: 1; }
+
+  .logo-mark {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 2.2rem;
+    letter-spacing: -.02em;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .tagline {
+    font-size: .8rem;
+    color: var(--text3);
+    letter-spacing: .18em;
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  .chips {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    font-size: .72rem;
+    color: var(--text2);
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .chip-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+    animation: blink 2s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%,100% { opacity: 1; } 50% { opacity: .3; }
+  }
+
+  /* ── card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px 36px;
+    box-shadow: 0 4px 24px rgba(79,110,247,.08), 0 1px 4px rgba(0,0,0,.06);
+  }
+
+  /* section label */
+  .section-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 28px 0 16px;
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+  .section-label:first-of-type { margin-top: 0; }
+  .section-label .sl-icon {
+    width: 26px; height: 26px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .88rem;
+    flex-shrink: 0;
+  }
+  .sl-blue  { background: rgba(79,110,247,.1);  color: var(--accent); }
+  .sl-purple{ background: rgba(124,58,237,.1);  color: var(--accent2); }
+  .sl-cyan  { background: rgba(6,182,212,.1);   color: var(--accent3); }
+  .sl-green { background: rgba(16,185,129,.1);  color: var(--success); }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── field ── */
+  .field { margin-bottom: 16px; }
+  .field:last-of-type { margin-bottom: 0; }
+
+  .field-header {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  label {
+    font-size: .82rem;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: .01em;
+  }
+  .field-hint {
+    font-size: .7rem;
+    color: var(--text3);
+  }
+
+  .input-wrap { position: relative; }
+
+  .input-wrap .icon {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1rem;
+    pointer-events: none;
+    color: var(--text3);
+    transition: color .2s;
+  }
+
+  input[type="text"],
+  input[type="password"] {
+    width: 100%;
+    padding: 10px 40px 10px 40px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .84rem;
+    outline: none;
+    transition: border-color .2s, background .2s, box-shadow .2s;
+    -webkit-appearance: none;
+  }
+  input::placeholder { color: var(--text3); font-size: .8rem; }
+  input:focus {
+    border-color: var(--accent);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(79,110,247,.12);
+  }
+  input:focus ~ .icon { color: var(--accent); }
+
+  .toggle-vis {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: .9rem;
+    padding: 4px 6px;
+    transition: color .2s;
+    line-height: 1;
+  }
+  .toggle-vis:hover { color: var(--accent); }
+
+  /* select */
+  .select-wrap { position: relative; }
+  select {
+    width: 100%;
+    padding: 10px 36px 10px 40px;
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: .84rem;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,110,247,.12);
+  }
+  select option { background: white; color: var(--text); }
+  .select-arrow {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--text3);
+    font-size: .75rem;
+  }
+  .select-icon {
+    position: absolute;
+    left: 13px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    color: var(--text3);
+    font-size: 1rem;
+  }
+
+  /* ── submit ── */
+  .btn-row { margin-top: 32px; }
+
+  .btn-submit {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: var(--radius);
+    color: white;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: .9rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform .15s, box-shadow .15s, opacity .15s;
+    box-shadow: 0 6px 20px rgba(79,110,247,.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(79,110,247,.45);
+  }
+  .btn-submit:active { transform: translateY(0); opacity: .9; }
+  .btn-submit .arrow { font-size: 1.1rem; }
+
+  /* ── toast ── */
+  .toast {
+    display: none;
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: .82rem;
+    letter-spacing: .02em;
+    text-align: center;
+  }
+  .toast.success {
+    display: block;
+    background: rgba(16,185,129,.08);
+    border: 1px solid rgba(16,185,129,.25);
+    color: #059669;
+  }
+  .toast.error {
+    display: block;
+    background: rgba(239,68,68,.07);
+    border: 1px solid rgba(239,68,68,.25);
+    color: #dc2626;
+  }
+
+  /* ── json preview ── */
+  .json-preview {
+    display: none;
+    margin-top: 16px;
+    padding: 16px;
+    background: #1a1d2e;
+    border-radius: var(--radius);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: .75rem;
+    color: #a5d6a7;
+    line-height: 1.8;
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .json-key   { color: #90caf9; }
+  .json-str   { color: #a5d6a7; }
+  .json-punct { color: #b0bec5; }
+
+  /* ── footer ── */
+  footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: .68rem;
+    color: var(--text3);
+    letter-spacing: .06em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  footer::before, footer::after {
+    content: '';
+    width: 32px;
+    height: 1px;
+    background: var(--border);
+  }
+
+  @media (max-width: 480px) {
+    .card { padding: 24px 18px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+
+  <!-- header -->
+  <header>
+    <div class="logo-row">
+      <div class="logo-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="9" r="4" fill="white" opacity=".95"/>
+          <circle cx="7"  cy="20" r="3" fill="white" opacity=".8"/>
+          <circle cx="21" cy="20" r="3" fill="white" opacity=".8"/>
+          <line x1="14" y1="13" x2="7"  y2="17" stroke="white" stroke-width="1.5" opacity=".6"/>
+          <line x1="14" y1="13" x2="21" y2="17" stroke="white" stroke-width="1.5" opacity=".6"/>
+          <line x1="7"  y1="20" x2="21" y2="20" stroke="white" stroke-width="1.5" opacity=".4"/>
+        </svg>
+      </div>
+      <div class="logo-mark">fuClaw</div>
+    </div>
+    <div class="tagline">AI Agent &nbsp;·&nbsp; System Configuration</div>
+    <div class="chips">
+      <span class="chip"><span class="chip-dot"></span>線上設定</span>
+      <span class="chip">&#128274; 安全傳輸</span>
+      <span class="chip">&#9881; v1.0</span>
+    </div>
+  </header>
+
+  <div class="card">
+
+    <!-- Wi-Fi -->
+    <div class="section-label">
+      <span class="sl-icon sl-blue">&#128246;</span>Wi-Fi 網路設定
+    </div>
+
+    <div class="field">
+      <div class="field-header">
+        <label for="wifi_ssid">SSID &nbsp;<span style="color:var(--danger)">*</span></label>
+        <span class="field-hint">無線網路名稱</span>
+      </div>
+      <div class="input-wrap">
+        <input type="text" id="wifi_ssid" value= "wifiSsid" placeholder="MyHomeNetwork" autocomplete="off" spellcheck="false">
+        <span class="icon">&#128246;</span>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-header">
+        <label for="wifi_pass">密碼 &nbsp;<span style="color:var(--danger)">*</span></label>
+        <span class="field-hint">Wi-Fi 密碼</span>
+      </div>
+      <div class="input-wrap">
+        <input type="password" id="wifi_pass" value= "wifiPassword" placeholder="••••••••••••" autocomplete="off">
+        <span class="icon">&#128274;</span>
+        <button type="button" class="toggle-vis" onclick="toggleVis('wifi_pass',this)">&#128065;</button>
+      </div>
+    </div>
+
+    <!-- Telegram -->
+    <div class="section-label">
+      <span class="sl-icon sl-cyan">&#9992;</span>Telegram Bot
+    </div>
+
+    <div class="field">
+      <div class="field-header">
+        <label for="tg_token">Bot Token &nbsp;<span style="color:var(--danger)">*</span></label>
+        <span class="field-hint">從 @BotFather 取得</span>
+      </div>
+      <div class="input-wrap">
+        <input type="password" id="tg_token" value= "telegrambotToken" placeholder="123456789:AAxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+        <span class="icon">&#128272;</span>
+        <button type="button" class="toggle-vis" onclick="toggleVis('tg_token',this)">&#128065;</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="field-header">
+        <label for="tg_chatid">Chat ID &nbsp;<span style="color:var(--danger)">*</span></label>
+        <span class="field-hint">目標聊天室或用戶 ID</span>
+      </div>
+      <div class="input-wrap">
+        <input type="text" id="tg_chatid" value= "telegrambotChatId" placeholder="-100xxxxxxxxxx" autocomplete="off" spellcheck="false">
+        <span class="icon">&#128172;</span>
+      </div>
+    </div>
+
+    <!-- Gemini -->
+    <div class="section-label">
+      <span class="sl-icon sl-purple">&#10024;</span>Gemini AI
+    </div>
+
+    <div class="field">
+      <div class="field-header">
+        <label for="gemini_key">API Key &nbsp;<span style="color:var(--danger)">*</span></label>
+        <span class="field-hint">Google AI Studio 金鑰</span>
+      </div>
+      <div class="input-wrap">
+        <input type="password" id="gemini_key" value= "geminiApiKey" placeholder="AIzaSy••••••••••••••••••" autocomplete="off" spellcheck="false">
+        <span class="icon">&#128273;</span>
+        <button type="button" class="toggle-vis" onclick="toggleVis('gemini_key',this)">&#128065;</button>
+      </div>
+    </div>
+
+    <!-- Timezone -->
+    <div class="section-label">
+      <span class="sl-icon sl-green">&#127758;</span>時區設定
+    </div>
+
+    <div class="field">
+      <div class="field-header">
+        <label for="timezone">Timezone</label>
+        <span class="field-hint">裝置本地時區</span>
+      </div>
+      <div class="select-wrap">
+        <span class="select-icon">&#127758;</span>
+        <select id="timezone">
+          <optgroup label="🌏 亞洲 Asia">
+            <option value="Asia/Taipei">Asia/Taipei 台北 (UTC+8)</option>
+            <option value="Asia/Tokyo">Asia/Tokyo 日本 (UTC+9)</option>
+            <option value="Asia/Seoul">Asia/Seoul 韓國 (UTC+9)</option>
+            <option value="Asia/Shanghai">Asia/Shanghai 中國 (UTC+8)</option>
+            <option value="Asia/Hong_Kong">Asia/Hong_Kong 香港 (UTC+8)</option>
+            <option value="Asia/Macau">Asia/Macau 澳門 (UTC+8)</option>
+            <option value="Asia/Singapore">Asia/Singapore 新加坡 (UTC+8)</option>
+            <option value="Asia/Kuala_Lumpur">Asia/Kuala_Lumpur 馬來西亞 (UTC+8)</option>
+            <option value="Asia/Manila">Asia/Manila 菲律賓 (UTC+8)</option>
+            <option value="Asia/Bangkok">Asia/Bangkok 泰國 (UTC+7)</option>
+            <option value="Asia/Ho_Chi_Minh">Asia/Ho_Chi_Minh 越南 (UTC+7)</option>
+            <option value="Asia/Jakarta">Asia/Jakarta 印尼西部 (UTC+7)</option>
+            <option value="Asia/Makassar">Asia/Makassar 印尼中部 (UTC+8)</option>
+            <option value="Asia/Jayapura">Asia/Jayapura 印尼東部 (UTC+9)</option>
+            <option value="Asia/Kolkata">Asia/Kolkata 印度 (UTC+5:30)</option>
+            <option value="Asia/Karachi">Asia/Karachi 巴基斯坦 (UTC+5)</option>
+            <option value="Asia/Dhaka">Asia/Dhaka 孟加拉 (UTC+6)</option>
+            <option value="Asia/Kathmandu">Asia/Kathmandu 尼泊爾 (UTC+5:45)</option>
+            <option value="Asia/Colombo">Asia/Colombo 斯里蘭卡 (UTC+5:30)</option>
+            <option value="Asia/Yangon">Asia/Yangon 緬甸 (UTC+6:30)</option>
+            <option value="Asia/Ulaanbaatar">Asia/Ulaanbaatar 蒙古 (UTC+8)</option>
+            <option value="Asia/Dubai">Asia/Dubai UAE (UTC+4)</option>
+            <option value="Asia/Riyadh">Asia/Riyadh 沙烏地 (UTC+3)</option>
+            <option value="Asia/Tehran">Asia/Tehran 伊朗 (UTC+3:30)</option>
+            <option value="Asia/Baghdad">Asia/Baghdad 伊拉克 (UTC+3)</option>
+            <option value="Asia/Jerusalem">Asia/Jerusalem 以色列 (UTC+2/3)</option>
+            <option value="Asia/Beirut">Asia/Beirut 黎巴嫩 (UTC+2/3)</option>
+          </optgroup>
+          <optgroup label="🌍 歐洲 Europe">
+            <option value="Europe/London">Europe/London 英國 (UTC+0/+1)</option>
+            <option value="Europe/Dublin">Europe/Dublin 愛爾蘭 (UTC+0/+1)</option>
+            <option value="Europe/Lisbon">Europe/Lisbon 葡萄牙 (UTC+0/+1)</option>
+            <option value="Europe/Paris">Europe/Paris 法國 (UTC+1/+2)</option>
+            <option value="Europe/Berlin">Europe/Berlin 德國 (UTC+1/+2)</option>
+            <option value="Europe/Rome">Europe/Rome 義大利 (UTC+1/+2)</option>
+            <option value="Europe/Madrid">Europe/Madrid 西班牙 (UTC+1/+2)</option>
+            <option value="Europe/Amsterdam">Europe/Amsterdam 荷蘭 (UTC+1/+2)</option>
+            <option value="Europe/Brussels">Europe/Brussels 比利時 (UTC+1/+2)</option>
+            <option value="Europe/Zurich">Europe/Zurich 瑞士 (UTC+1/+2)</option>
+            <option value="Europe/Vienna">Europe/Vienna 奧地利 (UTC+1/+2)</option>
+            <option value="Europe/Warsaw">Europe/Warsaw 波蘭 (UTC+1/+2)</option>
+            <option value="Europe/Stockholm">Europe/Stockholm 瑞典 (UTC+1/+2)</option>
+            <option value="Europe/Oslo">Europe/Oslo 挪威 (UTC+1/+2)</option>
+            <option value="Europe/Copenhagen">Europe/Copenhagen 丹麥 (UTC+1/+2)</option>
+            <option value="Europe/Helsinki">Europe/Helsinki 芬蘭 (UTC+2/+3)</option>
+            <option value="Europe/Athens">Europe/Athens 希臘 (UTC+2/+3)</option>
+            <option value="Europe/Bucharest">Europe/Bucharest 羅馬尼亞 (UTC+2/+3)</option>
+            <option value="Europe/Kiev">Europe/Kiev 烏克蘭 (UTC+2/+3)</option>
+            <option value="Europe/Moscow">Europe/Moscow 俄羅斯 (UTC+3)</option>
+            <option value="Europe/Istanbul">Europe/Istanbul 土耳其 (UTC+3)</option>
+          </optgroup>
+          <optgroup label="🌎 美洲 Americas">
+            <option value="America/New_York">America/New_York 東岸 (UTC-5/-4)</option>
+            <option value="America/Chicago">America/Chicago 中部 (UTC-6/-5)</option>
+            <option value="America/Denver">America/Denver 山區 (UTC-7/-6)</option>
+            <option value="America/Los_Angeles">America/Los_Angeles 西岸 (UTC-8/-7)</option>
+            <option value="America/Anchorage">America/Anchorage 阿拉斯加 (UTC-9/-8)</option>
+            <option value="Pacific/Honolulu">Pacific/Honolulu 夏威夷 (UTC-10)</option>
+            <option value="America/Phoenix">America/Phoenix 亞歷桑納 (UTC-7)</option>
+            <option value="America/Toronto">America/Toronto 加拿大東部 (UTC-5/-4)</option>
+            <option value="America/Vancouver">America/Vancouver 加拿大西部 (UTC-8/-7)</option>
+            <option value="America/Mexico_City">America/Mexico_City 墨西哥 (UTC-6/-5)</option>
+            <option value="America/Sao_Paulo">America/Sao_Paulo 巴西 (UTC-3/-2)</option>
+            <option value="America/Argentina/Buenos_Aires">America/Argentina/Buenos_Aires 阿根廷 (UTC-3)</option>
+            <option value="America/Santiago">America/Santiago 智利 (UTC-4/-3)</option>
+            <option value="America/Bogota">America/Bogota 哥倫比亞 (UTC-5)</option>
+            <option value="America/Lima">America/Lima 秘魯 (UTC-5)</option>
+          </optgroup>
+          <optgroup label="🌏 大洋洲 Oceania">
+            <option value="Australia/Sydney">Australia/Sydney 雪梨 (UTC+10/+11)</option>
+            <option value="Australia/Melbourne">Australia/Melbourne 墨爾本 (UTC+10/+11)</option>
+            <option value="Australia/Brisbane">Australia/Brisbane 布里斯本 (UTC+10)</option>
+            <option value="Australia/Perth">Australia/Perth 珀斯 (UTC+8)</option>
+            <option value="Australia/Adelaide">Australia/Adelaide 阿德萊德 (UTC+9:30/+10:30)</option>
+            <option value="Pacific/Auckland">Pacific/Auckland 紐西蘭 (UTC+12/+13)</option>
+            <option value="Pacific/Fiji">Pacific/Fiji 斐濟 (UTC+12)</option>
+            <option value="Pacific/Guam">Pacific/Guam 關島 (UTC+10)</option>
+          </optgroup>
+          <optgroup label="🌍 非洲 Africa">
+            <option value="Africa/Cairo">Africa/Cairo 埃及 (UTC+2)</option>
+            <option value="Africa/Johannesburg">Africa/Johannesburg 南非 (UTC+2)</option>
+            <option value="Africa/Lagos">Africa/Lagos 奈及利亞 (UTC+1)</option>
+            <option value="Africa/Nairobi">Africa/Nairobi 肯亞 (UTC+3)</option>
+            <option value="Africa/Casablanca">Africa/Casablanca 摩洛哥 (UTC+1)</option>
+          </optgroup>
+          <optgroup label="🌐 通用 General">
+            <option value="UTC">UTC (UTC+0)</option>
+            <option value="Etc/GMT+12">Etc/GMT+12 (UTC-12)</option>
+            <option value="Etc/GMT-14">Etc/GMT-14 (UTC+14)</option>
+          </optgroup>
+        </select>
+        <span class="select-arrow">▼</span>
+      </div>
+    </div>
+
+    <!-- submit -->
+    <div class="btn-row">
+      <button class="btn-submit" onclick="sendConfig()">
+        <span>儲存並送出至裝置</span>
+        <span class="arrow">→</span>
+      </button>
+    </div>
+
+    <div id="toast" class="toast"></div>
+    <pre id="jsonPreview" class="json-preview"></pre>
+
+  </div><!-- /card -->
+
+  <footer>fuClaw AI Agent &nbsp;·&nbsp; ESP32 Config Portal &nbsp;·&nbsp; v1.0</footer>
+
+</div>
+
+<script>
+  function toggleVis(id, btn) {
+    const el = document.getElementById(id);
+    if (el.type === 'password') { el.type = 'text';     btn.textContent = '🚫'; }
+    else                        { el.type = 'password'; btn.textContent = '👁'; }
+  }
+
+  function showToast(msg, type) {
+    const t = document.getElementById('toast');
+    t.className = 'toast ' + type;
+    t.textContent = msg;
+    setTimeout(() => { t.className = 'toast'; }, 5000);
+  }
+
+  function buildJson() {
+    return {
+      wifi_ssid:           document.getElementById('wifi_ssid').value.trim(),
+      wifi_pass:           document.getElementById('wifi_pass').value,
+      telegramBot_token:   document.getElementById('tg_token').value.trim(),
+      telegramBot_chatID:  document.getElementById('tg_chatid').value.trim(),
+      gemini_apikey:       document.getElementById('gemini_key').value.trim(),
+      timezone:            document.getElementById('timezone').value
+    };
+  }
+
+  function validate(cfg) {
+    if (!cfg.wifi_ssid)          return 'Wi-Fi SSID 不可為空';
+    if (!cfg.wifi_pass)          return 'Wi-Fi 密碼不可為空';
+    if (!cfg.telegramBot_token)  return 'Telegram Bot Token 不可為空';
+    if (!cfg.telegramBot_chatID) return 'Telegram Chat ID 不可為空';
+    if (!cfg.gemini_apikey)      return 'Gemini API Key 不可為空';
+    return null;
+  }
+
+  function colorJson(cfg) {
+    const lines = JSON.stringify(cfg, null, 2).split('\n');
+    return lines.map(line => {
+      return line
+        .replace(/"([^"]+)":/g, '<span class="json-key">"$1"</span>:')
+        .replace(/: "([^"]*)"/g, ': <span class="json-str">"$1"</span>')
+        .replace(/[{},\[\]]/g, m => `<span class="json-punct">${m}</span>`);
+    }).join('\n');
+  }
+
+  function sendConfig() {
+    const cfg = buildJson();
+    const err = validate(cfg);
+    if (err) { showToast('⚠ ' + err, 'error'); return; }
+
+    const preview = document.getElementById('jsonPreview');
+    preview.style.display = 'block';
+    preview.innerHTML = colorJson(cfg);
+
+	fetch('/save?' + encodeURIComponent(JSON.stringify(cfg, null, 2)), {
+	  method: 'GET'
+	})
+	.then(res => res.text())
+	.then(txt => showToast('✔ ' + txt, 'success'))
+	.catch(()  => showToast('⚠ 無法連線至裝置', 'error'));
+  }
+</script>
+</body>
+</html>
