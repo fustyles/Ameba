@@ -2623,7 +2623,7 @@ void getTelegramMessage() {
 
     getTime.replace("Content-Type", "");
 
-    String workId = "<BOT> " + getRtcTimeString();
+    String workId = "<BOT> " + getTime;
 
     if (getBody == "") return;
 

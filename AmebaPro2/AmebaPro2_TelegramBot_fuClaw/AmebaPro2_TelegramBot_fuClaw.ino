@@ -1058,6 +1058,7 @@ WiFiServer server(81);
 #include "task.h"
 
 // Forward declarations
+String buildGeminiMessage(String role, String message, bool comma);
 String getRtcTimeString();
 void replyUserMessage(String workId, String text, String keyboard);
 void handleAgentResponse(String workId, String message);
@@ -1405,6 +1406,34 @@ void replyUserMessage(String workId, String text, String keyboard = "") {
 	}
 	else
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+}
+
+String replyUserImage(String workId, bool frames) {
+  if (workId.startsWith("<PAGE>")) {
+      if (frames)
+          Camera.getImage(0, &imageAddress, &imageLength);
+          
+      uint8_t* fbBuf = (uint8_t*)imageAddress;
+      size_t   fbLen = imageLength;
+
+      char *input = (char *)fbBuf;
+      char output[base64_enc_len(3)];
+                  
+      size_t estimatedSize = 23 + ((fbLen + 2) / 3) * 4 + 1;
+      String imageFile = "<img src='data:image/jpeg;base64,";
+      imageFile.reserve(estimatedSize);
+      
+      for (int i = 0; i < fbLen; i++) {
+          base64_encode(output, (input++), 3);
+          if (i % 3 == 0) imageFile += String(output);
+      }
+      mainPageHTML = imageFile + "' style='max-width:240px; height:auto; border-radius:8px;'><br>";
+  }
+  else if (workId.startsWith("<BOT>")) {
+    return telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
+  }
+
+  return "";
 }
 
 // Convert role/content pair into Gemini-compatible JSON message object
@@ -1926,15 +1955,15 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
     else if (command == "/still") {
       bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
       String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
-      String tgResponse = telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
+      String res = replyUserImage(workId, frames);
 
-      tgResponse.replace("\\", "\\\\");
-      tgResponse.replace("\"", "\\\"");   
+      res.replace("\\", "\\\\");
+      res.replace("\"", "\\\"");   
        
       String response =
         "{\"status\":\"success\","
         "\"method\":\"still\","
-        "\"result\":\"" + tgResponse + "\"}";
+        "\"result\":\"" + res + "\"}";
     
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);
@@ -1945,10 +1974,12 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       
     } 
     else if (command == "/syncrtc") {
-      rtcUpdateStatus = false;
+      rtcInitialTime(workId);
+      String rtcTime = getRtcTimeString();
+      replyUserMessage(workId, "RTC START: " + rtcTime);
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly." + timestamps);
+      historicalMessages += buildGeminiMessage("model", rtcTime + timestamps);
 
       executeToolHistory += workId + " " + command + "\n";
 
@@ -2472,18 +2503,7 @@ void getTelegramMessage() {
 
     getTime.replace("Content-Type", "");
 
-    String workId = "<BOT>";
-
-    if ((getTime != "" && rtcYear == 0) || !rtcUpdateStatus) {
-      Serial.println(getTime);
-      String response = rtcInitialTime(getTime);
-
-      workId += " " + response;
-
-      response = "RTC START: " + response;
-
-      replyUserMessage(workId, response, telegrambotKeyboard);
-    }
+    String workId = "<BOT> " + getTime;
 
     if (getBody == "") return;
 
