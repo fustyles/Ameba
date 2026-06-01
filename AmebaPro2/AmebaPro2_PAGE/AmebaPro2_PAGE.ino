@@ -1,130 +1,42 @@
 /*
- * ============================================================
- * fuClaw - AmebaPro2 AP Mode Web Page Manager
- * ============================================================
- *
- * Purpose
- * ------------------------------------------------------------
- * This module provides a lightweight HTTP server running on
- * AmebaPro2 devices.
- *
- * Features:
- * - AP (Access Point) mode support
- * - Concurrent STA + AP WiFi operation
- * - Web page hosting
- * - Chat UI page delivery
- * - HTTP GET message receiving
- * - FreeRTOS based request handling task
- *
- * Architecture
- * ------------------------------------------------------------
- *
- * Browser
- *    |
- *    | HTTP GET
- *    v
- * +----------------+
- * | WiFiServer(80) |
- * +----------------+
- *          |
- *          v
- * +---------------------+
- * | task_getRequest()   |
- * +---------------------+
- *          |
- *          +---- "/" --------> Home page
- *          |
- *          +---- "/chat" ----> Chat UI
- *          |
- *          +---- "/message" -> Receive messages
- *
- * HTTP Endpoints
- * ------------------------------------------------------------
- *
- * GET /
- *     Home page
- *
- * GET /chat
- *     Return chat interface HTML
- *
- * GET /message?<query>
- *     Receive URL encoded message
- *
- * Example:
- *     http://192.168.1.1/message?text=Hello
- *
- * Build Information
- * ------------------------------------------------------------
- * Author:
- *   ChungYi Fu
- *   Kaohsiung, Taiwan
- *
- * Facebook:
- *   https://www.facebook.com/francefu
- *
- * Repository:
- *   https://github.com/fustyles/fuClaw
- *
- * Build Date:
- *   2026-06-01 07:30
- *
- * Hardware Support
- * ------------------------------------------------------------
- *
- * AMB82-mini
- *   Green LED : GPIO24
- *   Blue LED  : GPIO23
- *
- * HUB 8735 Ultra
- *   Green LED : GPIO25
- *   Blue LED  : GPIO26
- *   Fill LED  : GPIO13
- *   Button    : GPIO12 (Input Only, Active Low)
- *
- * WiFi Configuration
- * ------------------------------------------------------------
- *
- * AP Mode:
- *   SSID     : fuclaw
- *   Password : 12345678
- *   Default IP:
- *       http://192.168.1.1
- *
- * Station Mode:
- *   Configurable through source code
- *
- * FreeRTOS Tasks
- * ------------------------------------------------------------
- *
- * task_getRequest
- *   Priority : tskIDLE_PRIORITY + 1
- *   Stack    : 16384 bytes
- *
- * Responsibilities:
- *   - Accept client connections
- *   - Parse HTTP requests
- *   - Generate response pages
- *   - Send web content
- *
- * Notes
- * ------------------------------------------------------------
- * - Uses simple line-based HTTP parsing.
- * - Only HTTP GET requests are processed.
- * - Responses are sent in 512-byte chunks to reduce
- *   memory pressure.
- * - URL query strings are automatically URL-decoded.
- *
- * ============================================================
- */
+ * AmebaPro2 AP mode - Web page manager
+------------------------------------------------------------
+Author
+------------------------------------------------------------
+Author:
+  ChungYi Fu (Kaohsiung, Taiwan)
+  https://www.facebook.com/francefu
+
+Repository:
+  https://github.com/fustyles/fuClaw
+
+Build Date: 2026-06-01 07:30
+------------------------------------------------------------
+Hardware
+------------------------------------------------------------
+AMB82-mini
+- Green LED : GPIO 24
+- Blue LED  : GPIO 23
+
+HUB 8735 Ultra
+- Green LED : GPIO 25
+- Blue LED  : GPIO 26
+- Fill LED  : GPIO 13
+- Button    : GPIO 12 (input only, active-low)
+------------------------------------------------------------
+*/
 
 // WiFi credentials
-String wifiSsid = "xxxxxxxxxx";
-String wifiPassword = "xxxxxxxxxx";
+String wifiSsid = "teacher";
+String wifiPassword = "12345678";
 
 // AP credentials http://192.168.1.1:81
 String apSsid = "fuclaw";
 String apPassword = "12345678";
 
+// Copy page content to a local buffer.
+// mainPageHTML is cleared immediately so the next
+// request can generate new content independently.
 #include "index_chat_html.h"
 String mainPageHTML = "";
 
@@ -141,6 +53,22 @@ WiFiServer server(80);
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
+/**
+ * @brief Decode URL encoded string.
+ *
+ * Converts:
+ *   %20 -> space
+ *   %2F -> '/'
+ *   +   -> space
+ *
+ * Example:
+ *   Hello%20World
+ *     ->
+ *   Hello World
+ *
+ * @param input URL encoded string
+ * @return Decoded string
+ */
 String urldecode(const String& input) {
     String result = "";
     result.reserve(input.length());
@@ -159,7 +87,37 @@ String urldecode(const String& input) {
     return result;
 }
 
-// web page
+/**
+ * @brief HTTP server processing task.
+ *
+ * This FreeRTOS task continuously monitors incoming
+ * HTTP client connections and processes requests.
+ *
+ * Supported routes:
+ *
+ *   GET /
+ *      Home page
+ *
+ *   GET /chat
+ *      Chat interface page
+ *
+ *   GET /message?<query>
+ *      Receive URL encoded message
+ *
+ * Response generation flow:
+ *
+ *   Browser
+ *      ↓
+ *   HTTP Request
+ *      ↓
+ *   Parse URL
+ *      ↓
+ *   Generate HTML
+ *      ↓
+ *   Send Response
+ *
+ * @param param Unused task parameter
+ */
 void task_getRequest(void *param) {
   (void)param;
   while (1) {
@@ -208,7 +166,10 @@ void task_getRequest(void *param) {
             currentLine += c;
           }
           
-          // Debug: print any URL query string (e.g. GET /?ssid=xxx HTTP/1.1) to Serial
+		  // ----------------------------------------------------
+		  // Route: GET /
+		  // Display  welcome page.
+		  // ----------------------------------------------------
           if ((currentLine.indexOf("GET / ") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
             
             mainPageHTML = "Welcome to <a href=\"https://github.com/fustyles/fuClaw\">fuClaw</a> home!";
@@ -216,13 +177,28 @@ void task_getRequest(void *param) {
             currentLine = "";    
                     
           } 
+		  // ----------------------------------------------------
+		  // Route: GET /chat
+		  //
+		  // Returns the embedded chat interface stored in
+		  // INDEX_CHAT_HTML.
+		  // ----------------------------------------------------		  
           else if ((currentLine.indexOf("GET /chat") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
 
             mainPageHTML = String(INDEX_CHAT_HTML);
 
             currentLine = "";
 
-          }                      
+          }    
+		  // ----------------------------------------------------
+		  // Route: GET /message?<query>
+		  //
+		  // Example:
+		  //   /message?text=Hello%20World
+		  //
+		  // URL parameters are automatically decoded before
+		  // being processed.
+		  // ----------------------------------------------------		  
           else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
 
             currentLine.replace("GET /message?", "");
@@ -232,7 +208,6 @@ void task_getRequest(void *param) {
             mainPageHTML = "Receive: " + currentLine;
             
             currentLine = "";
-
           }      
         }
       }
@@ -243,7 +218,19 @@ void task_getRequest(void *param) {
   }
 }
 
-// Initialize WiFi
+/**
+ * @brief Initialize WiFi subsystem.
+ *
+ * Startup sequence:
+ *
+ * 1. Enable AP + STA concurrent mode
+ * 2. Start Access Point
+ * 3. Attempt STA connection
+ * 4. Timeout after 5 seconds
+ *
+ * AP remains active regardless of STA connection
+ * success or failure.
+ */
 void initWiFi() {
 	
   WiFi.enableConcurrent();
@@ -277,7 +264,24 @@ String Ip2String(IPAddress ip) {
   return String(ip[0])+String(".")+String(ip[1])+String(".")+String(ip[2])+String(".")+String(ip[3]);
 }
 
-// Arduino setup
+/**
+ * @brief Arduino initialization entry point.
+ *
+ * Initialization order:
+ *
+ *   Serial
+ *      ↓
+ *   LED GPIO
+ *      ↓
+ *   WiFi
+ *      ↓
+ *   HTTP Server
+ *      ↓
+ *   FreeRTOS Task
+ *      ↓
+ *   Status Output
+ *
+ */
 void setup() {
   Serial.begin(115200);
 
