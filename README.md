@@ -137,6 +137,12 @@ soul.md
 memory.md
   <br>Conversation history persistence
 
+index.html
+  <br>fuClaw configuration web page
+
+index_chat.html
+  <br>Gemini talk web page (Web Chat Interface)  
+
 Conversation state is restored automatically on boot.
 
 ------------------------------------------------------------
