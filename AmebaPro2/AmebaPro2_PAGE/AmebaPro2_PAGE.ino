@@ -1,30 +1,121 @@
 /*
- * AmebaPro2 AP mode - Web page manager
-------------------------------------------------------------
-Author
-------------------------------------------------------------
-Author:
-  ChungYi Fu (Kaohsiung, Taiwan)
-  https://www.facebook.com/francefu
-
-Repository:
-  https://github.com/fustyles/fuClaw
-
-Build Date: 2026-06-01 07:30
-------------------------------------------------------------
-Hardware
-------------------------------------------------------------
-AMB82-mini
-- Green LED : GPIO 24
-- Blue LED  : GPIO 23
-
-HUB 8735 Ultra
-- Green LED : GPIO 25
-- Blue LED  : GPIO 26
-- Fill LED  : GPIO 13
-- Button    : GPIO 12 (input only, active-low)
-------------------------------------------------------------
-*/
+ * ============================================================
+ * fuClaw - AmebaPro2 AP Mode Web Page Manager
+ * ============================================================
+ *
+ * Purpose
+ * ------------------------------------------------------------
+ * This module provides a lightweight HTTP server running on
+ * AmebaPro2 devices.
+ *
+ * Features:
+ * - AP (Access Point) mode support
+ * - Concurrent STA + AP WiFi operation
+ * - Web page hosting
+ * - Chat UI page delivery
+ * - HTTP GET message receiving
+ * - FreeRTOS based request handling task
+ *
+ * Architecture
+ * ------------------------------------------------------------
+ *
+ * Browser
+ *    |
+ *    | HTTP GET
+ *    v
+ * +----------------+
+ * | WiFiServer(80) |
+ * +----------------+
+ *          |
+ *          v
+ * +---------------------+
+ * | task_getRequest()   |
+ * +---------------------+
+ *          |
+ *          +---- "/" --------> Home page
+ *          |
+ *          +---- "/chat" ----> Chat UI
+ *          |
+ *          +---- "/message" -> Receive messages
+ *
+ * HTTP Endpoints
+ * ------------------------------------------------------------
+ *
+ * GET /
+ *     Home page
+ *
+ * GET /chat
+ *     Return chat interface HTML
+ *
+ * GET /message?<query>
+ *     Receive URL encoded message
+ *
+ * Example:
+ *     http://192.168.1.1/message?text=Hello
+ *
+ * Build Information
+ * ------------------------------------------------------------
+ * Author:
+ *   ChungYi Fu
+ *   Kaohsiung, Taiwan
+ *
+ * Facebook:
+ *   https://www.facebook.com/francefu
+ *
+ * Repository:
+ *   https://github.com/fustyles/fuClaw
+ *
+ * Build Date:
+ *   2026-06-01 07:30
+ *
+ * Hardware Support
+ * ------------------------------------------------------------
+ *
+ * AMB82-mini
+ *   Green LED : GPIO24
+ *   Blue LED  : GPIO23
+ *
+ * HUB 8735 Ultra
+ *   Green LED : GPIO25
+ *   Blue LED  : GPIO26
+ *   Fill LED  : GPIO13
+ *   Button    : GPIO12 (Input Only, Active Low)
+ *
+ * WiFi Configuration
+ * ------------------------------------------------------------
+ *
+ * AP Mode:
+ *   SSID     : fuclaw
+ *   Password : 12345678
+ *   Default IP:
+ *       http://192.168.1.1
+ *
+ * Station Mode:
+ *   Configurable through source code
+ *
+ * FreeRTOS Tasks
+ * ------------------------------------------------------------
+ *
+ * task_getRequest
+ *   Priority : tskIDLE_PRIORITY + 1
+ *   Stack    : 16384 bytes
+ *
+ * Responsibilities:
+ *   - Accept client connections
+ *   - Parse HTTP requests
+ *   - Generate response pages
+ *   - Send web content
+ *
+ * Notes
+ * ------------------------------------------------------------
+ * - Uses simple line-based HTTP parsing.
+ * - Only HTTP GET requests are processed.
+ * - Responses are sent in 512-byte chunks to reduce
+ *   memory pressure.
+ * - URL query strings are automatically URL-decoded.
+ *
+ * ============================================================
+ */
 
 // WiFi credentials
 String wifiSsid = "teacher";
