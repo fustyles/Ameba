@@ -48,9 +48,9 @@ Conversation + Reasoning + Tools + Vision + Memory + Hardware
 Runtime Architecture
 ------------------------------------------------------------
 
-Telegram User<br>
+Telegram (MQTT) User<br>
       ↓<br>
-Telegram Polling Task<br>
+Telegram (MQTT) Polling Task<br>
       ↓<br>
 Message Router<br>
       ↓<br>
