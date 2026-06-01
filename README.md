@@ -25,24 +25,26 @@ Repository:<br>
 Overview
 ------------------------------------------------------------
 
-fuClaw is an embedded multimodal AI agent framework running
-on devices:
+**fuClaw** is an embedded multimodal AI agent framework that runs on edge devices.
 
-It combines:
+It integrates:
 
-- Telegram Bot API (HTTPS long polling)
-- Google Gemini generateContent API
-- Gemini grounded web search
-- Gemini multimodal vision reasoning
-- Prompt-driven JSON tool routing
-- GPIO digital / analog I/O control
-- Camera capture and image upload
-- Persistent conversation memory
-- FreeRTOS concurrent task scheduling
+* Telegram Bot API (HTTPS long polling)
+* MQTT Broker communication
+* Gemini Chat Web Interface
+* Google Gemini GenerateContent API
+* Gemini Grounded Web Search
+* Gemini Multimodal Vision Reasoning
+* Prompt-driven JSON Tool Routing
+* GPIO Digital and Analog I/O Control
+* Camera Capture and Image Upload
+* Persistent Conversation Memory
+* FreeRTOS Concurrent Task Scheduling
 
-The runtime acts as a hybrid autonomous agent:
+The runtime operates as a hybrid autonomous agent, combining:
 
-Conversation + Reasoning + Tools + Vision + Memory + Hardware
+**Conversation + Reasoning + Tools + Vision + Memory + Hardware**
+
 
 ------------------------------------------------------------
 Runtime Architecture
