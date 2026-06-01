@@ -1088,6 +1088,70 @@ bool rtcUpdateStatus = false;
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
+// Send request to Gemini and return GMT date and time
+String getGeminiDatetime() {
+
+  String contents = systemContent + buildGeminiMessage("user", "I am fuClaw!", true);
+
+  String request = "{\"contents\": [" + contents +
+                   "],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
+  WiFiSSLClient client;
+  String getDatetime = "";
+
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    int waitTime = 5000;
+    unsigned long startTime = millis();
+    bool getStatus = false;
+
+    while ((startTime + waitTime) > millis()){
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (client.available()){
+        char c = client.read();
+
+        if (getStatus == true && c == '\n') {
+          waitTime = 0;
+          break;
+        }
+        if (getDatetime.indexOf("Date:")!=-1) {
+          getDatetime = "";
+          getStatus = true;
+        }
+        else
+          getDatetime += String(c);
+
+        startTime = millis();
+      }
+    }
+    
+    client.stop();
+    
+  } else {
+    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
+  }
+
+  if (getDatetime == "") {
+    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
+  }
+
+  return getDatetime;
+  
+}
+
 String getRtcTimeString() {
 
   long long epoch = rtc.Read();
@@ -1113,13 +1177,13 @@ String getRtcTimeString() {
 }
 
 // Initialize the RTC using Gemini-synchronized local time.
-String rtcInitialTime(String gmtTime) {
-  
+void rtcInitialTime(String workId) {
+	
   rtcUpdateStatus = true;
   
   String prompt =
     "Convert this GMT datetime to " + timeZone + ".\n"
-    "GMT datetime: " + gmtTime + "\n\n"
+    "GMT datetime: " + getGeminiDatetime() + "\n\n"
 	
     "Before generating the JSON output, add exactly 4 seconds to the converted local datetime.\n"
     "Handle minute, hour, day, month, and year rollovers correctly if needed.\n\n" 
@@ -1152,8 +1216,7 @@ String rtcInitialTime(String gmtTime) {
 
     if (error) {
       Serial.println("[DEBUG] JSON parse failed\n" + message);
-      
-      return "RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.";
+      replyUserMessage(workId, "RTC time update failed.", "");
       
     }
 
@@ -1168,15 +1231,12 @@ String rtcInitialTime(String gmtTime) {
 
   } else {
     Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
-
-    return "RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.";
+    replyUserMessage(workId, "RTC time update failed.", "");
   }
 
   rtc.Init();
   long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
   rtc.Write(initTime);
-
-  return getRtcTimeString();
 }
 
 // Send text message to Telegram bot
@@ -1321,26 +1381,26 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
 }
 
 void replyUserMessage(String workId, String text, String keyboard = "") {
-	if (text.startsWith("NONE")) return;
+	if (text.startsWith("NONE") || text == "") return;
 	
-	if (workId.indexOf("<PAGE>") != -1 && text != "" && !text.startsWith("<PAGE>")) {
-    if (text.indexOf("<PAGE>") != -1)
-      text = text.substring(0, text.indexOf("<PAGE>"));
+	if (workId.startsWith("<PAGE>") && !text.startsWith("<PAGE>")) {
+		if (text.indexOf("<PAGE>") != -1)
+			text = text.substring(0, text.indexOf("<PAGE>"));
 		mainPageHTML += text;
 	}
-	else if (workId.startsWith("<BOT>")) {
-    if (text.indexOf("<BOT>") != -1)
-      text = text.substring(0, text.indexOf("<BOT>"));
+	else if (workId.startsWith("<BOT>") && !text.startsWith("<BOT>")) {
+		if (text.indexOf("<BOT>") != -1)
+		  text = text.substring(0, text.indexOf("<BOT>"));
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 	}
-	else if (workId.startsWith("<THEFT_DETECTION>")) {
-    if (text.indexOf("<THEFT_DETECTION>") != -1)
-      text = text.substring(0, text.indexOf("<THEFT_DETECTION>"));
+	else if (workId.startsWith("<THEFT_DETECTION>") && !text.startsWith("<THEFT_DETECTION>")) {
+		if (text.indexOf("<THEFT_DETECTION>") != -1)
+		  text = text.substring(0, text.indexOf("<THEFT_DETECTION>"));
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 	}
-	else if (workId.startsWith("<TIME_SCHEDULING>")) {
-    if (text.indexOf("<TIME_SCHEDULING>") != -1)
-      text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));    
+	else if (workId.startsWith("<TIME_SCHEDULING>") && !text.startsWith("<TIME_SCHEDULING>")) {
+		if (text.indexOf("<TIME_SCHEDULING>") != -1)
+		  text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));    
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 	}
 	else
@@ -2838,7 +2898,9 @@ void setup() {
     Serial.println("fuClaw Chat\nhttp://" + Ip2String(WiFi.localIP()) + ":81/chat");    
     Serial.println("\n");   
   }   
-  
+ 
+  rtcInitialTime("<BOT>");
+  replyUserMessage("<BOT> " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
 }
 
 // Main loop

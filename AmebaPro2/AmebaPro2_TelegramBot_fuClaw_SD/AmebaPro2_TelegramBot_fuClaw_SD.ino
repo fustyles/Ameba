@@ -1444,26 +1444,26 @@ String telegramSendCapturedImage(String token, String chat_id, bool frames) {
 }
 
 void replyUserMessage(String workId, String text, String keyboard = "") {
-	if (text.startsWith("NONE")) return;
+	if (text.startsWith("NONE") || text == "") return;
 	
-	if (workId.indexOf("<PAGE>") != -1 && text != "" && !text.startsWith("<PAGE>")) {
-    if (text.indexOf("<PAGE>") != -1)
-      text = text.substring(0, text.indexOf("<PAGE>"));
+	if (workId.startsWith("<PAGE>") && !text.startsWith("<PAGE>")) {
+		if (text.indexOf("<PAGE>") != -1)
+			text = text.substring(0, text.indexOf("<PAGE>"));
 		mainPageHTML += text;
 	}
-	else if (workId.startsWith("<BOT>")) {
-    if (text.indexOf("<BOT>") != -1)
-      text = text.substring(0, text.indexOf("<BOT>"));
+	else if (workId.startsWith("<BOT>") && !text.startsWith("<BOT>")) {
+		if (text.indexOf("<BOT>") != -1)
+		  text = text.substring(0, text.indexOf("<BOT>"));
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 	}
-	else if (workId.startsWith("<THEFT_DETECTION>")) {
-    if (text.indexOf("<THEFT_DETECTION>") != -1)
-      text = text.substring(0, text.indexOf("<THEFT_DETECTION>"));
+	else if (workId.startsWith("<THEFT_DETECTION>") && !text.startsWith("<THEFT_DETECTION>")) {
+		if (text.indexOf("<THEFT_DETECTION>") != -1)
+		  text = text.substring(0, text.indexOf("<THEFT_DETECTION>"));
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 	}
-	else if (workId.startsWith("<TIME_SCHEDULING>")) {
-    if (text.indexOf("<TIME_SCHEDULING>") != -1)
-      text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));    
+	else if (workId.startsWith("<TIME_SCHEDULING>") && !text.startsWith("<TIME_SCHEDULING>")) {
+		if (text.indexOf("<TIME_SCHEDULING>") != -1)
+		  text = text.substring(0, text.indexOf("<TIME_SCHEDULING>"));    
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
 	}
 	else
