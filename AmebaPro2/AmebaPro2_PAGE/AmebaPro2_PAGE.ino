@@ -118,8 +118,8 @@
  */
 
 // WiFi credentials
-String wifiSsid = "teacher";
-String wifiPassword = "12345678";
+String wifiSsid = "xxxxxxxxxx";
+String wifiPassword = "xxxxxxxxxx";
 
 // AP credentials http://192.168.1.1:81
 String apSsid = "fuclaw";
@@ -159,7 +159,7 @@ String urldecode(const String& input) {
     return result;
 }
 
-// fuClaw configuration web page. Users can set system parameters from the webpage.
+// web page
 void task_getRequest(void *param) {
   (void)param;
   while (1) {
@@ -223,7 +223,7 @@ void task_getRequest(void *param) {
             currentLine = "";
 
           }                      
-    			else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
+          else if ((currentLine.indexOf("GET /message?") != -1) && (currentLine.indexOf(" HTTP") != -1)) {
 
             currentLine.replace("GET /message?", "");
             currentLine.replace(" HTTP", "");
@@ -233,7 +233,7 @@ void task_getRequest(void *param) {
             
             currentLine = "";
 
-    			}      
+          }      
         }
       }
 
