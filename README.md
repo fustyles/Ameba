@@ -50,9 +50,10 @@ The runtime operates as a hybrid autonomous agent, combining:
 Runtime Architecture
 ------------------------------------------------------------
 
-Telegram (MQTT) User<br>
+Telegram / MQTT / Web Chat User<br>
       ↓<br>
-Telegram (MQTT) Polling Task<br>
+Communication Task<br>
+(Telegram Long Polling / MQTT / Web Chat)<br>
       ↓<br>
 Message Router<br>
       ↓<br>
@@ -69,7 +70,7 @@ Hardware / Search / Vision Execution<br>
       ↓<br>
 Result injection into memory<br>
       ↓<br>
-Natural language reply
+Telegram / MQTT / Web Chat Reply
 
 ------------------------------------------------------------
 Execution Model
