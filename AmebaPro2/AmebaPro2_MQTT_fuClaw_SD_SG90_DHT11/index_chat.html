@@ -425,7 +425,7 @@
       .replace(/"/g,'&quot;');
   }
 
-  function appendMsg(role, text, time) {
+  function appendMsg(role, text, time, isHtml) {
     if (emptyState) emptyState.style.display = 'none';
 
     var msg = document.createElement('div');
@@ -433,11 +433,13 @@
 
     var avatarChar = role === 'user' ? 'U' : 'AI';
     var avatarCls  = role === 'user' ? 'user-av' : 'ai-av';
+	
+	var content = isHtml ? text : escHtml(text);
 
     msg.innerHTML =
       '<div class="msg-row">' +
         '<div class="avatar ' + avatarCls + '">' + avatarChar + '</div>' +
-        '<div class="bubble">' + escHtml(text) + '</div>' +
+        '<div class="bubble">' + content + '</div>' +
       '</div>' +
       '<div class="msg-time">' + time + '</div>';
 
@@ -512,7 +514,10 @@
       })
       .then(function(reply) {
         hideTyping();
-        appendMsg('ai', reply, nowStr());
+		if (reply.indexOf("data:image")!=-1)
+			appendMsg('ai', reply, nowStr(), true);
+		else
+			appendMsg('ai', reply, nowStr());
       })
       .catch(function(err) {
         hideTyping();

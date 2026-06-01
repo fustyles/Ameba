@@ -1209,6 +1209,7 @@ String mainpageFilename = "index.html";    // Configuration
 String chatpageFilename = "index_chat.html";    // Chat
 
 // Forward declarations
+String buildGeminiMessage(String role, String message, bool comma);
 String getRtcTimeString();
 void replyUserMessage(String workId, String text, String keyboard);
 void handleAgentResponse(String workId, String message);
@@ -1247,6 +1248,69 @@ DHT dht(DHTPIN, DHTTYPE);
 
 #define CONFIG_INIC_IPC_HIGH_TP
 
+// Send request to Gemini and return GMT date and time
+String getGeminiDatetime() {
+
+  String contents = systemContent + buildGeminiMessage("user", "I am fuClaw!", true);
+
+  String request = "{\"contents\": [" + contents +
+                   "],\"generationConfig\": {\"maxOutputTokens\": " +
+                   geminiMaxOutputTokens +
+                   ", \"temperature\": " + geminiTemperature + "}}";
+
+  WiFiSSLClient client;
+  String getDatetime = "";
+
+  if (client.connect("generativelanguage.googleapis.com", 443)) {
+    client.println("POST /v1beta/models/"+geminiModel+":generateContent?key="+geminiApiKey+" HTTP/1.1");
+    client.println("Connection: close");
+    client.println("Host: generativelanguage.googleapis.com");
+    client.println("Content-Type: application/json; charset=utf-8");
+    client.println("Content-Length: " + String(request.length()));
+    client.println();
+    
+    for (int i = 0; i < request.length(); i += 1024) {
+      client.print(request.substring(i, i + 1024));
+    }
+
+    int waitTime = 5000;
+    unsigned long startTime = millis();
+    bool getStatus = false;
+
+    while ((startTime + waitTime) > millis()){
+      vTaskDelay(100 / portTICK_PERIOD_MS);
+
+      while (client.available()){
+        char c = client.read();
+
+        if (getStatus == true && c == '\n') {
+          waitTime = 0;
+          break;
+        }
+        if (getDatetime.indexOf("Date:")!=-1) {
+          getDatetime = "";
+          getStatus = true;
+        }
+        else
+          getDatetime += String(c);
+
+        startTime = millis();
+      }
+    }
+    
+    client.stop();
+    
+  } else {
+    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
+  }
+
+  if (getDatetime == "") {
+    getDatetime = "Use grounded search to retrieve the current GMT date and time.";
+  }
+
+  return getDatetime;
+  
+}
 
 String getRtcTimeString() {
 
@@ -1273,13 +1337,13 @@ String getRtcTimeString() {
 }
 
 // Initialize the RTC using Gemini-synchronized local time.
-String rtcInitialTime(String gmtTime) {
+void rtcInitialTime(String workId) {
 	
   rtcUpdateStatus = true;
   
   String prompt =
     "Convert this GMT datetime to " + timeZone + ".\n"
-    "GMT datetime: " + gmtTime + "\n\n"
+    "GMT datetime: " + getGeminiDatetime() + "\n\n"
 	
     "Before generating the JSON output, add exactly 4 seconds to the converted local datetime.\n"
     "Handle minute, hour, day, month, and year rollovers correctly if needed.\n\n" 
@@ -1312,8 +1376,7 @@ String rtcInitialTime(String gmtTime) {
 
     if (error) {
       Serial.println("[DEBUG] JSON parse failed\n" + message);
-      
-      return "RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.";
+      replyUserMessage(workId, "RTC time update failed.", "");
       
     }
 
@@ -1328,15 +1391,12 @@ String rtcInitialTime(String gmtTime) {
 
   } else {
     Serial.println("[DEBUG] JSON parse failed : (rtcInitialTime)\n" + message);
-
-    return "RTC time update failed. Device must be stopped immediately. Possible causes: history file corruption or invalid JSON format in stored records.";
+    replyUserMessage(workId, "RTC time update failed.", "");
   }
 
   rtc.Init();
   long long initTime = rtc.SetEpoch(rtcYear, rtcMonth, rtcDay, rtcHour, rtcMinute, rtcSecond);
   rtc.Write(initTime);
-
-  return getRtcTimeString();
 }
 
 // Send text message to Telegram bot
@@ -1505,6 +1565,34 @@ void replyUserMessage(String workId, String text, String keyboard = "") {
 	}
 	else
 		telegramSendMessage(telegrambotToken, telegrambotChatId, text, keyboard);
+}
+
+String replyUserImage(String workId, bool frames) {
+  if (workId.startsWith("<PAGE>")) {
+      if (frames)
+          Camera.getImage(0, &imageAddress, &imageLength);
+          
+      uint8_t* fbBuf = (uint8_t*)imageAddress;
+      size_t   fbLen = imageLength;
+
+      char *input = (char *)fbBuf;
+      char output[base64_enc_len(3)];
+                  
+      size_t estimatedSize = 23 + ((fbLen + 2) / 3) * 4 + 1;
+      String imageFile = "<img src='data:image/jpeg;base64,";
+      imageFile.reserve(estimatedSize);
+      
+      for (int i = 0; i < fbLen; i++) {
+          base64_encode(output, (input++), 3);
+          if (i % 3 == 0) imageFile += String(output);
+      }
+      mainPageHTML = imageFile + "' style='max-width:240px; height:auto; border-radius:8px;'><br>";
+  }
+  else if (workId.startsWith("<BOT>")) {
+    return telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
+  }
+
+  return "";
 }
 
 // Convert role/content pair into Gemini-compatible JSON message object
@@ -2115,7 +2203,7 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);
 
-	  executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";	  
+      executeToolHistory += workId + " " + command + " [ "+String(pin)+" | "+pinmode+" ]\n";	  
 
       evaluateWorkflowContinuation(workId, reCheck); 
       
@@ -2123,15 +2211,15 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
     else if (command == "/still") {
       bool frames = params.containsKey("frames") ? params["frames"].as<bool>() : true;
       String task = params.containsKey("task") ? params["task"].as<String>() : "NONE";
-      String tgResponse = telegramSendCapturedImage(telegrambotToken, telegrambotChatId, frames);
+      String res = replyUserImage(workId, frames);
 
-      tgResponse.replace("\\", "\\\\");
-      tgResponse.replace("\"", "\\\"");   
+      res.replace("\\", "\\\\");
+      res.replace("\"", "\\\"");   
        
       String response =
         "{\"status\":\"success\","
         "\"method\":\"still\","
-        "\"result\":\"" + tgResponse + "\"}";
+        "\"result\":\"" + res + "\"}";
     
       historicalMessages += buildGeminiMessage("user", command + timestamps);
       historicalMessages += buildGeminiMessage("model", response + timestamps);
@@ -2142,10 +2230,12 @@ void executeTool(String workId, String command, JsonObject params, bool reCheck 
       
     } 
     else if (command == "/syncrtc") {
-      rtcUpdateStatus = false;
+      rtcInitialTime(workId);
+      String rtcTime = getRtcTimeString();
+      replyUserMessage(workId, "RTC START: " + rtcTime);
 
       historicalMessages += buildGeminiMessage("user", command + timestamps);
-      historicalMessages += buildGeminiMessage("model", "Updating RTC time shortly." + timestamps);
+      historicalMessages += buildGeminiMessage("model", rtcTime + timestamps);
 
       executeToolHistory += workId + " " + command + "\n";
 
@@ -2702,18 +2792,7 @@ void getTelegramMessage() {
 
     getTime.replace("Content-Type", "");
 
-    String workId = "<BOT>";
-
-    if ((getTime != "" && rtcYear == 0) || !rtcUpdateStatus) {
-      Serial.println(getTime);
-      String response = rtcInitialTime(getTime);
-
-      workId += " " + response;
-
-      response = "RTC START: " + response;
-
-      replyUserMessage(workId, response, telegrambotKeyboard);
-    }
+    String workId = "<BOT> " + getRtcTimeString();
 
     if (getBody == "") return;
 
@@ -3208,7 +3287,10 @@ void setup() {
 
   servo12.attach(12);
 
-  dht.begin();  
+  dht.begin();
+
+  rtcInitialTime("<BOT>");
+  replyUserMessage("<BOT> " + getRtcTimeString(), "RTC START: " + getRtcTimeString());
   
 }
 

@@ -3,14 +3,14 @@
 
 const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>fuClaw — Gemini Chat</title>
 <style>
   :root {
-    --font-main: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    --font-main: -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans TC', sans-serif;
     --font-mono: 'Courier New', Courier, monospace;
     --bg:        #f5f7ff;
     --surface:   #ffffff;
@@ -364,8 +364,8 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
   <div class="messages" id="messages">
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">&#10022;</div>
-      <div class="empty-title">Start a conversation with Gemini</div>
-      <div class="empty-hint">Type a message and press Send<br>fuClaw will call the Gemini AI</div>
+      <div class="empty-title">開始與 Gemini 對話</div>
+      <div class="empty-hint">輸入訊息後按送出<br>fuClaw 將呼叫 Gemini AI</div>
     </div>
   </div>
 
@@ -373,10 +373,10 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
     <div class="input-wrap">
       <textarea
         id="msgInput"
-        placeholder="Type a message… (Shift+Enter for new line)"
+        placeholder="輸入訊息… (Shift+Enter 換行)"
         rows="1"
       ></textarea>
-      <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="Send">
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()" title="送出">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"/>
           <polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -384,7 +384,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
       </button>
     </div>
     <div class="input-hint">
-      <kbd>Enter</kbd> to send &nbsp;&#183;&nbsp; <kbd>Shift</kbd>+<kbd>Enter</kbd> for new line
+      <kbd>Enter</kbd> 送出 &nbsp;&#183;&nbsp; <kbd>Shift</kbd>+<kbd>Enter</kbd> 換行
     </div>
   </div>
 
@@ -429,7 +429,7 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
       .replace(/"/g,'&quot;');
   }
 
-  function appendMsg(role, text, time) {
+  function appendMsg(role, text, time, isHtml) {
     if (emptyState) emptyState.style.display = 'none';
 
     var msg = document.createElement('div');
@@ -437,11 +437,13 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
 
     var avatarChar = role === 'user' ? 'U' : 'AI';
     var avatarCls  = role === 'user' ? 'user-av' : 'ai-av';
+	
+	var content = isHtml ? text : escHtml(text);
 
     msg.innerHTML =
       '<div class="msg-row">' +
         '<div class="avatar ' + avatarCls + '">' + avatarChar + '</div>' +
-        '<div class="bubble">' + escHtml(text) + '</div>' +
+        '<div class="bubble">' + content + '</div>' +
       '</div>' +
       '<div class="msg-time">' + time + '</div>';
 
@@ -516,11 +518,14 @@ const char INDEX_CHAT_HTML[] PROGMEM = R"rawhtml(
       })
       .then(function(reply) {
         hideTyping();
-        appendMsg('ai', reply, nowStr());
+		if (reply.indexOf("data:image")!=-1)
+			appendMsg('ai', reply, nowStr(), true);
+		else
+			appendMsg('ai', reply, nowStr());
       })
       .catch(function(err) {
         hideTyping();
-        showError('Unable to connect to device (' + err.message + ')');
+        showError('無法連線至裝置 (' + err.message + ')');
       })
       .finally(function() {
         isWaiting = false;
